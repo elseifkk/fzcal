@@ -2,6 +2,12 @@ module memio
   implicit none
   public
 
+#ifndef _USE32_
+  integer,parameter::ptrsz=selected_int_kind(20)
+#else
+  integer,parameter::ptrsz=selected_int_kind(10)
+#endif
+
   interface mcp
 #ifdef _NO_ASM_
      module procedure cpmem
@@ -22,6 +28,12 @@ module memio
 #endif
 
 contains
+
+  integer function atoi(a)
+    character*(*),intent(in)::a
+    integer istat
+    read(a,*,iostat=istat) atoi
+  end function atoi
 
 #ifndef _NO_ASM_
   character*32 function itoa(i)

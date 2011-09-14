@@ -1,3 +1,9 @@
+%ifdef _USE32_
+BITS 32
+%else
+BITS 64
+%endif
+
 ; parameters to set format for fptoa proc
 FP_LESSTHAN equ 0x01
 FP_EQUALTO  equ 0x40
@@ -22,6 +28,7 @@ FP2A_ALLOW_ORDINARY_EXPRESSION | \
 FP2A_FORCE_NOT_SHOW_EXPSIGN | \
 FP2A_SUPRESS_E0 | \
 FP2A_TRIM_TRAILING_ZEROS
+
 ;;; 
 section .data align=16
 ; I'd rather this was local to the procedure, but masm doesn't do
@@ -110,15 +117,43 @@ ten_256 dt 1.0e256
  dt 1.0e4352
  dt 1.0e4608
  dt 1.0e4864
+
 ;;; 
 section .text align=16
+
 ;;; 
 global f2str_
 	
+%macro start_proc 0
+%ifdef _USE32_
 %assign arg1 08
 %assign arg2 12
 %assign arg3 16
-
+	push ebp
+	mov ebp, esp
+	push edi
+	push esi
+	push ebx
+	;; 
+%else
+	push rbp
+	mov rbp, rsp
+%endif
+%endm
+	
+%macro end_proc 0
+%ifdef _USE32_	
+	pop ebx
+	pop esi
+	pop edi
+	pop ebp
+	ret
+%else
+	pop rbx
+	ret
+%endif
+%endm
+	
 ; Multiply a floating point value by an integral power of 10.
 ;
 ; Entry: EAX = power of 10, -4932..4932.
@@ -221,12 +256,7 @@ _FloatToBCD:
 ; local nDigit: DWORD ; number of significant digit
 ; local prefix: BYTE ; for engineering notation
 f2str_:	
-	push ebp
-	mov ebp, esp
-	;; 
-	push edi
-	push esi
-	push ebx
+	start_proc
 	;; 
 	mov edi, [ebp+arg2] ; szDbl
 	mov esi, [ebp+arg1] ; fpin
@@ -328,11 +358,9 @@ f2str_:
 	mov byte [edi], al
 	mov eax, edi
 	sub eax, [ebp+arg2] ; szDbl
-	pop ebx	
-	pop esi
-	pop edi
-	pop ebp
-	ret
+
+.return:
+	end_proc
 
 .L8:	
 ; Check for a negative number.
@@ -715,13 +743,6 @@ f2str_:
 
 	test dword [format], FP2A_ADJUSTR
 	jnz .adjustR
-
-.return:
-	pop ebx
-	pop esi
-	pop edi
-	pop ebp
-	ret
 
 .adjustR:
 	mov ebx, eax ; return code

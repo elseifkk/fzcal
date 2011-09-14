@@ -30,8 +30,11 @@ program fzcal
         call dump_plist(rpnc%pars)
         cycle
      case(CID_DMP_F)
-!      call dump_rpnm(rpnc,i)
+        call dump_rpnm(rpnc,atoi(trim(adjustl(str(ka:)))))
+        cycle
      case(CID_DMP_M)
+        call dump_rpnm(rpnc,atoi(trim(adjustl(str(ka:)))))
+        cycle
      case(CID_DBG)
         rpnc%opt=ior(rpnc%opt,RPNCOPT_DBG)
      case(CID_DEL_P)

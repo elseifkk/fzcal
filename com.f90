@@ -28,7 +28,6 @@ contains
 
     parse_command=CID_NOP
 
-
     if(len_trim(a)==0) return
     k=index(a," ")-1
     if(k<=0) then
