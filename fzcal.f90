@@ -1,4 +1,5 @@
-program ucalc
+program fzcal
+  use com
   use rpn
   use plist ! for test
   use fpio
@@ -8,59 +9,38 @@ program ucalc
   pointer(p,rpnc)
   character*16384 str
   integer istat
-  logical drpnb
   integer i
-
-
-!!$real(ep)::x=-1.e-38_ep
-!!$real*8::xx=1.e-38
-!!$str=""
-!!$!(raw 0x40000000000000000000)
-!!$!(raw 0x4000 80 00 00 00  00 00 00 00)
-!!$!(raw 0x4000 00 80 00 00  00 00 00 00)
-!!$i=f2str(loc(x),loc(str),ior(FP2A_INPUT_REAL10,16))
-!!$write(*,*) i
-!!$write(*,*) trim(str)
-!!$stop
-
-
-
-
-
+  integer ka
+  integer cid
 
   p=init_rpnc()
 
   do
-     drpnb=.false.
+     rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DBG))
      write(*,10) "> "
 10   format(x,a,$)
      read(*,"(a)") str
      if(str=="") cycle
-     select case(str)
-     case("quit","exit","q")
+     str=adjustl(str)
+     cid=parse_command(str,ka)
+     select case(cid)
+     case(CID_EXI)
         exit
-     case("pdump","pd")
+     case(CID_DMP_P)
         call dump_plist(rpnc%pars)
         cycle
+     case(CID_DMP_F)
+!      call dump_rpnm(rpnc,i)
+     case(CID_DMP_M)
+     case(CID_DBG)
+        rpnc%opt=ior(rpnc%opt,RPNCOPT_DBG)
+     case(CID_DEL_P)
+        call delete_par(rpnc,trim(adjustl(str(ka:))))
+        cycle
+     case(CID_DEL_M)
+     case(CID_DEL_F)
      end select
      
-     if(str(1:4)=="mac ") then
-        read(str(5:),*,iostat=istat) i
-        if(istat==0) call dump_rpnm(rpnc,i)
-        cycle
-     end if
-
-     if(str(1:4)=="del ".and.len_trim(str)>=5) then
-        call delete_par(rpnc,str(5:))
-        cycle
-     end if
-
-     if(str(1:5)=="dump ".and.len_trim(str)>=6) then
-        drpnb=.true.
-        str(1:4)=""
-     end if
-     
-     str=trim(str)//achar(0)
      istat=rpn_set_formula(loc(str),loc(rpnc))
 !     istat=parse_formula(str,rpnc,drpnb)
 
@@ -68,7 +48,7 @@ program ucalc
         write(*,*)  "*** parse_formula failed: code = ",istat
         call dump_rpnc(rpnc)
      else if(istat==0) then
-        if(drpnb) then
+        if(iand(rpnc%opt,RPNCOPT_DBG)/=0) then
            write(*,*) "=== Before eval ==="
            call dump_rpnc(rpnc)
         end if
@@ -79,7 +59,7 @@ program ucalc
            write(*,*) "*** rpn_eval failed: code = ",istat
            call dump_rpnc(rpnc)
         else
-           if(drpnb) then
+           if(iand(rpnc%opt,RPNCOPT_DBG)/=0) then
               write(*,*) "=== After eval ==="
               call dump_rpnc(rpnc)
            end if
@@ -88,4 +68,4 @@ program ucalc
      end if
   end do
   
-end program ucalc
+end program fzcal

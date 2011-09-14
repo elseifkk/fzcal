@@ -57,7 +57,7 @@ module fpio
   integer,parameter::FP2A_TRIM_ALL_TRAILING_ZEROS     =  Z"040000" ! 1.0 become 1.
   integer,parameter::FP2A_ADJUSTR                     =  Z"080000" ! LSB 4bit represents digit.
   integer,parameter::FP2A_INPUT_REAL4                 =  Z"100000"
-  integer,parameter::FP2A_DEFAULT                     = ior(16,&
+  integer,parameter::FP2A_DEFAULT                     = ior(18,&
        ior(FP2A_ALLOW_ORDINARY_EXPRESSION,&
        ior(FP2A_FORCE_NOT_SHOW_EXPSIGN,&
        ior(FP2A_SUPRESS_E0,&
@@ -123,11 +123,6 @@ contains
        return
     end if
 
-    if(abs(x)<eps) then
-       rtoa="0"
-       if(present(ok)) ok=.true.
-       return
-    end if
     xx=real(x,kind=dispp)
     rtoa=""
 #ifdef _NO_ASM_
@@ -141,7 +136,7 @@ contains
     if(len>0) then
        istat=0
     else
-       istat=-1 !<<<<<<<<<<<<<<<<<
+       istat=-1
     end if
 #endif
     if(present(ok)) ok=(istat==0)

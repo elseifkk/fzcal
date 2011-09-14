@@ -30,31 +30,32 @@ szTemp  times 20  db 0
 real8   times 8 db 0
 format  dd 0
 iExp	dd 0
-nDigit7	dd 0
+nDigit 	dd 0
 prefix	dd 0
-
 SI_PREFIX db 'y','z','a','f','p','n','u','m' ; 9
           db 0                               ; 1
           db 'k','M','G','T','P','E','Z','Y' ; 9
 real10 dt 0.0
-ten   dt 10.0
-ten3  dt 1.0e2
-ten4  dt 1.0e3
-ten5  dt 1.0e4
-ten6  dt 1.0e5
-ten7  dt 1.0e6
-ten8  dt 1.0e7
-ten9  dt 1.0e8
-ten10 dt 1.0e9
-ten11 dt 1.0e10
-ten12 dt 1.0e11
-ten13 dt 1.0e12
-ten14 dt 1.0e13
-ten15 dt 1.0e14
-ten16 dt 1.0e15
-ten17 dt 1.0e16
-ten18 dt 1.0e17
-ten19 dt 1.0e18
+ten1  dt 1.0e1
+ten2  dt 1.0e2
+ten3  dt 1.0e3
+ten4  dt 1.0e4
+ten5  dt 1.0e5
+ten6  dt 1.0e6
+ten7  dt 1.0e7
+ten8  dt 1.0e8
+ten9 dt 1.0e9
+ten10 dt 1.0e10
+ten11 dt 1.0e11
+ten12 dt 1.0e12
+ten13 dt 1.0e13
+ten14 dt 1.0e14
+ten15 dt 1.0e15
+ten16 dt 1.0e16
+ten17 dt 1.0e17
+ten18 dt 1.0e18
+ten19 dt 1.0e19
+ten20 dt 1.0e20
 ;;; 
 ten_1 dt 1.0e1
  dt 1.0e2
@@ -217,7 +218,7 @@ _FloatToBCD:
 ;     LOCAL iExp: DWORD
 ;     LOCAL stat: WORD
 ;     LOCAL mystat: WORD
-; local nDigit7: DWORD ; number of significant digit - 7
+; local nDigit: DWORD ; number of significant digit
 ; local prefix: BYTE ; for engineering notation
 f2str_:	
 	push ebp
@@ -448,26 +449,26 @@ f2str_:
 
 .end_cmp_iexp_18:	
 
-.end_aie:			; allow_integer_expression
-; ; format[0-7] = NUMBER_OF_DIGIT (default = 7)
+.end_aie:
+; ; format[0-7] = NUMBER_OF_DIGIT
 ; ; We use the format [-]d.ddddddE+ddd.  That means we only need a maximum
 ; ; of NUMBER_OF_DIGIT decimal places.  Let's have fbstp do our rounding for us.
 	mov eax, dword [format]      ; X07h
-	mov ebx,  ten7 ;
-	and eax, 0x0FF        ; 07h
+	and eax, 0x0FF               ; 07h
 	cmp al, FP2A_MAXIMUM_DIGIT
 	ja near .ftsExit
 	cmp al, FP2A_MINIMUM_DIGIT
 	jb near .ftsExit
-	mov esi, eax         ; 07h
-	sub esi, 7           ; 0
-	mov dword [nDigit7], esi     ; 0
+	mov esi, eax                 ; 07h
+	sub esi, 2
+	mov dword [nDigit], eax     ; 0 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	add esi, esi
-jz .L30
+	jz .L30
 	lea esi, [esi+esi*4]
+	mov ebx, ten1
 	add ebx, esi
 .L30:	
-	dec al               ; 6
+	dec eax               ; 6
 	sub eax, [iExp] ; adjust exponent to NUMBER_OF_DIGIT
 	call _PowerOf10
 
@@ -482,7 +483,7 @@ jz .L30
 	fstsw ax
 	test ah, 0x43
 	jnz .L40
-	fld tword [ten]
+	fld tword [ten1]
 	fmulp st1, st0
 	dec dword [iExp]
 
@@ -490,12 +491,14 @@ jz .L30
 ; ; Go convert to BCD.
 	call _FloatToBCD
 
-	lea esi, [szTemp+11] ; point to converted buffer
-	sub esi, [nDigit7]
-	cmp byte [esi-1], 1
-	jne .L41
-        dec esi
-        inc dword [iExp]
+	lea esi, [szTemp+18] ; point to converted buffer
+	sub esi, [nDigit]    ;
+	cmp dword [nDigit], FP2A_MAXIMUM_DIGIT
+	je .L41
+	cmp byte [esi-1], 0x30  ; check rounding of FloatToBCD 
+	je .L41
+	dec esi
+	inc dword [iExp]
 .L41:	
 
 ; ; If the exponent is between -1 and 6, we can express this as a number
@@ -527,7 +530,7 @@ jz .L30
 	mov ebx, SI_PREFIX
 	xlatb
 	mov byte [prefix], al
-.end_aen			; allow_engineering_notation
+.end_aen
 	mov ecx, [iExp]
 	mov edx, [format]
 	and edx, 0x0FF
@@ -586,7 +589,7 @@ jz .L30
 
 .end_aoe1
 	pop dword [iExp]
-.end_aoe			; allow_ordinary_expression
+.end_aoe
 
 ; ;
 ; ; Now convert this to a standard, usable format.  If needed, a minus
@@ -596,8 +599,8 @@ jz .L30
 	movsb    ; copy the first digit
 	mov byte [edi], 0x2E  ; plop in a decimal point
 	inc edi
-	mov ecx, [nDigit7]
-	add ecx, 6
+	mov ecx, [nDigit]
+	dec ecx
 	push ecx
 	shr ecx, 2
 	rep movsd
@@ -605,7 +608,6 @@ jz .L30
 	and ecx, 3
 	rep movsb
 
-; ; if 0
 ; ; The printf %g specified trims off trailing zeros here.  I dislike
 ; ; this, so I've disabled it.  Comment out the if 0 and endif if you
 ; ; want this.
