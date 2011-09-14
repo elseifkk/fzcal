@@ -1,3 +1,9 @@
+%ifdef _USE32_
+BITS 32
+%else
+BITS 64
+%endif
+	
 section .data align=16
 str_buf dd 0
 ;;; 
@@ -8,7 +14,8 @@ global dw2str_
 %assign arg1 08
 %assign arg2 12
 %assign arg3 16
-	
+
+%ifdef _USE32_
 mcp_:	
 	push ebp
 	mov ebp, esp
@@ -36,8 +43,25 @@ mcp_:
 	pop edi
 	pop ebp
 	ret
+%else
+	push rbp
+ 	mov rbp, rsp
+ 	mov rax, rdx ; n
+ 	shr rax, 3 ; n/8
+ 	mov rcx, rax ; n/8
+ 	shl rcx, 3 ; (n/8)*8
+ 	sub rdx, rcx ; n-(n/8)*8
+ 	mov rcx, rax
+ 	cld
+ 	rep movsq
+ 	mov rcx, rdx
+ 	rep movsb
+ 	pop rbp
+ 	mov rax, rdi
+ 	ret
+%endif	
 
-	;; 
+;;; 
 %macro div10m 0
 	push eax
 ;;-------------------; x*0.11b
