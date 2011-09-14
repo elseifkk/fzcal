@@ -14,39 +14,66 @@ module com
   integer,parameter::CID_DMP_B  = 10
   integer,parameter::CID_SET    = 11
   integer,parameter::CID_SET_DM = 12
-  integer,parameter::CID_INI    = 13
+  integer,parameter::CID_SET_MD = 13
+  integer,parameter::CID_INI    = 14
+  integer,parameter::CID_DBG    = 15
+  integer,parameter::CID_EXI    = 16
 
 contains
 
   integer function parse_command(a,karg)
-    character*(*),intent(in)::a
+    character*(*),intent(inout)::a
     integer,intent(out)::karg
     integer k,ko,ke,cid
-    karg=0
+
     parse_command=CID_NOP
+
+
     if(len_trim(a)==0) return
     k=index(a," ")-1
     if(k<=0) then
        ke=len_trim(a)
+       karg=0
     else
        ke=k
+       karg=k+1
     end if
-    parse_command=CID_INV
+
+    cid=CID_NOP
     select case(a(1:ke))
+    case("q","quit")
+       parse_command=CID_EXI
+       return
     case("del","delete")
-       if(k<=0) return
+       if(karg<=0) return
        cid=CID_DEL
+    case("debug","dbg")
+       parse_command=CID_DBG
+       a(1:ke)=""
+       return
+    case("d")
+       parse_command=CID_SET_DM
+       return
     case("dump")
        if(k<=0) return
        cid=CID_DMP
-    case("dm")
+    case("md")
        parse_command=CID_DMP_M
        return       
-    case("df")
+    case("fd")
        parse_command=CID_DMP_F
        return       
-    case("dp")
+    case("pd")
        parse_command=CID_DMP_P
+       return
+    case("dm")
+       parse_command=CID_DEL_M
+       return       
+    case("df")
+       parse_command=CID_DEL_F
+       return       
+    case("dp")
+       parse_command=CID_DEL_P
        return
     case("set","s")
        if(k<=0) return
@@ -54,26 +81,58 @@ contains
     case("init")
        parse_command=CID_INI
        return
+    case default
+       parse_command=CID_INV
+       return
     end select
 
+    if(cid==CID_NOP) return
+
+    karg=0
     ko=get_next_str()
     if(ko==0) return
+
     k=index(a(ko:)," ")-1
     if(k<=0) then
        ke=len_trim(a)
+       karg=0
     else
        ke=k+ko-1
+       karg=ke+1
     end if
 
     select case(cid)
     case(CID_DMP)
        select case(a(ko:ke))
        case("p","par","parameter")
+          parse_command=CID_DMP_P
+          return
        case("m","macro","mac")
+          parse_command=CID_DMP_M
+          return
        case("f","fnc","function")
+          parse_command=CID_DMP_F
+          return
        end select
     case(CID_DEL)
+       select case(a(ko:ke))
+       case("p","par","parameter")
+          parse_command=CID_DEL_P
+          return
+       case("m","macro","mac")
+          parse_command=CID_DEL_M
+          return
+       case("f","fnc","function")
+          parse_command=CID_DEL_F
+          return
+       end select
     case(CID_SET)
+       select case(a(ko:ke))
+       case("d","disp","display")
+          cid=CID_SET_DM
+       case("m","mode")
+          cid=CID_SET_MD
+       end select
     end select
 
   contains
@@ -81,11 +140,12 @@ contains
     integer function get_next_str()
       integer ii
       get_next_str=0
-      do ii=k+1,len_trim(a)
+      do ii=ke+1,len_trim(a)
          select case(a(ii:ii))
          case(" ","\t")
          case default
             get_next_str=ii
+            return
          end select
       end do
     end function get_next_str
