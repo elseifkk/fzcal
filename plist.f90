@@ -28,7 +28,8 @@ module plist
   public init_plist
   public dump_plist
   public uinit_plist
-  
+  public get_par_loc
+
 contains
 
  function init_plist(sz,nmax)
@@ -324,5 +325,24 @@ contains
     if(present(ent)) ent=k
     add_par_by_value_c=0
   end function add_par_by_value_c
+
+  integer function get_par_loc(pl,k)
+    type(t_plist),intent(in)::pl
+    integer,intent(in)::k
+    integer istat
+    integer*1 c
+    integer p
+    pointer(si,p)
+    get_par_loc=0
+    if(k>pl%s%n.or.k<=0) return
+    istat=get_sc(pl%s,k,c)
+    if(istat/=0) return
+    si=loc(pl%v(k))
+    if(is_reference(c)) then
+       get_par_loc=p
+    else
+       get_par_loc=si
+    end if
+  end function get_par_loc
 
 end module plist

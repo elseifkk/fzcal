@@ -23,7 +23,7 @@ LD_LIBRARY_PATH=/usr/local/lib
 
 .ifdef _NETWALKER_
     FFLAGS += -D_NO_REAL10_ -D_NO_REAL16_ -D_NO_ASM_ -D_USE32_
-    OBJ = memioF.o fpioF.o slist.o plist.o rpn.o com.o
+    OBJ = memioF.o fpioF.o slist.o plist.o zmath.o rpn.o com.o
 .else
     USE64 != uname -m | grep -e x86_64 -e amd64 | wc -c
 .   if( $(USE64) == 0 )
@@ -33,7 +33,7 @@ LD_LIBRARY_PATH=/usr/local/lib
         FFLAGS += -fdefault-integer-8
         AFLAGS += -f elf64 -m amd64
 .   endif
-    OBJ = memioA.o memioF.o fpioA.o fpioF.o slist.o plist.o rpn.o com.o
+    OBJ = memioA.o memioF.o fpioA.o fpioF.o slist.o plist.o zmath.o rpn.o com.o
 .endif
 
 #

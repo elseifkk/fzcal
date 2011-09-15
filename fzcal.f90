@@ -2,7 +2,6 @@ program fzcal
   use com
   use rpn
   use plist ! for test
-  use fpio
   use memio ! for test
   implicit none
   type(t_rpnc) rpnc
