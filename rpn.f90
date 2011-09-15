@@ -1883,22 +1883,32 @@ contains
     rpnb%p_buf=0
   end subroutine rpn_pop_all
 
-  subroutine rpn_try_pop(rpnb,tend)
+  subroutine rpn_try_pop(rpnb,tend,dlm2c,p1)
     type(t_rpnb),intent(inout)::rpnb
     integer,intent(in)::tend
-    integer tid
+    integer,intent(in),optional::dlm2c
+    integer,intent(in),optional::p1
+    integer tid,told
+    told=TID_UNDEF
     do
-       if(rpnb%p_buf<=0) exit
+       if(rpnb%p_buf==0) exit
        tid=rpnb%buf(rpnb%p_buf)%tid
        select case(tid)
        case(TID_BRA,TID_QSTA,TID_COL)
           rpnb%p_buf=rpnb%p_buf-1
-          if(tid==tend) exit
+          if(tid==tend) then
+             if(present(dlm2c).and.told==TID_COL)&
+                  ! (: sequence in the buf 
+                  ! <<<  KET marks end of TOP1 <<<<
+                  call rpn_put(rpnb,TID_DLM2,p1,dlm2c) 
+             exit
+          end if
        case(TID_IBRA)
           rpnb%p_buf=rpnb%p_buf-1
        case default
           call rpn_pop(rpnb)
        end select
+       told=tid
     end do
   end subroutine rpn_try_pop
 
@@ -2015,9 +2025,8 @@ contains
           if(.not.was_operand()) then
              istat=RPNERR_PARSER
           else
-             call rpn_try_pop(rpnb,TID_BRA)
+             call rpn_try_pop(rpnb,TID_BRA,bc-kc,p1)
           end if
-          call rpn_put(rpnb,TID_DLM2,p1,bc-kc)
           kc=kc+1
        case(TID_AOP)
           if(check_assignable()) then
