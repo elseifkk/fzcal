@@ -21,6 +21,7 @@ module rpn
   integer,parameter::RPNERR_ADDSTR = 10
   integer,parameter::RPNERR_MEMOV  = 11
   integer,parameter::RPNERR_RECOV  = 12
+  integer,parameter::RPNERR_NARG   = 13
 
   integer,parameter::RPN_REC_MAX   =  256
   integer,parameter::NUM_VBUF_MIN  =   32
@@ -45,7 +46,8 @@ module rpn
   integer,parameter::TID_BOP3  =  7  ! ^,**,e
   integer,parameter::TID_BOP3U = -7  !
   integer,parameter::TID_UOP1  =  8  ! +,-
-  integer,parameter::TID_UOP2  =  9  ! !
+  integer,parameter::TID_UOP2  =  9  ! !,!!
+  integer,parameter::TID_UOP2U = -9  ! !,!!
   integer,parameter::TID_IFNC  = 10  ! sin, cos,...
   integer,parameter::TID_UFNC  = 11  !
   ! braket
@@ -87,6 +89,7 @@ module rpn
   type t_rrpnq
      integer tid
      integer p1,p2
+     integer opt
   end type t_rrpnq
 
   type t_rpnq
@@ -183,38 +186,42 @@ module rpn
        achar(4)//"imag"//&
        achar(3)//"mag"//&
        achar(3)//"arg"//&
+       achar(5)//"gamma"//&
+       achar(6)//"lgamma"//&
        achar(3)//"min"//&
        achar(3)//"max"//&
        achar(0)
-  integer,parameter::FID_SIN   =  1
-  integer,parameter::FID_COS   =  2 
-  integer,parameter::FID_TAN   =  3
-  integer,parameter::FID_SINH  =  4
-  integer,parameter::FID_COSH  =  5
-  integer,parameter::FID_TANH  =  6
-  integer,parameter::FID_ASIN  =  7
-  integer,parameter::FID_ACOS  =  8
-  integer,parameter::FID_ATAN  =  9
-  integer,parameter::FID_ASINH = 10
-  integer,parameter::FID_ACOSH = 11
-  integer,parameter::FID_ATANH = 12
-  integer,parameter::FID_EXP   = 13
-  integer,parameter::FID_LOG   = 14
-  integer,parameter::FID_LN    = 15
-  integer,parameter::FID_SQRT  = 16
-  integer,parameter::FID_ABS   = 17
-  integer,parameter::FID_INT   = 18
-  integer,parameter::FID_FRAC  = 19
-  integer,parameter::FID_CONJG = 20
-  integer,parameter::FID_NINT  = 21
-  integer,parameter::FID_REAL  = 22
-  integer,parameter::FID_IMAG  = 23
-  integer,parameter::FID_MAG   = 24
-  integer,parameter::FID_ARG   = 25
-  integer,parameter::FID_ARG1_END = 25
+  integer,parameter::FID_SIN       =  1
+  integer,parameter::FID_COS       =  2 
+  integer,parameter::FID_TAN       =  3
+  integer,parameter::FID_SINH      =  4
+  integer,parameter::FID_COSH      =  5
+  integer,parameter::FID_TANH      =  6
+  integer,parameter::FID_ASIN      =  7
+  integer,parameter::FID_ACOS      =  8
+  integer,parameter::FID_ATAN      =  9
+  integer,parameter::FID_ASINH     = 10
+  integer,parameter::FID_ACOSH     = 11
+  integer,parameter::FID_ATANH     = 12
+  integer,parameter::FID_EXP       = 13
+  integer,parameter::FID_LOG       = 14
+  integer,parameter::FID_LN        = 15
+  integer,parameter::FID_SQRT      = 16
+  integer,parameter::FID_ABS       = 17
+  integer,parameter::FID_INT       = 18
+  integer,parameter::FID_FRAC      = 19
+  integer,parameter::FID_CONJG     = 20
+  integer,parameter::FID_NINT      = 21
+  integer,parameter::FID_REAL      = 22
+  integer,parameter::FID_IMAG      = 23
+  integer,parameter::FID_MAG       = 24
+  integer,parameter::FID_ARG       = 25
+  integer,parameter::FID_GAMMA     = 26
+  integer,parameter::FID_LGAMMA    = 27
+  integer,parameter::FID_ARG1_END  = 27 !<<<<<<<<
 
-  integer,parameter::FID_MIN   = 26
-  integer,parameter::FID_MAX   = 27
+  integer,parameter::FID_MIN   = 28
+  integer,parameter::FID_MAX   = 29
 
 contains
 
@@ -979,7 +986,7 @@ contains
     case("*","/")
        get_tid=TID_BOP2U
     case("!")
-       get_tid=TID_UOP2
+       get_tid=TID_UOP2U
     case("^")
        get_tid=TID_BOP3U
     case("(")
@@ -1042,6 +1049,9 @@ contains
     end if
     
     select case(t)
+    case(TID_UOP2U)
+       if(next_char(1)=="!") p2=p2+1
+       t=TID_UOP2
     case(TID_BOP1U)
        if(k<rpnb%len_expr-1) then
           if(next_char(1)=="=") then             
@@ -1104,7 +1114,7 @@ contains
              k=p2+1
              if(rpnb%expr(k:k)=="(") then
                 if(is_usr_fnc(sl,rpnb%expr(p1:p2),kf)) then
-                   t=get_i32(TID_UFNC,kf) ! intrinsic func
+                   t=get_i32(TID_UFNC,kf)
                 else if(is_int_fnc(rpnb%expr(p1:p2),kf)) then
                    t=get_i32(TID_IFNC,kf)
                 end if
@@ -1114,7 +1124,10 @@ contains
        end if
     case(TID_FIG)
        p2=get_end_of_fig(rpnb,k)
-       if(p2<0) t=TID_INV
+       if(p2<0) then
+          t=TID_INV
+          p2=-p2
+       end if
     end select
     
     rpnb%old_tid=t
@@ -1204,10 +1217,11 @@ contains
 10  format(2(x,i4),$)
 11  format(x,z8,$)
 12  format(2(x,i4))
+13 format(x,i4,x,z8,x,a)
     write(*,*) "# vbuf size = ",rpnc%p_vbuf
     if(rpnc%p_vbuf>0) then
        do i=1,rpnc%p_vbuf
-          write(*,*) i,loc(rpnc%vbuf(i)),trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW))
+          write(*,13) i,loc(rpnc%vbuf(i)),trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW))
        end do
     end if
   end subroutine dump_rpnc
@@ -1233,16 +1247,16 @@ contains
        if(associated(rpnm%vbuf).and.size(rpnm%vbuf)>0) deallocate(rpnm%vbuf)       
        if(.not.associated(rpnm%na)) allocate(rpnm%na)
        if(i==k1) then
-          ! | k1=i |   |   | ... |   | km |       | ke |
-          ! | f    | x | y | arg | ) | *  | codes | =  |
+          ! | k1=i |   |   | ... | km |       | ke |
+          ! | f    | x | y | arg | *  | codes | =  |
           km=find_implicit_mul() ! must be found
           if(km==0) stop "*** UNEXPECTED ERROR in set_function"
-          ac=km-k1+1-3 ! number of arguments
+          ac=km-k1+1-2 ! number of arguments
        else
-          ! | k1 | ... |   | km=i |       | ke |
-          ! | x  | arg | ) | f    | codes | =  |
+          ! | k1 | ... | km=i |       | ke |
+          ! | x  | arg | f    | codes | =  |
           km=i
-          ac=km-k1+1-2
+          ac=km-k1+1-1
        end if
        ka=ke ! must be asn
        tc=(ke-1)-(km+1)+1 ! que must end with =
@@ -1359,7 +1373,6 @@ contains
     do i=k1,ke
        if(rpnc%que(i)%tid/=TID_AMAC) cycle
        k=find_qend() 
-       if(k==0) stop "*** UNEXPECTED ERROR in set_macro"
        km=rpnc%que(i)%cid
        rpnm=>rpnc%rl%rpnm(km)
        if(associated(rpnm%que).and.size(rpnm%que)>0) deallocate(rpnm%que)
@@ -1462,8 +1475,17 @@ contains
     
   end subroutine set_macro
       
+
+  subroutine print_error(e,p1,p2)
+    character*(*),intent(in)::e
+    integer,intent(in)::p1,p2
+    write(*,*) "*** Syntacs Error at: "
+    write(*,*) trim(e)
+    if(p1<=0.or.p2<=0) return
+    write(*,*) repeat(" ",p1-1)//repeat("^",abs(p2)-p1+1) ! some return with negative p2
+  end subroutine print_error
+  
   integer function build_rpnc(rpnb,rpnc)
-    use zmath
     type(t_rpnb),intent(in)::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     real(rp) x
@@ -1490,32 +1512,32 @@ contains
           !
           ! operators 
           !
-       case(TID_BOP4)
-          rpnc%que(i)%tid=TID_OP2
-          rpnc%que(i)%cid=loc(zm_mul) ! <<<<<<<<<<<
        case(TID_UOP1,TID_UOP2)
           rpnc%que(i)%tid=TID_OP1
-          rpnc%que(i)%cid=get_oid1(_EXPR_(i))
-       case(TID_BOP1,TID_BOP2,TID_BOP3)
+          rpnc%que(i)%cid=get_oid1()
+       case(TID_BOP1,TID_BOP2,TID_BOP3,TID_BOP4)
           rpnc%que(i)%tid=TID_OP2
-          rpnc%que(i)%cid=get_oid2(_EXPR_(i))
+          rpnc%que(i)%cid=get_oid2()
        case(TID_TOP1)
           rpnc%que(i)%tid=TID_OP3
           rpnc%que(i)%cid=OID_CND ! <<<<<<<<<<<<<<<<<<<<<,
           call find_delim(rpnb%que(i)%p1)
        case(TID_ASN,TID_AOP)
           rpnc%que(i)%tid=TID_ASN
-          rpnc%que(i)%cid=get_aid(_EXPR_(i))
+          rpnc%que(i)%cid=get_aid()
        case(TID_IFNC)
-          if(get_up32(rpnb%que(i)%tid)<=FID_ARG1_END) then
+          select case(get_up32(rpnb%que(i)%p2))
+          case(1) 
              rpnc%que(i)%tid=TID_IFNC1
-          else
+          case(2)
              rpnc%que(i)%tid=TID_IFNC2
-          end if
+          end select
           rpnc%que(i)%cid=get_fid(get_up32(rpnb%que(i)%tid))
+          if(get_up32(rpnb%que(i)%p1)/=1) istat=RPNERR_NARG ! <<<<<<<<<
        case(TID_UFNC)
           rpnc%que(i)%tid=TID_UFNC
-          rpnc%que(i)%cid=get_up32(rpnb%que(i)%tid)          
+          rpnc%que(i)%cid=get_up32(rpnb%que(i)%tid)
+          if(get_up32(rpnb%que(i)%p1)/=1) istat=RPNERR_NARG ! <<<<<<<<<
        case(TID_APAR) ! asign a parameter.
           rpnc%que(i)%tid=TID_VAR
           istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
@@ -1611,7 +1633,8 @@ contains
           WRITE(*,*) "que=",i,"tid=",rpnb%que(i)%tid
           STOP "*** UNEXPECTED ERROR in build_rpnc"
        end select
-       if(istat/=0) exit
+      if(istat/=0) &
+           call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(rpnb%que(i)%p1),get_lo32(rpnb%que(i)%p2)) 
     end do
 
     if(istat==0) then
@@ -1717,6 +1740,10 @@ contains
          get_fid=loc(zm_mag)
       case(FID_ARG)
          get_fid=loc(zm_arg)
+      case(FID_GAMMA)
+         get_fid=loc(zm_gamma)
+      case(FID_LGAMMA)
+         get_fid=loc(zm_lgamma)
       case(FID_MIN)
          get_fid=loc(zm_min)
       case(FID_MAX)
@@ -1726,11 +1753,10 @@ contains
       end select
     end function get_fid
 
-    integer function get_aid(a)
+    integer function get_aid()
       use zmath
-      character*(*),intent(in)::a
       get_aid=AID_NOP ! to avoid warning
-      select case(a)
+      select case(_EXPR_(i))
       case("=")
          get_aid=loc(zm_mov)
       case("+=")
@@ -1748,27 +1774,31 @@ contains
       end select
     end function get_aid
 
-    integer function get_oid1(a)
+    integer function get_oid1()
       use zmath
-      character*(*),intent(in)::a
       get_oid1=OID_NOP
-      select case(a)
+      select case(_EXPR_(i))
       case("+")
          get_oid1=loc(zm_nop) !OID_NOP
       case("-")
          get_oid1=loc(zm_neg) !OID_NEG
       case("!")
          get_oid1=loc(zm_fac) !OID_FAC
+      case("!!")
+         get_oid1=loc(zm_dfac)
       case default
          STOP "*** UNEXPECTED ERROR in get_oid1"
       end select
     end function get_oid1
 
-    integer function get_oid2(a)
+    integer function get_oid2()
       use zmath
-      character*(*),intent(in)::a
+      if(t==TID_BOP4) then
+         get_oid2=loc(zm_mul)
+         return
+      end if
       get_oid2=OID_NOP
-      select case(a)
+      select case(_EXPR_(i))
       case("+")
          get_oid2=loc(zm_add) !OID_ADD
       case("-")
@@ -1845,16 +1875,16 @@ contains
     rpnb%p_buf=rpnb%p_buf-1
   end subroutine rpn_pop
 
-  subroutine rpn_pop_until(rpnb,tid,quiet)
+  subroutine rpn_pop_until(rpnb,tid,fnc)
     type(t_rpnb),intent(inout)::rpnb
     integer,intent(in)::tid
-    logical,intent(in),optional::quiet
+    logical,intent(in),optional::fnc
     integer i
     i=rpnb%p_buf+1
     do 
        i=i-1
        if(i==0) exit
-       if(present(quiet).and.quiet.and.rpnb%buf(i)%tid==tid) exit
+       if(present(fnc).and.fnc.and.rpnb%buf(i)%tid==tid) exit
        select case(rpnb%buf(i)%tid)
        case(TID_BRA,TID_QSTA,TID_IBRA,TID_COL)
           cycle ! skip unclosed bra
@@ -1932,18 +1962,20 @@ contains
   end subroutine rpn_try_push
 
   subroutine revert_tid(rpnb,tid,p1,p2)
-    type(t_rpnb),intent(inout)::rpnb
+    type(t_rpnb),intent(inout),target::rpnb
     integer,intent(in)::tid
     integer,intent(in),optional::p1,p2
-    rpnb%que(rpnb%p_que)%tid=tid
-    if(present(p1)) rpnb%que(rpnb%p_que)%p1=ior(rpnb%que(rpnb%p_que)%p1,ishft(p1,16))
-    if(present(p2)) rpnb%que(rpnb%p_que)%p2=ior(rpnb%que(rpnb%p_que)%p2,ishft(p2,16))
+    type(t_rrpnq),pointer::q
+    q=>rpnb%que(rpnb%p_que)
+    q%tid=tid
+    if(present(p1)) q%p1=ior(q%p1,ishft(p1,16))
+    if(present(p2)) q%p2=ior(q%p2,ishft(p2,16))
   end subroutine revert_tid
 
   integer function parse_formula(formula,rpnc)
     character*(*),intent(in)::formula
     type(t_rpnc),intent(inout)::rpnc
-    type(t_rpnb) rpnb
+    type(t_rpnb),target::rpnb
     integer t,told,btold,istat
     integer p1,p2
     integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,apc,amc,clc,tc
@@ -2075,6 +2107,7 @@ contains
              istat=RPNERR_PARSER
           else
              call rpn_pop_until(rpnb,TID_BRA,.true.)
+             if(.not.check_narg()) exit
           end if
        case(TID_COL)
           clc=clc+1
@@ -2088,11 +2121,12 @@ contains
              case(TID_KET,TID_FIG)
                 call push_implicit_mul()
              end select
+             call set_narg
              call rpn_try_push(rpnb,t,p1,p2)
-             t=get_lo32(t)
           case default
              stop "*** UNEXPECTED ERROR in parse_formula"
           end select
+          t=get_lo32(t)
        end select
        if(istat/=0) exit
        btold=told
@@ -2104,7 +2138,7 @@ contains
     if(istat==0) then
        istat=build_rpnc(rpnb,rpnc)       
     else
-       call print_error()
+       call print_error(rpnb%expr,get_lo32(p1),get_lo32(p2))
     end if
 
     parse_formula=istat
@@ -2121,6 +2155,43 @@ contains
       p_q1=rpnb%p_que+1
     end subroutine init_stat
 
+    logical function check_narg()
+      integer na
+      type(t_rrpnq),pointer::b
+      check_narg=.false.
+      istat=RPNERR_PARSER
+      if(rpnb%p_buf<=1) return
+      b=>rpnb%buf(rpnb%p_buf-1)
+      na=get_up32(b%p1)
+      select case(get_lo32(b%tid))
+      case(TID_UFNC,TID_IFNC)
+         b%p1=get_i32(get_lo32(b%p1),na-1)
+      case(TID_BOP4) 
+         ! comma in function definition
+         ! simply ignore this case
+      case default
+         return
+      end select
+      istat=0
+      check_narg=.true.
+    end function check_narg
+
+    subroutine set_narg()
+      integer na
+      select case(get_lo32(t))
+      case(TID_IFNC)
+         if(get_up32(t)<=FID_ARG1_END) then
+            na=1
+         else
+            na=2
+         end if
+      case(TID_UFNC)
+         na=rpnc%rl%rpnm(get_up32(t))%na
+      end select
+      p1=get_i32(p1,na)
+      p2=get_i32(p2,na)
+    end subroutine set_narg
+
     logical function check_end()
       check_end=(kc-bc<=0)
       if(.not.check_end) then
@@ -2132,24 +2203,27 @@ contains
 
     logical function is_fnc_asn()
       integer ii
+      type(t_rrpnq),pointer::q
       is_fnc_asn=.false.
       if(ac==1.and.bc==1.and.kc==1.and.pc>=1.and.fc==0) then
+         ii=index(rpnb%expr(p1+1:),";")
+         if(ii==0) then
+            ii=rpnb%len_expr
+         else
+            ii=p1+1+ii
+         end if
          if(get_lo32(rpnb%buf(rpnb%p_buf)%tid)==TID_UFNC) then
-            rpnb%buf(rpnb%p_buf)%tid=TID_AFNC
-            rpnb%buf(rpnb%p_buf)%p1=get_i32(rpnb%buf(rpnb%p_buf)%p1,p1+1)
-            rpnb%buf(rpnb%p_buf)%p2=get_i32(rpnb%buf(rpnb%p_buf)%p2,rpnb%len_expr)
+            q=>rpnb%buf(rpnb%p_buf)
+            q%tid=TID_AFNC
+            q%p1=get_i32(get_lo32(q%p1),p1+1)
+            q%p2=get_i32(get_lo32(q%p2),ii)
             is_fnc_asn=.true.
          else if(rpnb%que(p_q1)%tid==TID_PAR) then
-            rpnb%que(p_q1)%tid=TID_AFNC
-            pc=pc-1 ! <<<<<<<<<<<<<<<<<<<<<
-            rpnb%que(p_q1)%p1=get_i32(rpnb%que(p_q1)%p1,p1+1) ! function body in upper
-            ii=index(rpnb%expr(p1+1:),";")
-            if(ii==0) then
-               ii=rpnb%len_expr
-            else
-               ii=p1+1+ii
-            end if
-            rpnb%que(p_q1)%p2=get_i32(rpnb%que(p_q1)%p2,ii)
+            q=>rpnb%que(p_q1)
+            q%tid=TID_AFNC
+            q%p1=get_i32(q%p1,p1+1) ! function body in upper
+            q%p2=get_i32(q%p2,ii)
+            pc=pc-1
             is_fnc_asn=.true.
          end if
       end if
@@ -2164,7 +2238,7 @@ contains
          else
             ii=rpnb%que(p_q1-1)%p1+1 ! TID_SCL + 1
          end if
-         p1=get_i32(p1,ii) ! function definision in upper
+         p1=get_i32(p1,ii) ! function definition in upper
          p2=get_i32(p2,p2-1)          
       end if
     end function is_fnc_asn
@@ -2254,12 +2328,6 @@ contains
       allocate(rpnb%buf(rpnb%len_expr*2)) ! << at most
     end subroutine init_rpnb
         
-    subroutine print_error()
-      write(*,*) "*** Syntacs Error at: "
-      write(*,*) trim(rpnb%expr)
-      write(*,*) repeat(" ",p1-1)//repeat("^",abs(p2)-p1+1) ! some return with negative p2
-    end subroutine print_error
-
     character*1 function next_chr()
       if(p2<rpnb%len_expr) then
          next_chr=rpnb%expr(p2+1:p2+1)
