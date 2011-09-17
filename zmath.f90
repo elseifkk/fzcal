@@ -44,6 +44,8 @@ module zmath
   public zm_arg
   public zm_gamma
   public zm_lgamma
+  public zm_gami
+  public zm_psy
 
   public zm_min
   public zm_max
@@ -327,19 +329,145 @@ contains
     end if
   end function zm_max
 
+!!!!!!--------------------------------------------------------------------------------------------!!!!!!
+  ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX
+!!!---------------------------------------------------------------------------!!!
+  
+!!!---------------------------------------------------------------------------!!!
+  complex(cp) function zm_psy(z)
+    complex(cp),intent(in)::z
+!!$    integer,parameter::NUM_ITERATION_MAX=1000000
+!!$    real(rp),parameter::euler=0.577215664901532860606512
+!!$    integer i
+!!$    complex(cp) p,zz,n,p_old
+!!$    logical ok,neg
+!!$    real(rp) r
+!!$    ok=.false.    
+!!$    r=realpart(z)
+!!$    if(imagpart(z)==rzero.and.r<rzero&
+!!$       .and.real(int(r),kind=rp)==r) then
+!!$       neg=.true.
+!!$       zz=1.0_rp-z
+!!$    else
+!!$       neg=.false.
+!!$       zz=z
+!!$    end if
+!!$    zz=zz-1.0_rp
+!!$    p_old=huge(1.0_rp)
+!!$    p=czero
+!!$    do i=1,NUM_ITERATION_MAX
+!!$       if(abs(p-p_old)<eps) then
+!!$          ok=.true.
+!!$          exit
+!!$       end if
+!!$       n=real(i,kind=rp)
+!!$       p_old=p
+!!$       p=p+zz/(n*(n+zz))
+!!$       write(*,*) i
+!!$       write(*,*) p
+!!$       write(*,*) p_old
+!!$    end do
+!!$    if(ok) then
+!!$       zm_psy=p-euler
+!!$       if(neg) zm_psy=zm_psy-pi/tan(pi*zz)
+!!$    else
+!!$       write(*,*) "*** zm_psy: Number of iteration exceeded a limit: ",NUM_ITERATION_MAX
+!!$    end if
+  end function zm_psy
+
+!!!---------------------------------------------------------------------------!!!
+  complex(cp) function zm_gami(a,z)
+    ! Computes complex incomplete gamma function by series developments; HMF(6.5.29)262
+    ! i dont know domein of definition for this
+    complex(cp),intent(in)::a
+    complex(cp),intent(in)::z
+    integer i
+    complex(cp) p,p1,p2,p_old
+    logical ok
+    integer,parameter::NUM_ITERATION_MAX=1000000 ! <<<<<<<<<<<<<<
+    p2=1.0_rp
+    p1=1.0_rp+z/(a+1.0_rp)
+    p_old=czero
+    ok=.false.
+    do i=2,NUM_ITERATION_MAX
+       p=z/(a+real(i,kind=rp))*(p1-p2)+p1
+       if(abs(p-p_old)<eps.and.i/=1) then
+          ok=.true.
+          exit
+       end if
+       p2=p1
+       p1=p
+       p_old=p
+    end do
+    if(ok) then
+       zm_gami=p*z**a*EXP(-z)/a
+    else
+       write(*,*) "*** zm_gami: Number of iteration exceeded:",NUM_ITERATION_MAX
+    end if
+  end function zm_gami
+  
   complex(cp) function zm_lgamma(z1)
+      ! Computes logarithm of complex gamma function
+      ! Algorithm:
+      ! For all cases where argument is mathmatically valid, ln(gamma(z)) is computed 
+      ! utilising continued fraction representation; HMF(6.1.48)258, defined for 
+      ! Real(z)>0. When this condition is not satisfied, ln(gamma(1-z)) is computed 
+      ! first and then get ln(gamma(z)) using reflection formula; HMF(6.1.17)256. Since 
+      ! the continued fraction must be terminated somewhere, absolute value of argument 
+      ! should be large enough to ensure requested tolerance. If abs(z) is smaller than 
+      ! some value of criterion we compute the ln(gamma(z+n)) and use recurrence formula
+      ! to get down to ln(gamma(z)).  
+      ! Reference
+      ! 1) Handbook of Mathematical Functions, Milton Abramowitz et al. Dover publications, 
+      ! INC., New York, 1970(?) 
     complex(cp),intent(in)::z1
-    real(rp),parameter::a(7)=[&
+!!$  Numerators and denominators for continued fraction
+!!$  http://oeis.org/A005146
+!!$  n  a(n)
+!!$  0  1
+!!$  1  1
+!!$  2  53
+!!$  3  195
+!!$  4  22999
+!!$  5  29944523
+!!$  6  109535241009
+!!$  7  29404527905795295658
+!!$  8  455377030420113432210116914702
+!!$  9  26370812569397719001931992945645578779849
+!!$  10 152537496709054809881638897472985990866753853122697839
+!!$  11 100043420063777451042472529806266909090824649341814868347109676190691
+!!$
+!!$  n  b(n)
+!!$  0  12
+!!$  1  30
+!!$  2  210
+!!$  3  371
+!!$  4  22737
+!!$  5  19733142
+!!$  6  48264275462
+!!$  7  9769214287853155785
+!!$  8  113084128923675014537885725485
+!!$  9  5271244267917980801966553649147604697542
+!!$  10 24274291553105128438297398108902195365373879212227726
+!!$  11 13346384670164266280033479022693768890138348905413621178450736182873
+!!$     1234567890123456789012345678901234567890123456789012345678901234567890
+!!$     1         2         3         4         5         6         7
+    integer,parameter::num_frac=10
+    real(rp),parameter::a(num_frac)=[&
          1.0_rp/12.0_rp,&
          1.0_rp/30.0_rp,&
          53.0_rp/210.0_rp,&
          195.0_rp/371.0_rp,&
          22999.0_rp/22737.0_rp,&
          29944523.0_rp/19733142.0_rp,&
-         109535241009.0_rp/48264275462.0_rp]
+         109535241009.0_rp/48264275462.0_rp,&
+         29404527905795295658.0_rp/9769214287853155785.0_rp,&
+         455377030420113432210116914702.0_rp/113084128923675014537885725485.0_rp,&
+         26370812569397719001931992945645578779849.0_rp/5271244267917980801966553649147604697542.0_rp]
     real(rp),parameter::log_pi2_2=log(pi2)*0.5_rp
+    real(rp),parameter::ncr2=40.0_rp**2.0_rp
     complex(cp) z,d,r
-    real(rp) r1
+    real(rp) r1,i1,abs2
     integer i
     integer n
     if(imagpart(z1)==0.0_rp) then
@@ -347,32 +475,37 @@ contains
        return
     end if
     r1=realpart(z1)
-    if(r1<rzero) then
-       n=-int(r1)+1
-       z=z1+real(n,kind=rp)
+    i1=imagpart(z1)
+    if(r1<=rzero) then
+       z=1.0_rp-z
     else
-       n=0
        z=z1
     end if
-    if(realpart(z)<100.0_rp) then
-       n=n+100
-       z=z+100.0_rp
+    abs2=r1*r1+i1*i1
+    if(abs2<ncr2) then
+       abs2=sqrt(ncr2-abs2)+0.5_rp
+       n=int(abs2)
+       z=z+real(n,kind=rp)
+    else
+       n=0
     end if
     d=a(7)/z
-    do i=6,1,-1
+    do i=9,1,-1
        d=a(i)/(d+z)
     end do
     r=z-(z-0.5_rp)*log(z)-log_pi2_2
-    zm_lgamma=d-r ! log gamma(z+n) = log (...)gamma(z)
-    if(n/=0) zm_lgamma=zm_lgamma-log(redfac())
+    zm_lgamma=d-r
+    if(n/=0) zm_lgamma=zm_lgamma-redfac()
+    if(r1<0.0_rp) zm_lgamma=pi/(sin(pi*z)*zm_lgamma)
   contains
     complex(cp) function redfac()
       integer j
-      redfac=z1
+      redfac=log(z1)
       do j=1,n-1
-         redfac=redfac*(z1+real(j,kind=rp))
+         redfac=redfac+log(z1+real(j,kind=rp))
       end do
     end function redfac
+
   end function zm_lgamma
   
   complex(cp) function zm_gamma(z1)

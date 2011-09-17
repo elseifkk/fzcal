@@ -3,6 +3,7 @@ program fzcal
   use rpn
   use plist ! for test
   use memio ! for test
+  use fpio  ! for test
   implicit none
   type(t_rpnc) rpnc
   pointer(p,rpnc)
