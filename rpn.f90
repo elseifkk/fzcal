@@ -188,8 +188,10 @@ module rpn
        achar(3)//"arg"//&
        achar(5)//"gamma"//&
        achar(6)//"lgamma"//&
+       achar(3)//"psy"//&
        achar(3)//"min"//&
        achar(3)//"max"//&
+       achar(4)//"gami"//&
        achar(0)
   integer,parameter::FID_SIN       =  1
   integer,parameter::FID_COS       =  2 
@@ -218,10 +220,12 @@ module rpn
   integer,parameter::FID_ARG       = 25
   integer,parameter::FID_GAMMA     = 26
   integer,parameter::FID_LGAMMA    = 27
-  integer,parameter::FID_ARG1_END  = 27 !<<<<<<<<
+  integer,parameter::FID_PSY       = 28
+  integer,parameter::FID_ARG1_END  = 28 !<<<<<<<<
 
-  integer,parameter::FID_MIN   = 28
-  integer,parameter::FID_MAX   = 29
+  integer,parameter::FID_MIN   = 29
+  integer,parameter::FID_MAX   = 30
+  integer,parameter::FID_GAMI  = 31
 
 contains
 
@@ -1633,8 +1637,10 @@ contains
           WRITE(*,*) "que=",i,"tid=",rpnb%que(i)%tid
           STOP "*** UNEXPECTED ERROR in build_rpnc"
        end select
-      if(istat/=0) &
-           call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(rpnb%que(i)%p1),get_lo32(rpnb%que(i)%p2)) 
+       if(istat/=0) then
+          call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(rpnb%que(i)%p1),get_lo32(rpnb%que(i)%p2)) 
+          exit
+       end if
     end do
 
     if(istat==0) then
@@ -1748,6 +1754,10 @@ contains
          get_fid=loc(zm_min)
       case(FID_MAX)
          get_fid=loc(zm_max)
+      case(FID_GAMI)
+         get_fid=loc(zm_gami)
+      case(FID_PSY)
+         get_fid=loc(zm_psy)
       case default
          STOP "*** UNEXPECTED ERROR in get_fid" 
       end select
