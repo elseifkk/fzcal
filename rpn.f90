@@ -35,21 +35,22 @@ module rpn
   integer,parameter::TID_UNDEF =  0
   integer,parameter::TID_INV   =  -666
   ! operators
-  integer,parameter::TID_ASN   =  1  ! =
-  integer,parameter::TID_AOP   =  2 
-  integer,parameter::TID_TOP1  =  3  ! ?
-  integer,parameter::TID_BOP1  =  4  ! +,-
-  integer,parameter::TID_BOP1U = -4  !
-  integer,parameter::TID_BOP2  =  5  ! *,/
-  integer,parameter::TID_BOP2U = -5  !
-  integer,parameter::TID_BOP4  =  6  ! implicit * <<<<<<<<<<< 
-  integer,parameter::TID_BOP3  =  7  ! ^,**,e
-  integer,parameter::TID_BOP3U = -7  !
-  integer,parameter::TID_UOP1  =  8  ! +,-
-  integer,parameter::TID_UOP2  =  9  ! !,!!
-  integer,parameter::TID_UOP2U = -9  ! !,!!
-  integer,parameter::TID_IFNC  = 10  ! sin, cos,...
-  integer,parameter::TID_UFNC  = 11  !
+  integer,parameter::TID_ASN   =   1  ! =
+  integer,parameter::TID_AOP   =   2 
+  integer,parameter::TID_TOP1  =   3  ! ?
+  integer,parameter::TID_BOP1  =   4  ! +,-
+  integer,parameter::TID_BOP1U =  -4  !
+  integer,parameter::TID_BOP2  =   5  ! *,/
+  integer,parameter::TID_BOP2U =  -5  !
+  integer,parameter::TID_BOP4  =   6  ! implicit * <<<<<<<<<<< 
+  integer,parameter::TID_BOP3  =   7  ! ^,**,e
+  integer,parameter::TID_BOP3U =  -7  !
+  integer,parameter::TID_UOP3  =   8  ! a++
+  integer,parameter::TID_UOP1  =   9  ! +a,-a,++a
+  integer,parameter::TID_UOP2  =  10  ! !,!!
+  integer,parameter::TID_UOP2U = -10  ! !,!!
+  integer,parameter::TID_IFNC  =  11  ! sin, cos,...
+  integer,parameter::TID_UFNC  =  12  !
   ! braket
   integer,parameter::TID_SCL   = -64  ! ;
   integer,parameter::TID_COL   = -65  ! :
@@ -63,6 +64,7 @@ module rpn
   integer,parameter::TID_MASN  = -74  ! = for macro
   integer,parameter::TID_DLM1  = -75
   integer,parameter::TID_DLM2  = -76  ! ket
+  integer,parameter::TID_BLK   = -77  ! space and tab
   ! 
   integer,parameter::TID_PAR   =  32  ! a,b,c,...
   integer,parameter::TID_PARU  = -32  ! a,b,c,...
@@ -236,18 +238,23 @@ contains
   
   integer function strip(s)
     character*(*),intent(inout)::s
-    integer i,k
+    integer i,k,wc
     k=0
+    wc=0
     do i=1,len_trim(s)
        select case(s(i:i))
        case(" ","\t")
+          wc=wc+1
+          if(wc>1) cycle
        case(achar(0))
           exit
        case default
-          k=k+1
-          if(k/=i) s(k:k)=s(i:i)
+          wc=0
        end select
+       k=k+1
+       if(k/=i) s(k:k)=s(i:i)
     end do
+    if(wc/=0) k=k-1
     strip=k
   end function strip
 
@@ -829,6 +836,7 @@ contains
     rpnc%rc=rpnc%rc+1
     do i=1,size(rpnc%que)
        ec=ec+1
+!CALL DUMP_RPNC(rpnc)
        select case(rpnc%que(i)%tid)
        case(TID_OP1)
           istat=eval_1(rpnc,i)
@@ -1009,6 +1017,8 @@ contains
        get_tid=TID_COL
     case(";")
        get_tid=TID_SCL
+    case(" ","\t")
+       get_tid=TID_BLK
     case default
        get_tid=TID_UNDEF
     end select
@@ -1057,25 +1067,22 @@ contains
        if(next_char(1)=="!") p2=p2+1
        t=TID_UOP2
     case(TID_BOP1U)
-       if(k<rpnb%len_expr-1) then
-          if(next_char(1)=="=") then             
-             t=TID_AOP
-             p2=k+1
-          end if
+       if(k<rpnb%len_expr-1.and.next_char(1)=="=") then             
+          t=TID_AOP
+          p2=k+1
+       else if(k<=rpnb%len_expr-1.and.next_char(1)==rpnb%expr(p1:p1)) then
+          t=TID_UOP3
+          p2=k+1
        end if
        if(t==TID_BOP1U) then
           select case(rpnb%old_tid)
           case(TID_BRA,TID_BOP3,TID_ASN,TID_AOP,&
-               TID_COMA,TID_TOP1,TID_COL) ! plus in (+, ^+ and e+ are unary
+               TID_COMA,TID_TOP1,TID_COL,TID_SCL,TID_UNDEF) ! plus in (+, ^+ and e+ are unary
              t=TID_UOP1
           case(TID_UOP1,TID_BOP2,TID_BOP1)
              t=TID_INV
           case default
-             if(k==1) then
-                t=TID_UOP1
-             else
-                t=TID_BOP1
-             end if
+             t=TID_BOP1
           end select
        end if
     case(TID_BOP2U)
@@ -1516,7 +1523,7 @@ contains
           !
           ! operators 
           !
-       case(TID_UOP1,TID_UOP2)
+       case(TID_UOP1,TID_UOP2,TID_UOP3)
           rpnc%que(i)%tid=TID_OP1
           rpnc%que(i)%cid=get_oid1()
        case(TID_BOP1,TID_BOP2,TID_BOP3,TID_BOP4)
@@ -1796,6 +1803,10 @@ contains
          get_oid1=loc(zm_fac) !OID_FAC
       case("!!")
          get_oid1=loc(zm_dfac)
+      case("++")
+         get_oid1=loc(zm_inc)
+      case("--")
+         get_oid1=loc(zm_dec)
       case default
          STOP "*** UNEXPECTED ERROR in get_oid1"
       end select
@@ -2001,6 +2012,8 @@ contains
     do 
        t=get_next(rpnb,p1,p2,rpnc%rl%s)
        select case(t)
+       case(TID_BLK)
+          cycle
        case(TID_FIN,TID_SCL)
           if(.not.was_operand().or.tc/=clc) then
              istat=RPNERR_PARSER
@@ -2026,13 +2039,16 @@ contains
        case(TID_PAR)
           pc=pc+1
           select case(told)
-          case(TID_FIG,TID_KET)
+          case(TID_FIG,TID_KET,TID_PAR,TID_UOP2,TID_UOP3)
              call push_implicit_mul()
           end select
           call rpn_put(rpnb,t,p1,p2)
        case(TID_FIG)
           fc=fc+1
-          if(told==TID_KET) call push_implicit_mul()
+          select case(told)
+          case(TID_KET,TID_PAR,TID_FIG,TID_UOP2,TID_UOP3) 
+             call push_implicit_mul()
+          end select
           call rpn_put(rpnb,t,p1,p2)
        case(TID_BOP1,TID_BOP2,TID_BOP3,TID_TOP1) !<<<< TOP1
           oc=oc+1
@@ -2056,10 +2072,20 @@ contains
        case(TID_UOP1)
           oc=oc+1
           call rpn_try_push(rpnb,t,p1,p2)
+       case(TID_UOP3)
+          oc=oc+1
+          select case(told)
+          case(TID_FIG,TID_PAR,TID_KET,TID_UOP2)
+          case(TID_SCL,TID_BOP1,TID_BOP2,TID_BOP3,TID_BRA,TID_UNDEF)
+             t=TID_UOP1
+          case default
+             istat=RPNERR_PARSER
+          end select
+          if(istat==0) call rpn_try_push(rpnb,t,p1,p2)
        case(TID_BRA)
           bc=bc+1
           select case(told)
-          case(TID_FIG,TID_PAR,TID_KET)
+          case(TID_FIG,TID_PAR,TID_KET,TID_UOP2,TID_UOP3)
              call push_implicit_mul()
           end select
           call rpn_push(rpnb,t,p1,p2)
@@ -2128,7 +2154,7 @@ contains
           case(TID_IFNC,TID_UFNC)
              fnc=fnc+1
              select case(told)
-             case(TID_KET,TID_FIG)
+             case(TID_KET,TID_FIG,TID_PAR,TID_UOP2,TID_UOP3)
                 call push_implicit_mul()
              end select
              call set_narg
@@ -2156,8 +2182,8 @@ contains
   contains
     
     subroutine init_stat()
-      btold=TID_NOP
-      told=TID_NOP
+      btold=TID_UNDEF
+      told=TID_UNDEF
       amac=.false.
       pfasn=0
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
@@ -2257,7 +2283,7 @@ contains
       check_assignable=.false.
       if(told/=TID_PAR) return
       select case(btold) 
-      case(TID_NOP,TID_BRA)
+      case(TID_UNDEF,TID_BRA)
       case(TID_QTN)
          if(iand(qc,1)==0) return ! second "
       case default
@@ -2331,7 +2357,7 @@ contains
       rpnb%len_expr=strip(rpnb%expr)
       rpnb%cur_pos=0
       rpnb%old_pos=0
-      rpnb%old_tid=0
+      rpnb%old_tid=TID_UNDEF ! <<<<<<<<<<<<<<
       rpnb%p_buf=0
       rpnb%p_que=0
       allocate(rpnb%que(rpnb%len_expr*2)) ! << at most

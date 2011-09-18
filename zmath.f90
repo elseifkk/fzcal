@@ -16,6 +16,8 @@ module zmath
   public zm_neg
   public zm_fac
   public zm_dfac
+  public zm_inc
+  public zm_dec
 
   public zm_sin
   public zm_cos
@@ -329,50 +331,71 @@ contains
     end if
   end function zm_max
 
-!!!!!!--------------------------------------------------------------------------------------------!!!!!!
+  complex(cp) function zm_inc(z)
+    complex(cp),intent(in)::z
+    zm_inc=z+1.0_rp
+  end function zm_inc
+
+  complex(cp) function zm_dec(z)
+    complex(cp),intent(in)::z
+    zm_dec=z-1.0_rp
+  end function zm_dec
+
+
+!!!!!!---------------------------------------------------------------------!!!!!!
   ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX
 !!!---------------------------------------------------------------------------!!!
   
 !!!---------------------------------------------------------------------------!!!
   complex(cp) function zm_psy(z)
     complex(cp),intent(in)::z
-!!$    integer,parameter::NUM_ITERATION_MAX=1000000
-!!$    real(rp),parameter::euler=0.577215664901532860606512
-!!$    integer i
-!!$    complex(cp) p,zz,n,p_old
-!!$    logical ok,neg
-!!$    real(rp) r
-!!$    ok=.false.    
-!!$    r=realpart(z)
-!!$    if(imagpart(z)==rzero.and.r<rzero&
-!!$       .and.real(int(r),kind=rp)==r) then
-!!$       neg=.true.
-!!$       zz=1.0_rp-z
-!!$    else
-!!$       neg=.false.
-!!$       zz=z
-!!$    end if
-!!$    zz=zz-1.0_rp
-!!$    p_old=huge(1.0_rp)
-!!$    p=czero
-!!$    do i=1,NUM_ITERATION_MAX
-!!$       if(abs(p-p_old)<eps) then
-!!$          ok=.true.
-!!$          exit
-!!$       end if
-!!$       n=real(i,kind=rp)
-!!$       p_old=p
-!!$       p=p+zz/(n*(n+zz))
-!!$       write(*,*) i
-!!$       write(*,*) p
-!!$       write(*,*) p_old
-!!$    end do
-!!$    if(ok) then
-!!$       zm_psy=p-euler
-!!$       if(neg) zm_psy=zm_psy-pi/tan(pi*zz)
-!!$    else
-!!$       write(*,*) "*** zm_psy: Number of iteration exceeded a limit: ",NUM_ITERATION_MAX
-!!$    end if
+    integer,parameter::num_poly=3
+    real(rp),parameter::a(num_poly)=[&
+         -1.0_rp/12.0_rp,&
+         +1.0_rp/120.0_rp,&
+         -.0_rp/252.0_rp]
+    real(rp),parameter::ncr2=100000.0_rp**2.0_rp ! <<<<<<<<<<<<<<<<<<<<
+    integer i
+    complex(cp) p,zz,zn,z0
+    logical neg
+    integer n
+    real(rp) abs2,zzi,zzr
+
+    if(realpart(z)<rzero) then
+       neg=.true.
+       zz=1.0_rp-z
+    else
+       neg=.false.
+       zz=z
+    end if
+
+    zzr=realpart(zz)
+    zzi=imagpart(zz)
+    abs2=zzr*zzr+zzi*zzi
+    if(abs2<ncr2) then
+       n=int(sqrt(ncr2-abs2))
+       z0=zz
+       zz=zz+n
+    else
+       n=0
+    end if
+
+    p=czero
+    zn=zz*zz
+    do i=1,num_poly
+       p=p+a(i)/zn
+       zn=zn*zz*zz
+    end do
+    zm_psy=log(zz)-1.0_rp/(zz*2.0_rp)+p
+    if(n/=0) then
+       p=czero
+       do i=n-1,1,-1
+          p=p+1.0_rp/(z0+real(i,kind=rp))
+       end do
+       p=p+1.0_rp/z0
+       zm_psy=zm_psy-p
+    end if
+    if(neg) zm_psy=zm_psy-pi/tan(pi*zz)
   end function zm_psy
 
 !!!---------------------------------------------------------------------------!!!
@@ -477,7 +500,7 @@ contains
     r1=realpart(z1)
     i1=imagpart(z1)
     if(r1<=rzero) then
-       z=1.0_rp-z
+       z=1.0_rp-z1
     else
        z=z1
     end if
