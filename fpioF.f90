@@ -126,7 +126,7 @@ contains
     xx=real(x,kind=dispp)
     rtoa=""
 #ifdef _NO_ASM_
-    write(*,sfmt(f),iostat=istat) x
+    write(rtoa,sfmt(f),iostat=istat) x
     if(istat==0) rtoa=adjustl(rtoa)
     rtoa=trim_zero(rtoa)
 #else
