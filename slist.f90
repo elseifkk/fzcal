@@ -4,8 +4,7 @@ module slist
   private
 
   type,public::t_slist
-     
-integer sz ! total size
+     integer sz ! total size
      integer st ! stack top
      integer n  ! num elements
      integer p  ! str list
@@ -39,9 +38,19 @@ integer sz ! total size
   public min_cp_slist
   public uinit_slist
   public is_double
+  public dump_slist
+  public trim_slist
 
 contains
   
+  subroutine trim_slist(sl)
+    type(t_slist),intent(inout)::sl
+    type(t_slist) tmp
+    tmp%p=0
+    call min_cp_slist(sl,tmp)
+    sl=tmp
+  end subroutine trim_slist
+
   subroutine min_cp_slist(sl1,sl2)
     use memio
     type(t_slist),intent(in)::sl1
@@ -229,7 +238,7 @@ contains
        k=find_str(sl,s,found_code=c)
        if(k/=0) then
           if(present(ent)) ent=k
-          if(is_read_only(c)) then
+          if(is_read_only(c).and.c/=code) then ! <<<
              istat=SLERR_RDONL
              write(*,*) "*** Parameter is read-only: "//trim(s)
           else if(c/=code) then
@@ -347,5 +356,32 @@ contains
       is_matched=.true.
     end function is_matched
   end function find_str
+
+  subroutine dump_slist(sl)
+    type(t_slist),intent(in)::sl
+    integer i
+    integer*1 c
+    integer ptr,len
+    pointer(p,c)
+    write(*,*) "slist dump:"
+    if(sl%n<=0.or.sl%p==0.or.sl%sz==0) then
+       write(*,*) "(empty)"
+    end if
+    write(*,*) "size = ",sl%sz
+    write(*,*) "capacity = ",sl%sz-(sl%st-sl%p+1)
+    p=sl%p
+    do i=1,sl%n
+       ptr=p
+       len=c
+       write(*,10) i,len
+       p=p+1
+       write(*,11) c
+       write(*,12) trim(cpstr(ptr,len))
+       p=ptr+len+LEN_SLIST_HDR
+    end do
+10  format(x,i4,x,i4,$)
+11  format(x,b4.4,$)
+12  format(x,a)
+  end subroutine dump_slist
 
 end module slist
