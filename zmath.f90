@@ -18,6 +18,7 @@ module zmath
   public zm_dfac
   public zm_inc
   public zm_dec
+  public zm_sum
 
   public zm_sin
   public zm_cos
@@ -341,7 +342,19 @@ contains
     zm_dec=z-1.0_rp
   end function zm_dec
 
-
+  complex(cp) function zm_sum(n,pzs)
+    integer,intent(in)::n
+    integer,intent(in)::pzs(n)
+    integer i
+    complex(cp) z
+    pointer(pz,z)
+    zm_sum=czero
+    do i=1,n
+       pz=pzs(i)
+       zm_sum=zm_sum+z
+    end do
+  end function zm_sum
+    
 !!!!!!---------------------------------------------------------------------!!!!!!
   ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX
 !!!---------------------------------------------------------------------------!!!

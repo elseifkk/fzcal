@@ -9,6 +9,7 @@ module plist
   integer,parameter::PLERR_MEMOV = 2
   integer,parameter::PLERR_NOENT = 3
   integer,parameter::PLERR_RDONL = 4
+  integer,parameter::PLERR_NOPAR = 5
   
   type,public::t_plist
      type(t_slist) s
@@ -29,6 +30,8 @@ module plist
   public dump_plist
   public uinit_plist
   public get_par_loc
+  public is_double
+  public get_par
 
 contains
 
@@ -79,17 +82,24 @@ contains
     integer i,len,istat
     integer*1 code
     integer si
-    complex(cp) v
-    pointer(rp,v)
+    real(dp) r
+    complex(cp) z
+    pointer(pr,r)
+    pointer(pz,z)
     pointer(ptr,si)
     do i=1,pl%s%n
        istat=get_str_ptr(pl%s,i,ptr,len,code=code)
        write(*,10) i,code,trim(cpstr(ptr,len))
        if(is_reference(code)) then
           ptr=loc(pl%v(i))
-          rp=si
           write(*,20) si
-          write(*,*) trim(ztoa(v,fmt=DISP_FMT_RAW))
+          if(.not.is_double(code)) then
+             pz=si
+             write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
+          else
+             pr=si
+             write(*,*) trim(rtoa(real(r,kind=rp),fmt=DISP_FMT_RAW))
+          end if
        else
           write(*,*) trim(ztoa(pl%v(i),fmt=DISP_FMT_RAW))
        end if
@@ -137,11 +147,12 @@ contains
     
   end subroutine trim_plist
  
-  integer function find_par(pl,s,val,ent)
+  integer function find_par(pl,s,val,ent,code)
     type(t_plist),intent(in)::pl
     character*(*),intent(in)::s
     complex(cp),intent(out),optional::val
     integer,intent(out),optional::ent
+    integer*1,intent(out),optional::code
     integer k
     integer*1 c
     integer si
@@ -156,6 +167,7 @@ contains
        find_par=PLERR_NOENT
        return
     end if
+    if(present(code)) code=c
     if(present(val)) then
        if(is_reference(c)) then
           ptr=loc(pl%v(k))
@@ -277,7 +289,7 @@ contains
     else
        c=SC_REF
     end if
-    if(present(dble).and.dble) c=ior(c,SC_DBL)
+    if(present(dble).and.dble) c=ior(c,ior(SC_DBL,SC_RO)) ! <<<<
     istat=try_add_par(pl,s,c,k)
     if(istat/=0) then
        add_par_by_reference=istat
@@ -344,5 +356,39 @@ contains
        get_par_loc=si
     end if
   end function get_par_loc
+
+  integer function get_par(pl,k,v)
+    type(t_plist),intent(in)::pl
+    integer,intent(in)::k
+    complex(cp),intent(out)::v
+    integer*1 c
+    integer istat
+    real(dp) r
+    complex(cp) z
+    integer p
+    pointer(pr,r)
+    pointer(pz,z)
+    pointer(si,p)
+    istat=get_sc(pl%s,k,c)
+    if(istat/=0) then
+       get_par=PLERR_NOPAR
+       return
+    end if
+    if(.not.is_reference(c)) then
+       ! always complex
+       v=pl%v(k)
+    else 
+       si=loc(pl%v(k))
+       if(.not.is_double(c)) then
+          pz=p
+          v=z
+       else
+          ! double real only allowed by reference
+          pr=p
+          v=complex(real(r,kind=rp),rzero)
+       end if
+    end if
+    get_par=0
+  end function get_par
 
 end module plist
