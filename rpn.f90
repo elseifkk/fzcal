@@ -4,7 +4,7 @@ module rpn
   use fpio
   implicit none
 
-  integer,parameter::narg_max=Z"7FFF"
+  integer,parameter::narg_max=32
 
 !  private
 
@@ -69,24 +69,22 @@ module rpn
   integer,parameter::TID_DLM1  = -75
   integer,parameter::TID_DLM2  = -76  ! ket
   integer,parameter::TID_BLK   = -77  ! space and tab
+  integer,parameter::TID_HKET  = -78  ! }
   ! 
   integer,parameter::TID_PAR   =  32  ! a,b,c,...
   integer,parameter::TID_PARU  = -32  ! a,b,c,...
   integer,parameter::TID_FIG   =  33  ! 1,2,3,...
   integer,parameter::TID_VAR   =  34  ! fig in rbuf
   integer,parameter::TID_MAC   =  35
-  integer,parameter::TID_OP1   =  36  ! operators
-  integer,parameter::TID_OP2   =  37
-  integer,parameter::TID_OP3   =  38
-  integer,parameter::TID_APAR  =  39  ! par assign
-  integer,parameter::TID_AMAC  =  40
-  integer,parameter::TID_AFNC  =  41
-  integer,parameter::TID_DPAR  =  42  ! dummy par
-  integer,parameter::TID_END   =  43
-  integer,parameter::TID_IFNC1 =  44
-  integer,parameter::TID_IFNC2 =  45
-  integer,parameter::TID_ROVAR =  46 
-  integer,parameter::TID_IFNCN =  47
+  integer,parameter::TID_OP    =  36  ! operators
+  integer,parameter::TID_COP   =  37
+  integer,parameter::TID_OPN   =  39
+  integer,parameter::TID_APAR  =  40  ! par assign
+  integer,parameter::TID_AMAC  =  41
+  integer,parameter::TID_AFNC  =  42
+  integer,parameter::TID_DPAR  =  43  ! dummy par
+  integer,parameter::TID_END   =  44
+  integer,parameter::TID_ROVAR =  45 
 
   integer,parameter::LEN_STR_MAX=1024
   integer,parameter::LEN_FORMULA_MAX=LEN_STR_MAX
@@ -139,6 +137,7 @@ module rpn
      type(t_rpnlist),pointer::rl
      integer,pointer::rc ! recursion count
      integer,pointer::opt
+     integer,pointer::pfs(:) 
   end type t_rpnc
 
   integer,parameter::RPNCOPT_NOP  =  0
@@ -182,7 +181,9 @@ module rpn
        achar(3)//"min"//&
        achar(3)//"max"//&
        achar(4)//"gami"//&
+       achar(5)//"deint"//&
        achar(3)//"sum"//&
+       achar(3)//"ave"//&
        achar(0)
   integer,parameter::FID_SIN       =  1
   integer,parameter::FID_COS       =  2 
@@ -217,7 +218,10 @@ module rpn
   integer,parameter::FID_MAX       = 30
   integer,parameter::FID_GAMI      = 31
   integer,parameter::FID_ARG2_END  = 31 !<<<<<<<<
-  integer,parameter::FID_SUM       = 32
+  integer,parameter::FID_DEINT     = 32
+  integer,parameter::FID_ARG3_END  = 32 !<<<<<<<<
+  integer,parameter::FID_SUM       = 33
+  integer,parameter::FID_AVE       = 34
 
   interface put_vbuf
      module procedure put_vbuf_dr
@@ -304,6 +308,7 @@ contains
   end subroutine inc_vbuf
   
   integer function init_rpnc()
+    use zmath
     type(t_rpnc) rpnc
     pointer(p,rpnc)
     p=malloc(sizeof(rpnc))
@@ -317,6 +322,10 @@ contains
     allocate(rpnc%p_vbuf)
     allocate(rpnc%rc)
     allocate(rpnc%opt)
+    allocate(rpnc%pfs(3))
+    rpnc%pfs(1)=loc(zm_f1)
+    rpnc%pfs(2)=loc(zm_f2)
+    rpnc%pfs(3)=loc(zm_f3)
     call init_par(rpnc)
     call init_rpnlist(rpnc%rl)
     rpnc%opt=RPNCOPT_NOP
@@ -333,6 +342,7 @@ contains
     if(associated(rpnc%p_vbuf)) deallocate(rpnc%p_vbuf)
     if(associated(rpnc%rc)) deallocate(rpnc%rc)
     if(associated(rpnc%rl)) call uinit_rpnlist(rpnc%rl)
+    if(associated(rpnc%pfs)) deallocate(rpnc%pfs)
   end subroutine uinit_rpnc
 
   subroutine init_par(rpnc)
@@ -375,67 +385,6 @@ contains
     end do
   end function get_operand
 
-  integer function eval_1(rpnc,i)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer ods(1)
-    integer pvs(1)
-    complex(cp) v1,v2
-    pointer(pv1,v1)
-    pointer(pop1,op1)
-    interface 
-       function op1(z1)
-         use fpio, only: cp
-         complex(cp) op1
-         complex(cp),intent(in)::z1
-       end function op1
-    end interface
-
-    eval_1=get_operands(rpnc,i,1,pvs,ods)
-    if(eval_1/=0) return
-
-    pv1=pvs(1)
-    pop1=rpnc%que(i)%cid
-    v2=op1(v1)
-
-    call set_result(rpnc,i,1,ods,v2)
-
-    rpnc%tmpans=v2
-
-  end function eval_1
-
-  integer function eval_2a(rpnc,i)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer ods(2)
-    integer pvs(2)
-    complex(cp) v1,v2
-    pointer(pv1,v1)
-    pointer(pv2,v2)
-    pointer(pop2,op2)
-    interface
-       function op2(z1,z2)
-         use fpio, only: cp
-         complex(cp) op2
-         complex(cp),intent(in)::z1,z2
-       end function op2
-    end interface
-
-    eval_2a=get_operands(rpnc,i,2,pvs,ods)
-    if(eval_2a/=0) return
-
-    pv2=pvs(2)
-    pv1=pvs(1) 
-
-    pop2=rpnc%que(i)%cid
-    v1=op2(v1,v2)
-
-    call set_result(rpnc,i,2,ods,v1)
-
-    eval_2a=0
-
-  end function eval_2a
-
   logical function is_integer(z,n)
     complex(cp),intent(in)::z
     integer,intent(out),optional::n
@@ -452,55 +401,50 @@ contains
     end if
   end function is_integer
 
-  integer function eval_3(rpnc,i)
+  integer function eval_c(rpnc,i)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
-    integer cid,kd,ke,n,kz
+    integer kd,ke,n,kz
     integer od1,j
     complex(cp) v1
     pointer(pv1,v1)
 
-    cid=get_lo32(rpnc%que(i)%cid) ! <<<<<<<<<<<<<,
-
-    select case(cid)
-    case(OID_CND)
-       kd=get_up32(rpnc%que(i)%cid)
-       od1=get_operand(rpnc,i-1)
-       if(od1==0) then
-          eval_3=RPNERR_NOOP
-          return
-       end if
-       pv1=rpnc%que(od1)%cid
-       ke=find_end()
-       if(ke==0) then
-          kz=size(rpnc%que)
-       else
-          kz=ke
-       end if
-       kz=trim_end(kz)
-       if(realpart(v1)/=0.0_rp) then
-          ! true case
-          rpnc%que(kd:kz)%tid=TID_NOP
-          n=(kd-1)-(i+1)+1
-          j=i+1
-       else
-          ! false case
-          rpnc%que(i:kd)%tid=TID_NOP
-          n=(kz)-(kd+1)+1
-          if(ke/=0) n=n-1
-          j=kd+1
-       end if
-       if(n==1) then
-          select case(rpnc%que(j)%tid)
-          case(TID_VAR,TID_PAR) 
-             pv1=rpnc%que(j)%cid
-             rpnc%tmpans=v1
-          end select
-       end if
-       rpnc%que(od1)%tid=TID_NOP
-    end select
-    
-    eval_3=0
+    kd=get_up32(rpnc%que(i)%cid)
+    od1=get_operand(rpnc,i-1)
+    if(od1==0) then
+       eval_c=RPNERR_NOOP
+       return
+    end if
+    pv1=rpnc%que(od1)%cid
+    ke=find_end()
+    if(ke==0) then
+       kz=size(rpnc%que)
+    else
+       kz=ke
+    end if
+    kz=trim_end(kz)
+    if(realpart(v1)/=0.0_rp) then
+       ! true case
+       rpnc%que(kd:kz)%tid=TID_NOP
+       n=(kd-1)-(i+1)+1
+       j=i+1
+    else
+       ! false case
+       rpnc%que(i:kd)%tid=TID_NOP
+       n=(kz)-(kd+1)+1
+       if(ke/=0) n=n-1
+       j=kd+1
+    end if
+    if(n==1) then
+       select case(rpnc%que(j)%tid)
+       case(TID_VAR,TID_PAR) 
+          pv1=rpnc%que(j)%cid
+          rpnc%tmpans=v1
+       end select
+    end if
+    rpnc%que(od1)%tid=TID_NOP
+     
+    eval_c=0
 
   contains
  
@@ -535,7 +479,7 @@ contains
       end do
     end function find_end
     
-  end function eval_3
+  end function eval_c
 
   subroutine set_result(rpnc,i,n,ks,v)
     type(t_rpnc),intent(inout)::rpnc
@@ -567,7 +511,7 @@ contains
   integer function get_operands(rpnc,i,n,ps,ks)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i,n
-    integer,intent(out),optional::ps(n)
+    integer,intent(out),optional::ps(0:n) 
     integer,intent(out),optional::ks(n)
     integer k,j
     k=i-1
@@ -584,38 +528,6 @@ contains
     get_operands=0
   end function get_operands
 
-  integer function eval_2(rpnc,i)
-    use zmath
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    complex(cp) v1,v2,v3
-    integer pvs(2)
-    integer ods(2)
-    pointer(pv1,v1)
-    pointer(pv2,v2)
-    pointer(pop2,op2)
-    interface
-       function op2(z1,z2)
-         use fpio, only: cp
-         complex(cp) op2
-         complex(cp),intent(in)::z1,z2
-       end function op2
-    end interface
-
-    eval_2=get_operands(rpnc,i,2,pvs,ods)
-    if(eval_2/=0) return
-
-    pv1=pvs(1)
-    pv2=pvs(2)
-
-    pop2=rpnc%que(i)%cid    
-    v3=op2(v1,v2)
-
-    call set_result(rpnc,i,2,ods,v3)
-
-    eval_2=0
-  end function eval_2
-
   recursive function eval_n(rpnc,i) result(istat)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
@@ -624,39 +536,51 @@ contains
          use fpio, only: cp
          complex(cp) fn
          integer,intent(in)::n
-         integer,intent(in)::ps(n)
+         integer,intent(in)::ps(0:n)
        end function fn
     end interface
     pointer(pfn,fn)
     integer istat
     integer na
-    integer,allocatable::pvs(:)
-    integer,allocatable::ods(:)
+    integer pvs(0:narg_max)
+    integer ods(1:narg_max)
     complex(cp) v
+    integer tid
 
     na=get_up32(rpnc%que(i)%tid)
+    tid=get_lo32(rpnc%que(i)%tid)
 
     if(i-1<na) then
        istat=RPNERR_NOOP
        return
     end if
     
-    allocate(pvs(na),ods(na))
     istat=get_operands(rpnc,i,na,ks=ods,ps=pvs)
-    if(istat/=0) then
-       deallocate(pvs,ods)
-       return
+    if(istat/=0) return
+
+    pvs(0)=rpnc%que(i)%cid
+    if(tid/=TID_OPN) then
+       pfn=rpnc%pfs(na) 
+    else
+       pfn=rpnc%que(i)%cid
     end if
-    
-    pfn=rpnc%que(i)%cid
     v=fn(na,pvs)
+    if(tid==TID_AOP) call set_assign()
+
     call set_result(rpnc,i,na,ods,v)
     
-    deallocate(pvs,ods)
+  contains
+    
+    subroutine set_assign()
+      complex(cp) z
+      pointer(pz,z)
+      pz=pvs(1)
+      z=v
+    end subroutine set_assign
 
   end function eval_n
 
-  recursive function eval_nf(rpnc,i) result(istat)
+  recursive function eval_uf(rpnc,i) result(istat)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     integer istat
@@ -693,6 +617,7 @@ contains
     fnc%tmpans=>rpnc%tmpans
     fnc%rl=>rpnc%rl
     fnc%rc=>rpnc%rc
+    fnc%pfs=>rpnc%pfs
     
     istat=0
     do j=1,size(fnc%que)
@@ -734,70 +659,8 @@ contains
       end if
     end subroutine set_par_ptr
 
-  end function eval_nf
+  end function eval_uf
   
-  integer function eval_1f(rpnc,i)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer ods(1)
-    integer pvs(1)
-    complex(cp) v1,v2
-    pointer(pv1,v1)
-    pointer(pf1,f1)
-    interface
-       function f1(z1)
-         use fpio, only: cp
-         complex(cp) f1
-         complex(cp),intent(in)::z1
-       end function f1
-    end interface
-
-    eval_1f=get_operands(rpnc,i,1,pvs,ods)
-    if(eval_1f/=0) return
-
-    pv1=pvs(1)
-    pf1=rpnc%que(i)%cid
-
-    v2=f1(v1)
-
-    call set_result(rpnc,i,1,ods,v2)
-
-    eval_1f=0
-
-  end function eval_1f
-
-  integer function eval_2f(rpnc,i)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer ods(2)
-    integer pvs(2)
-    complex(cp) v1,v2,v3
-    pointer(pv1,v1)
-    pointer(pv2,v2)
-    pointer(pf2,f2)
-    interface
-       function f2(z1,z2)
-         use fpio, only: cp
-         complex(cp) f2
-         complex(cp),intent(in)::z1,z2
-       end function f2
-    end interface
-
-    eval_2f=get_operands(rpnc,i,2,pvs,ods)
-    if(eval_2f/=0) return
-
-    pv1=pvs(1)
-    pv2=pvs(2)
-
-    pf2=rpnc%que(i)%cid
-    v3=f2(v1,v2)
-
-    call set_result(rpnc,i,2,ods,v3)
-
-    eval_2f=0
-
-  end function eval_2f
-
   subroutine put_vbuf_dr(rpnc,i,v)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
@@ -845,6 +708,7 @@ contains
     mac%tmpans => rpnc%tmpans
     mac%rl     => rpnc%rl
     mac%rc     => rpnc%rc
+    mac%pfs    => rpnc%pfs
 
     istat=0
     do j=1,size(mac%que)
@@ -902,24 +766,14 @@ contains
     do i=1,size(rpnc%que)
        ec=ec+1
        select case(get_lo32(rpnc%que(i)%tid))
-       case(TID_OP1)
-          istat=eval_1(rpnc,i)
-       case(TID_OP2)
-          istat=eval_2(rpnc,i)
-       case(TID_OP3)
-          istat=eval_3(rpnc,i)
-       case(TID_IFNC1)
-          istat=eval_1f(rpnc,i)
-       case(TID_IFNC2)
-          istat=eval_2f(rpnc,i)
-       case(TID_ASN)
-          istat=eval_2a(rpnc,i)
+       case(TID_OP,TID_OPN,TID_AOP)
+          istat=eval_n(rpnc,i)
+       case(TID_COP)
+          istat=eval_c(rpnc,i)
        case(TID_MAC)
           istat=eval_m(rpnc,i)
        case(TID_UFNC)
-          istat=eval_nf(rpnc,i)
-       case(TID_IFNCN)
-          istat=eval_n(rpnc,i)
+          istat=eval_uf(rpnc,i)
        case default
           ec=ec-1
        end select
@@ -1085,6 +939,8 @@ contains
        get_tid=TID_SCL
     case(" ","\t")
        get_tid=TID_BLK
+    case("}")
+       get_tid=TID_HKET
     case default
        get_tid=TID_UNDEF
     end select
@@ -1315,7 +1171,7 @@ contains
              end if
           end if
           write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
-       case(TID_OP1,TID_OP2,TID_OP3,TID_IFNC1,TID_IFNC2)
+       case(TID_OP,TID_OPN)
           write(*,14) rpnc%que(i)%cid
        case(TID_DPAR)
           write(*,16) rpnc%que(i)%cid,"(dummy par)"
@@ -1675,33 +1531,32 @@ contains
           ! operators 
           !
        case(TID_UOP1,TID_UOP2,TID_UOP3)
-          q%tid=TID_OP1
+          q%tid=get_i32(TID_OP,1)
           q%cid=get_oid1()
        case(TID_BOP1,TID_BOP2,TID_BOP3,TID_BOP4)
-          q%tid=TID_OP2
+          q%tid=get_i32(TID_OP,2)
           q%cid=get_oid2()
        case(TID_TOP1)
-          q%tid=TID_OP3
+          q%tid=TID_COP
           q%cid=OID_CND ! <<<<<<<<<<<<<<<<<<<<<,
           call find_delim(rpnb%que(i)%p1)
        case(TID_ASN,TID_AOP)
-          q%tid=TID_ASN
+          q%tid=get_i32(TID_AOP,2)
           q%cid=get_aid()
        case(TID_IFNC)
+          q%cid=get_fid(get_up32(rpnb%que(i)%tid))
           select case(get_up32(rpnb%que(i)%p2))
           case(1) 
-             q%tid=TID_IFNC1
+             q%tid=get_i32(TID_OP,1)
           case(2)
-             q%tid=TID_IFNC2
+             q%tid=get_i32(TID_OP,2)
+          case(3)
+             q%tid=get_i32(TID_OP,3)
           case(narg_max)
-             q%tid=TID_IFNCN
+             q%tid=get_i32(TID_OPN,narg_max-get_up32(rpnb%que(i)%p1)+1)
+             cycle
           end select
-          q%cid=get_fid(get_up32(rpnb%que(i)%tid))
-          if(q%tid/=TID_IFNCN) then
-             if(get_up32(rpnb%que(i)%p1)/=1) istat=RPNERR_NARG ! <<<<<<<<<
-          else
-             q%tid=get_i32(q%tid,narg_max-get_up32(rpnb%que(i)%p1)+1)
-          end if
+          if(get_up32(rpnb%que(i)%p1)/=1) istat=RPNERR_NARG ! <<<<<<<<<
        case(TID_UFNC)
           q%tid=TID_UFNC
           q%cid=get_up32(rpnb%que(i)%tid)
@@ -1911,6 +1766,10 @@ contains
          get_fid=loc(zm_psy)
       case(FID_SUM)
          get_fid=loc(zm_sum)
+      case(FID_AVE)
+         get_fid=loc(zm_ave)
+      case(FID_DEINT)
+         get_fid=loc(zm_deint)
       case default
          STOP "*** UNEXPECTED ERROR in get_fid" 
       end select
@@ -2065,6 +1924,28 @@ contains
     end do
     rpnb%p_buf=i
   end subroutine rpn_pop_until
+
+  subroutine rpn_pop_all_bra(rpnb)
+    type(t_rpnb),intent(inout)::rpnb
+    integer i,k
+    k=0
+    do i=rpnb%p_buf,1,-1
+       select case(rpnb%buf(i)%tid)
+       case(TID_BRA,TID_IBRA)
+          k=i
+       end select
+    end do
+    if(k==0) return
+    do i=rpnb%p_buf,k,-1
+       select case(rpnb%buf(i)%tid)
+       case(TID_BRA,TID_QSTA,TID_IBRA,TID_COL)
+          cycle ! skip unclosed bra
+       end select
+       rpnb%p_que=rpnb%p_que+1
+       rpnb%que(rpnb%p_que)=rpnb%buf(i)
+    end do
+    rpnb%p_buf=k-1
+  end subroutine rpn_pop_all_bra
 
   subroutine rpn_pop_all(rpnb)
     type(t_rpnb),intent(inout)::rpnb
@@ -2235,6 +2116,13 @@ contains
              call push_implicit_mul()
           end select
           call rpn_push(rpnb,t,p1,p2)
+       case(TID_HKET)
+          if(.not.was_operand()) then
+             istat=RPNERR_PARSER
+          else
+             call rpn_pop_all_bra(rpnb)
+          end if
+          kc=bc
        case(TID_KET)
           if(.not.was_operand()) then
              istat=RPNERR_PARSER
@@ -2443,19 +2331,25 @@ contains
     subroutine set_par_dummy()
       integer ii,jj
       integer did
+      logical found
       did=0
       do ii=p_q1,pfasn
          if(rpnb%que(ii)%tid==TID_DPAR) then
             did=did+1
+            found=.false.
             do jj=pfasn+1,rpnb%p_que ! <<<<
                if(rpnb%que(jj)%tid==TID_PAR) then
                   if(_EXPR_(ii)&
                        ==_EXPR_(jj)) then
                      rpnb%que(jj)%tid=TID_DPAR
                      rpnb%que(jj)%p1=get_i32(rpnb%que(jj)%p1,did) !<<<
+                     found=.true.
                   end if
                end if
             end do
+            if(.not.found) then
+               write(*,*) "*** Warning: Unused parameter: "//_EXPR_(ii)
+            end if
          end if
       end do
     end subroutine set_par_dummy
