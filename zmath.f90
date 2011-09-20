@@ -4,6 +4,10 @@ module zmath
 
   private
 
+  public zm_f1
+  public zm_f2
+  public zm_f3
+
   public zm_mov
   public zm_add
   public zm_sub
@@ -19,6 +23,7 @@ module zmath
   public zm_inc
   public zm_dec
   public zm_sum
+  public zm_ave
 
   public zm_sin
   public zm_cos
@@ -53,8 +58,11 @@ module zmath
   public zm_min
   public zm_max
 
+  public zm_deint
+
   real(rp),parameter::pi =4.0_rp*atan(1.0_rp)
   real(rp),parameter::pi2=2.0_rp*pi
+
 contains
 
   logical function is_integer(z,n)
@@ -72,7 +80,61 @@ contains
        if(present(n)) n=m
     end if
   end function is_integer
-  
+
+  complex(cp) function zm_f1(n,pzs)
+    integer,intent(in)::n,pzs(0:n)
+    complex(cp) z1
+    pointer(p1,z1)
+    interface
+       function f1(z1)
+         use fpio, only: cp
+         complex(cp) f1,z1
+       end function f1
+    end interface
+    pointer(pf1,f1)
+    pf1=pzs(0)
+    p1=pzs(1)
+    zm_f1=f1(z1)
+  end function zm_f1
+
+  complex(cp) function zm_f2(n,pzs)
+    integer,intent(in)::n,pzs(0:n)
+    complex(cp) z1,z2
+    pointer(p1,z1)
+    pointer(p2,z2)
+    interface
+       function f2(z1,z2)
+         use fpio, only: cp
+         complex(cp) f2,z1,z2
+       end function f2
+    end interface
+    pointer(pf2,f2)
+    pf2=pzs(0)
+    p1=pzs(1)
+    p2=pzs(2)
+    zm_f2=f2(z1,z2)
+  end function zm_f2
+
+  complex(cp) function zm_f3(n,pzs)
+    integer,intent(in)::n,pzs(0:n)
+    complex(cp) z1,z2,z3
+    pointer(p1,z1)
+    pointer(p2,z2)
+    pointer(p3,z3)
+    interface
+       function f3(z1,z2,z3)
+         use fpio, only: cp
+         complex(cp) f3,z1,z2,z3
+       end function f3
+    end interface
+    pointer(pf3,f3)
+    pf3=pzs(0)
+    p1=pzs(1)
+    p2=pzs(2)
+    p3=pzs(3)
+    zm_f3=f3(z1,z2,z3)
+  end function zm_f3
+
   complex(cp) function zm_mov(z1,z2)
     complex(cp),intent(in)::z1,z2
     zm_mov=z2
@@ -344,7 +406,7 @@ contains
 
   complex(cp) function zm_sum(n,pzs)
     integer,intent(in)::n
-    integer,intent(in)::pzs(n)
+    integer,intent(in)::pzs(0:n)
     integer i
     complex(cp) z
     pointer(pz,z)
@@ -354,6 +416,13 @@ contains
        zm_sum=zm_sum+z
     end do
   end function zm_sum
+
+  complex(cp) function zm_ave(n,pzs)
+    integer,intent(in)::n
+    integer,intent(in)::pzs(0:n)
+    complex(cp) z
+    zm_ave=zm_sum(n,pzs)/real(n,kind=rp)
+  end function zm_ave
     
 !!!!!!---------------------------------------------------------------------!!!!!!
   ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX
@@ -548,5 +617,20 @@ contains
     complex(cp),intent(in)::z1
     zm_gamma=exp(zm_lgamma(z1))
   end function zm_gamma
+
+  complex(cp) function zm_deint(a,b,ptr_integrand)
+    complex(cp),intent(in)::a,b
+    integer,intent(in)::ptr_integrand
+    interface
+       function f(z)
+         use fpio, only: cp
+         complex(cp) f
+         complex(cp) z
+       end function f
+    end interface
+    pointer(pf,f)
+    pf=ptr_integrand
+    zm_deint=(f(a)+f(b))/2.0_rp ! <<<<<< test
+  end function zm_deint
 
 end module zmath
