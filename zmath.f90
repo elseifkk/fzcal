@@ -24,6 +24,9 @@ module zmath
   public zm_dec
   public zm_sum
   public zm_ave
+  public zm_var
+  public zm_uvar
+  public zm_sum2
 
   public zm_sin
   public zm_cos
@@ -417,6 +420,19 @@ contains
     end do
   end function zm_sum
 
+  complex(cp) function zm_sum2(n,pzs)
+    integer,intent(in)::n
+    integer,intent(in)::pzs(0:n)
+    integer i
+    complex(cp) z
+    pointer(pz,z)
+    zm_sum2=czero
+    do i=1,n
+       pz=pzs(i)
+       zm_sum2=zm_sum2+z*z
+    end do
+  end function zm_sum2
+
   complex(cp) function zm_ave(n,pzs)
     integer,intent(in)::n
     integer,intent(in)::pzs(0:n)
@@ -424,6 +440,29 @@ contains
     zm_ave=zm_sum(n,pzs)/real(n,kind=rp)
   end function zm_ave
     
+  complex(cp) function zm_var(n,pzs)
+    integer,intent(in)::n
+    integer,intent(in)::pzs(0:n)
+    integer i
+    complex(cp) s,s2
+    complex(cp) z
+    pointer(pz,z)
+    s=czero
+    s2=czero
+    do i=1,n
+       pz=pzs(i)
+       s=s+z
+       s2=s2+z*z
+    end do
+    zm_var=sqrt(s2/real(n,kind=rp)-(s/(real(n,kind=rp)))**2.0_rp)
+  end function zm_var
+
+  complex(cp) function zm_uvar(n,pzs)
+    integer,intent(in)::n
+    integer,intent(in)::pzs(0:n)
+    zm_uvar=zm_var(n,pzs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
+  end function zm_uvar
+
 !!!!!!---------------------------------------------------------------------!!!!!!
   ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX
 !!!---------------------------------------------------------------------------!!!
