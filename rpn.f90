@@ -143,6 +143,7 @@ module rpn
   integer,parameter::RPNCOPT_NOP  =  0
   integer,parameter::RPNCOPT_DMSK =  Z"FF"
   integer,parameter::RPNCOPT_DBG  =  Z"08000000"
+  integer,parameter::RPNCOPT_SET  =  Z"00000001"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
@@ -184,6 +185,9 @@ module rpn
        achar(5)//"deint"//&
        achar(3)//"sum"//&
        achar(3)//"ave"//&
+       achar(3)//"var"//&
+       achar(4)//"uvar"//&
+       achar(4)//"sum2"//&
        achar(0)
   integer,parameter::FID_SIN       =  1
   integer,parameter::FID_COS       =  2 
@@ -222,9 +226,11 @@ module rpn
   integer,parameter::FID_ARG3_END  = 32 !<<<<<<<<
   integer,parameter::FID_SUM       = 33
   integer,parameter::FID_AVE       = 34
+  integer,parameter::FID_VAR       = 35
+  integer,parameter::FID_UVAR      = 36
+  integer,parameter::FID_SUM2      = 37
 
   interface put_vbuf
-     module procedure put_vbuf_dr
      module procedure put_vbuf_r
      module procedure put_vbuf_z
   end interface put_vbuf
@@ -661,13 +667,6 @@ contains
 
   end function eval_uf
   
-  subroutine put_vbuf_dr(rpnc,i,v)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    real(dp),intent(in)::v
-    call put_vbuf_z(rpnc,i,complex(real(v,kind=rp),rzero))
-  end subroutine put_vbuf_dr
-
   subroutine put_vbuf_r(rpnc,i,v)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(inout)::i
@@ -1122,6 +1121,8 @@ contains
           tmprpnc%answer=>rpnm%answer
           tmprpnc%tmpans=>rpnm%tmpans
           tmprpnc%rl=>rpnc%rl
+          tmprpnc%rc=>rpnc%rc
+          tmprpnc%pfs=rpnc%pfs
           if(associated(rpnm%na)) write(*,*) "number of arguments = ",rpnm%na
           call dump_rpnc(tmprpnc,i)
           call dump_slist(rpnm%pnames)
@@ -1142,11 +1143,16 @@ contains
     complex(cp) z
     complex(cp) v
     pointer(pv,v)
+    write(*,*) "rpnc dump:"
     if(.not.associated(rpnc%que).or.size(rpnc%que)<1) then
        write(*,*) "(empty)"
        return
     end if
-    write(*,*) "rpnc dump:\n# tid cid value"
+    if(.not.present(mid).and.iand(rpnc%opt,RPNCOPT_SET)==0) then
+       write(*,*) "(not set)"
+       return
+    end if
+    write(*,*) "# tid cid value"
     if(present(mid)) rpnm=>rpnc%rl%rpnm(mid)
     do i=1,size(rpnc%que)
        t=rpnc%que(i)%tid
@@ -1580,7 +1586,7 @@ contains
              WRITE(*,*) "READ iostat=",istat
              STOP "*** UNEXPECTED ERROR in build_rpnc"
           end if
-          call put_vbuf(rpnc,i,complex(x,rzero))
+          call put_vbuf(rpnc,i,x)
        case(TID_PAR) 
           if(rpnc%rl%s%n>0) then
              ! find the macro first
@@ -1678,6 +1684,8 @@ contains
        if(afnc) istat=set_function(rpnb,rpnc,p_q1)
     end if
 
+    if(istat==0) rpnc%opt=ior(rpnc%opt,RPNCOPT_SET)
+    
     build_rpnc=istat
 
   contains
@@ -1768,6 +1776,12 @@ contains
          get_fid=loc(zm_sum)
       case(FID_AVE)
          get_fid=loc(zm_ave)
+      case(FID_VAR)
+         get_fid=loc(zm_var)
+      case(FID_UVAR)
+         get_fid=loc(zm_uvar)
+      case(FID_SUM2)
+         get_fid=loc(zm_sum2)
       case(FID_DEINT)
          get_fid=loc(zm_deint)
       case default
@@ -2032,7 +2046,8 @@ contains
     integer p_q1
 
     call init_rpnb(formula)
-    
+    rpnc%opt=iand(rpnc%opt,not(RPNCOPT_SET))
+
     call init_stat()
     istat=0
 
@@ -2319,7 +2334,7 @@ contains
       check_assignable=.false.
       if(told/=TID_PAR) return
       select case(btold) 
-      case(TID_UNDEF,TID_BRA)
+      case(TID_UNDEF,TID_BRA,TID_ASN)
       case(TID_QTN)
          if(iand(qc,1)==0) return ! second "
       case default

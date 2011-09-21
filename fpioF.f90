@@ -12,6 +12,7 @@ module fpio
   integer,parameter::rp=ep
   integer,parameter::cp=ep
 #else
+#define _RP_IS_DP_
   integer,parameter::rp=dp
   integer,parameter::cp=dp
 #endif
