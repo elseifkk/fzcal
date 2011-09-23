@@ -4,9 +4,9 @@ LIBDIR = /usr/local/lib
 BINDIR = /usr/local/bin
 
 #
-FC  = gfortran
-CC  = gcc
-LD  = gfortran
+FC  = /usr/local/bin/gfortran
+CC  = /usr/local/bin/gcc
+LD  = /usr/local/bin/gfortran
 ASM = yasm
 AR  = ar
 
@@ -66,7 +66,7 @@ fzcal: $(OBJ) fzcal.o
 	$(FC) $(LDFLAGS) $(.ALLSRC) -o $@
 
 test: test_rpn.o
-	gcc $(LDFLAGS) libfzcal.a  $(.ALLSRC)
+	gcc -g -Wall -L/usr/local/lib -lfzcal  $(.ALLSRC) -o $@
 
 install: install-lib install-bin
 
