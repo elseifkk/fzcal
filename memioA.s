@@ -6,22 +6,46 @@ BITS 64
 	
 section .data align=16
 str_buf dd 0
+
 ;;; 
 section .text align=16
 global mcp_
 global dw2str_
-	
+
+%macro start_proc 0
+%ifdef _USE32_
 %assign arg1 08
 %assign arg2 12
 %assign arg3 16
-
-%ifdef _USE32_
-mcp_:	
 	push ebp
 	mov ebp, esp
 	push edi
 	push esi
-	;;
+	push ebx
+	;; 
+%else
+	push rbp
+	mov rbp, rsp
+%endif
+%endm
+	
+%macro end_proc 0
+%ifdef _USE32_
+	pop ebx
+	pop esi
+	pop edi
+	pop ebp
+	ret
+%else
+	mov rsp, rbp
+	pop rbp
+	ret
+%endif
+%endm
+
+mcp_:
+	start_proc
+%ifdef _USE32_
 	mov edi, [ebp+arg1]
 	mov esi, [ebp+arg2]
 	mov ecx, [ebp+arg3]
@@ -38,32 +62,29 @@ mcp_:
 	;;
 	mov ecx, edx
 	rep movsb
-	;;
-	pop esi
-	pop edi
-	pop ebp
-	ret
 %else
-	push rbp
- 	mov rbp, rsp
  	mov rax, rdx ; n
- 	shr rax, 3 ; n/8
+ 	shr rax, 3   ; n/8
  	mov rcx, rax ; n/8
- 	shl rcx, 3 ; (n/8)*8
+ 	shl rcx, 3   ; (n/8)*8
  	sub rdx, rcx ; n-(n/8)*8
  	mov rcx, rax
  	cld
  	rep movsq
  	mov rcx, rdx
  	rep movsb
- 	pop rbp
+	;; 
  	mov rax, rdi
- 	ret
 %endif	
-
+	end_proc
+	
 ;;; 
 %macro div10m 0
+%ifdef _USE32_
 	push eax
+%else
+	push rax
+%endif
 ;;-------------------; x*0.11b
 	shr eax, 1   ; x*0.1b
 	mov ebx, eax ;
@@ -87,11 +108,15 @@ mcp_:
 ;;- - - - - -  - - - ;
 %%.next:             ;
 	shr eax, 3   ; x*0.000110011001100110011001100110011b (34 bit)
-;------------------------------;
-	pop edx	               ; this method evaluates [a/10] or [a/10]-1. we have to
-	mov ecx, eax           ; examine which one is obtained by calculating remainder of them
-	lea eax, [eax+eax*4]
-	add eax, eax
+;-------------------------------;
+%ifdef _USE32_	                ;
+	pop edx	                ; this method evaluates [a/10] or [a/10]-1. we have to
+%else				;
+	pop rdx			;
+%endif				;
+	mov ecx, eax            ; examine which one is obtained by calculating remainder of them
+	lea eax, [eax+eax*4]	;
+	add eax, eax		;
 	sub edx, eax            ; r=a-10*q
 	mov eax, edx            ; eax=r
 	sub eax, 0x0a           ; eax=r-10
@@ -105,18 +130,15 @@ mcp_:
 %endm
 
 dw2str_:
+;;      integer function dw2str(dw,pstr)
 %assign D2STR_BUFFER_SIZE 16
-	push ebp
-	mov ebp, esp
-	;; 
-	push edi
-	push esi
-	push ebx
-	;; 
-	mov edi, str_buf                ; edi = ptr str_buf
-	mov esi, edi                    ; esi = ptr str_buf
-	mov eax, [ebp+arg1]             ;
-	and eax, 0x7FFFFFFF		; eax = positive i
+	start_proc
+	;;
+%ifdef _USE32_
+	lea edi, [rel str_buf wrt ..gotpcrel] ; edi = ptr str_buf
+	mov esi, edi                          ; esi = ptr str_buf
+ 	mov eax, [ebp+arg1]
+	and eax, 0x7FFFFFFF		      ; eax = positive i
 	;; 
 	add edi, D2STR_BUFFER_SIZE-1
 	mov [edi], byte 30h
@@ -135,25 +157,68 @@ dw2str_:
 .cpbuf:
 	mov ecx, esi                    ;
 	sub ecx, edi                    ; get length of digits
-	add ecx, D2STR_BUFFER_SIZE        ; set up for copying buffer
+	add ecx, D2STR_BUFFER_SIZE      ; set up for copying buffer
 	mov esi, edi
 	mov edi, [ebp+arg2]		; edi = ptr str
-	mov edx, [ebp+arg1]		; edx = a
+ 	mov edx, [ebp+arg1]		; edx = dw
 	mov eax, ecx			; return code = len str
-	cmp dword edx, 0
+	cmp edx, 0
 	jl .putminus
 .cont:	
 	rep movsb
 	;; 
 .exit
-	pop ebx
-	pop esi
-	pop edi
-	pop ebp
-	ret
+	end_proc
 	;; 
 .putminus:
 	mov byte [edi], "-"
 	inc edi
 	inc eax
 	jmp .cont
+
+%else
+ 	mov rax, rdi			; rax  = a
+	and eax, 0x7FFFFFFF		; eax = positive i
+	push rax			; save dw
+	push rsi			; save pstr
+	;; 
+	lea rdi, [rel str_buf wrt ..gotpcrel] ; rdi = ptr str_buf
+	mov rsi, rdi                    ; esi = ptr str_buf
+	;; 
+	add rdi, D2STR_BUFFER_SIZE-1
+	mov [rdi], byte 30h
+	or eax, eax         
+	jz .cpbuf
+	inc rdi             
+	;; 
+.L10:
+       	div10m
+	add edx, 0x30       
+	dec rdi             
+	mov [rdi], BYTE dl  
+.L20:               
+	or eax, eax         
+	jnz .L10          
+.cpbuf:
+	mov rcx, rsi                    ;
+	sub rcx, rdi                    ; get length of digits
+	add rcx, D2STR_BUFFER_SIZE      ; set up for copying buffer
+	mov rsi, rdi
+	pop rdi			        ; restore pstr
+	pop rdx			        ; restore dw
+	mov eax, ecx			; return code = len str
+	cmp edx, 0
+	jl .putminus
+.cont:	
+	rep movsb
+	;; 
+.exit
+	end_proc
+	;; 
+.putminus:
+	mov byte [rdi], "-"
+	inc rdi
+	inc eax
+	jmp .cont
+
+%endif
