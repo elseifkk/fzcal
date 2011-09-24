@@ -29,21 +29,33 @@ FP2A_FORCE_NOT_SHOW_EXPSIGN | \
 FP2A_SUPRESS_E0 | \
 FP2A_TRIM_TRAILING_ZEROS
 
-;;; 
 section .data align=16
 ; I'd rather this was local to the procedure, but masm doesn't do
 ; local arrays correctly.
+%ifdef _USE32_
+pstr dd 0
+%else
+pstr dq 0
+%endif
+
 szTemp  times 20  db 0
 real8   times 8 db 0
 format  dd 0
+	
+%ifdef _USE32_
 iExp	dd 0
+%else
+iExp	dq 0
+%endif
+	
 nDigit 	dd 0
 prefix	dd 0
 SI_PREFIX db 'y','z','a','f','p','n','u','m' ; 9
           db 0                               ; 1
           db 'k','M','G','T','P','E','Z','Y' ; 9
 real10 dt 0.0
-ten1  dt 1.0e1
+;;; 
+ten1  dt 1.0e1 			; 0x 4002 a000 0000 0000 0000
 ten2  dt 1.0e2
 ten3  dt 1.0e3
 ten4  dt 1.0e4
@@ -117,6 +129,43 @@ ten_256 dt 1.0e256
  dt 1.0e4352
  dt 1.0e4608
  dt 1.0e4864
+	
+;;;
+section .init align=16
+%macro put_real10 4
+	mov dword [rel %1 wrt ..gotpcrel], %2
+	mov dword [rel %1+4 wrt ..gotpcrel], %3
+	mov word [rel %1+8 wrt ..gotpcrel], %4
+%endm
+	mov qword [rel pstr wrt ..gotpcrel], 0
+	mov qword [rel szTemp wrt ..gotpcrel], 0
+	mov qword [rel szTemp+8 wrt ..gotpcrel], 0
+	mov dword [rel szTemp+16 wrt ..gotpcrel], 0
+	mov qword [rel iExp wrt ..gotpcrel], 0
+	mov dword [rel nDigit wrt ..gotpcrel], 0
+	mov dword [rel prefix wrt ..gotpcrel], 0
+	mov byte [rel SI_PREFIX wrt ..gotpcrel], 'y'
+	mov byte [rel SI_PREFIX+1 wrt ..gotpcrel], 'z'
+	mov byte [rel SI_PREFIX+2 wrt ..gotpcrel], 'a'
+	mov byte [rel SI_PREFIX+3 wrt ..gotpcrel], 'f'
+	mov byte [rel SI_PREFIX+4 wrt ..gotpcrel], 'p'
+	mov byte [rel SI_PREFIX+5 wrt ..gotpcrel], 'n'
+	mov byte [rel SI_PREFIX+6 wrt ..gotpcrel], 'u'
+	mov byte [rel SI_PREFIX+7 wrt ..gotpcrel], 'm'
+	mov byte [rel SI_PREFIX+8 wrt ..gotpcrel], 0
+	mov byte [rel SI_PREFIX+9 wrt ..gotpcrel], 'k'
+	mov byte [rel SI_PREFIX+10 wrt ..gotpcrel], 'M'
+	mov byte [rel SI_PREFIX+11 wrt ..gotpcrel], 'G'
+	mov byte [rel SI_PREFIX+12 wrt ..gotpcrel], 'T'
+	mov byte [rel SI_PREFIX+13 wrt ..gotpcrel], 'P'
+	mov byte [rel SI_PREFIX+14 wrt ..gotpcrel], 'E'
+	mov byte [rel SI_PREFIX+15 wrt ..gotpcrel], 'Z'
+	;;
+	put_real10 ten_1, 0, 0xa0000000, 0x4002
+	
+;;	mov dword [rel ten_1 wrt ..gotpcrel],0
+;;	mov dword [rel ten_1+4 wrt ..gotpcrel], 0xa0000000
+;;	mov word [rel ten_1+8 wrt ..gotpcrel], 0x4002
 
 ;;; 
 section .text align=16
@@ -149,7 +198,7 @@ global f2str_
 	pop ebp
 	ret
 %else
-	pop rbx
+	pop rbp
 	ret
 %endif
 %endm
@@ -206,7 +255,11 @@ _PowerOf10:
 ;
 ; Exit:  szTemp = the converted result.
 _FloatToBCD:	
+%ifdef _USE32_
 	push edi
+%else
+	push rdi
+%endif
 	sub esp, 10
 
   ; The fbstp instruction converts the top of the stack to a
@@ -232,7 +285,11 @@ _FloatToBCD:
 	dec ecx
 	jnz .do
 	add esp, 10
+%ifdef _USE32_
 	pop edi
+%else
+	pop rdi
+%endif
 	ret
 
 ; ; Convert a double precision number to a string.
@@ -257,10 +314,13 @@ _FloatToBCD:
 ; local prefix: BYTE ; for engineering notation
 f2str_:	
 	start_proc
-	;; 
+	;;
+%ifdef _USE32_
 	mov edi, [ebp+arg2] ; szDbl
 	mov esi, [ebp+arg1] ; fpin
 	mov eax, [ebp+arg3] ; opt
+	mov pstr, edi
+%endif
 	;; 
 	or eax, eax
 	jnz .set_format
@@ -357,7 +417,7 @@ f2str_:
 .L12a
 	mov byte [edi], al
 	mov eax, edi
-	sub eax, [ebp+arg2] ; szDbl
+	sub eax, pstr		;	[ebp+arg2] ; szDbl
 
 .return:
 	end_proc
@@ -533,7 +593,11 @@ f2str_:
 ; ; without scientific notation.
 	test dword [format], FP2A_ALLOW_ORDINARY_EXPRESSION
 	jz near .end_aoe
+%ifdef _USE32_
 	push dword [iExp]
+%else
+	push qword [iExp]
+%endif
 	mov ecx, [iExp]
 ; ; if you allow use of SI prefixes, the exponent -24 to 24 can be as
 ; ; an ordinary number with the prefix, which we call engineering notation
@@ -616,7 +680,13 @@ f2str_:
 	jmp .ftsExit
 
 .end_aoe1
+	
+%ifdef _USE32_
 	pop dword [iExp]
+%else
+	pop qword [iExp]
+%endif
+	
 .end_aoe
 
 ; ;
@@ -629,10 +699,18 @@ f2str_:
 	inc edi
 	mov ecx, [nDigit]
 	dec ecx
+%ifdef _USE32_
 	push ecx
+%else
+	push rcx
+%endif
 	shr ecx, 2
 	rep movsd
+%ifdef _USE32_
 	pop ecx
+%else
+	pop rcx
+%endif
 	and ecx, 3
 	rep movsb
 
@@ -739,7 +817,7 @@ f2str_:
 ;     fldcw [stat]  ; restore control word
 ;     fwait
 	mov eax, edi
-	sub eax, [ebp+arg2]; [szDbl]
+	sub eax, pstr		;[ebp+arg2]; [szDbl]
 
 	test dword [format], FP2A_ADJUSTR
 	jnz .adjustR
@@ -752,7 +830,7 @@ f2str_:
 	cmp eax, edx
 	jbe .doneAdjustR
 	mov ebx, eax ; return code
-	mov esi, [ebp+arg2] ; [szDbl]
+	mov esi, pstr		;[ebp+arg2] ; [szDbl]
 	mov edi, esi
 	add edi, eax
 	add esi, edx
@@ -762,7 +840,7 @@ f2str_:
 	mov ecx, edx
 	rep movsb
 	cld
-	mov edi, [ebp+arg2] ; szDbl
+	mov edi, pstr		;[ebp+arg2] ; szDbl
 	mov ecx, eax
 	mov al, 20h
 	sub ecx, edx
@@ -770,3 +848,4 @@ f2str_:
 .doneAdjustR:
 	mov eax, ebx
 	jmp .return
+

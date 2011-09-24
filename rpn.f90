@@ -247,7 +247,7 @@ contains
     integer i,k,wc
     k=0
     wc=0
-    do i=1,len_trim(s)
+    do i=1,len(s)
        select case(s(i:i))
        case(" ","\t")
           wc=wc+1
@@ -1517,9 +1517,11 @@ contains
     integer p_q1
     integer*1 c
     type(t_rpnq),pointer::q
+
     p_q1=1
     amac=.false.
     afnc=.false.
+    istat=0
 
     if(associated(rpnc%que).and.size(rpnc%que)>0) deallocate(rpnc%que)
     allocate(rpnc%que(rpnb%p_que))
@@ -2046,6 +2048,7 @@ contains
     integer p_q1
 
     call init_rpnb(formula)
+
     rpnc%opt=iand(rpnc%opt,not(RPNCOPT_SET))
 
     call init_stat()
@@ -2217,6 +2220,8 @@ contains
        btold=told
        told=t
     end do
+
+
 
     if(iand(rpnc%opt,RPNCOPT_DBG)/=0) call dump_rpnb(rpnb)
 
@@ -2410,7 +2415,7 @@ contains
 
     subroutine init_rpnb(s)
       character*(*),intent(in)::s
-      rpnb%expr=trim(adjustl(s))
+      rpnb%expr=s(1:LEN_FORMULA_MAX)
       rpnb%len_expr=strip(rpnb%expr)
       rpnb%cur_pos=0
       rpnb%old_pos=0

@@ -2,19 +2,20 @@
 #include <string.h>
 #include <stdio.h>
 
-extern int   __rpn_MOD_init_rpnc(void);
-extern int   __rpn_MOD_rpn_set_formula(int,int);
-extern int   __rpn_MOD_rpn_eval(int);
-extern void  __rpn_MOD_rpn_get_str_ans(int,int);
-extern void  __rpn_MOD_rpn_dump_rpnc(int);
+extern size_t   __rpn_MOD_init_rpnc(void);
+extern size_t   __rpn_MOD_rpn_set_formula(const size_t, const size_t);
+extern size_t   __rpn_MOD_rpn_eval(const size_t);
+extern void  __rpn_MOD_rpn_get_str_ans(const size_t, const size_t);
+extern void  __rpn_MOD_rpn_dump_rpnc(const size_t);
 
 int main(void)
 {
   int const lenf_max=1024;
   char f[lenf_max];
-  int i;
-  int p = __rpn_MOD_init_rpnc();
-  int pf=(int)&f[0];
+  size_t i;
+  size_t p = __rpn_MOD_init_rpnc();
+  size_t pf=(size_t)&f[0];
+
   do{
     printf("> ");
     if(fgets(f,lenf_max,stdin)==NULL) continue;
@@ -23,8 +24,10 @@ int main(void)
     if(i!=lenf_max-1) f[i-1]='\0';
     if(strcmp(f,"q")==0) break;
     i=__rpn_MOD_rpn_set_formula(pf,p);
+    printf("rc1=%d\n",i);
     if(i!=0) continue;
     i=__rpn_MOD_rpn_eval(p);
+    printf("rc2=%d\n",i);
     if(i!=0) continue;
     __rpn_MOD_rpn_get_str_ans(p,pf);
     printf("%s\n",f);
