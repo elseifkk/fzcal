@@ -54,88 +54,88 @@ SI_PREFIX db 'y','z','a','f','p','n','u','m' ; 9
           db 0                               ; 1
           db 'k','M','G','T','P','E','Z','Y' ; 9
 real10 dt 0.0
-;;; 
-ten1  dt 1.0e1 			; 0x 4002 a000 0000 0000 0000
-ten2  dt 1.0e2
-ten3  dt 1.0e3
-ten4  dt 1.0e4
-ten5  dt 1.0e5
-ten6  dt 1.0e6
-ten7  dt 1.0e7
-ten8  dt 1.0e8
-ten9 dt 1.0e9
-ten10 dt 1.0e10
-ten11 dt 1.0e11
-ten12 dt 1.0e12
-ten13 dt 1.0e13
-ten14 dt 1.0e14
-ten15 dt 1.0e15
-ten16 dt 1.0e16
-ten17 dt 1.0e17
-ten18 dt 1.0e18
-ten19 dt 1.0e19
-ten20 dt 1.0e20
-;;; 
+;;;;;; 
+;;;ten1  dt 1.0e1 			; 0x 4002 a000 0000 0000 0000
+;;;ten2  dt 1.0e2
+;;;ten3  dt 1.0e3
+;;;ten4  dt 1.0e4
+;;;ten5  dt 1.0e5
+;;;ten6  dt 1.0e6
+;;;ten7  dt 1.0e7
+;;;ten8  dt 1.0e8
+;;;ten9 dt 1.0e9
+;;;ten10 dt 1.0e10
+;;;ten11 dt 1.0e11
+;;;ten12 dt 1.0e12
+;;;ten13 dt 1.0e13
+;;;ten14 dt 1.0e14
+;;;ten15 dt 1.0e15
+;;;ten16 dt 1.0e16
+;;;ten17 dt 1.0e17
+;;;ten18 dt 1.0e18
+;;;ten19 dt 1.0e19
+;;;ten20 dt 1.0e20
+;;;;;; 
 ten_1 dt 1.0e1
- dt 1.0e2
- dt 1.0e3
- dt 1.0e4
- dt 1.0e5
- dt 1.0e6
- dt 1.0e7
- dt 1.0e8
- dt 1.0e9
- dt 1.0e10
- dt 1.0e11
- dt 1.0e12
- dt 1.0e13
- dt 1.0e14
- dt 1.0e15
+ten_2 dt 1.0e2
+ten_3 dt 1.0e3
+ten_4 dt 1.0e4
+ten_5 dt 1.0e5
+ten_6 dt 1.0e6
+ten_7 dt 1.0e7
+ten_8 dt 1.0e8
+ten_9 dt 1.0e9
+ten_10 dt 1.0e10
+ten_11 dt 1.0e11
+ten_12 dt 1.0e12
+ten_13 dt 1.0e13
+ten_14 dt 1.0e14
+ten_15 dt 1.0e15
 ;;; 
 ten_16 dt 1.0e16
- dt 1.0e32
- dt 1.0e48
- dt 1.0e64
- dt 1.0e80
- dt 1.0e96
- dt 1.0e112
- dt 1.0e128
- dt 1.0e144
- dt 1.0e160
- dt 1.0e176
- dt 1.0e192
- dt 1.0e208
- dt 1.0e224
- dt 1.0e240
+ten_32 dt 1.0e32
+ten_48 dt 1.0e48
+ten_64 dt 1.0e64
+ten_80 dt 1.0e80
+ten_96 dt 1.0e96
+ten_112 dt 1.0e112
+ten_128 dt 1.0e128
+ten_144 dt 1.0e144
+ten_160 dt 1.0e160
+ten_176 dt 1.0e176
+ten_192 dt 1.0e192
+ten_208 dt 1.0e208
+ten_224 dt 1.0e224
+ten_240 dt 1.0e240
 ;;; 
 ten_256 dt 1.0e256
 ; The remaining exponents are only necessary if we decide to support
 ; 10-byte doubles.  FloatToStr and StrToFloat only support 8-byte,
 ; but PowerOf10 doesn't care, so we'll include them.
- dt 1.0e512
- dt 1.0e768
- dt 1.0e1024
- dt 1.0e1280
- dt 1.0e1536
- dt 1.0e1792
- dt 1.0e2048
- dt 1.0e2304
- dt 1.0e2560
- dt 1.0e2816
- dt 1.0e3072
- dt 1.0e3328
- dt 1.0e3584
- dt 1.0e4096
- dt 1.0e4352
- dt 1.0e4608
- dt 1.0e4864
+ten_512 dt 1.0e512
+ten_768 dt 1.0e768
+ten_1024 dt 1.0e1024
+ten_1280 dt 1.0e1280
+ten_1536 dt 1.0e1536
+ten_1792 dt 1.0e1792
+ten_2048 dt 1.0e2048
+ten_2304 dt 1.0e2304
+ten_2560 dt 1.0e2560
+ten_2816 dt 1.0e2816
+ten_3072 dt 1.0e3072
+ten_3328 dt 1.0e3328
+ten_3584 dt 1.0e3584
+ten_4096 dt 1.0e4096
+ten_4352 dt 1.0e4352
+ten_4608 dt 1.0e4608
+ten_4864 dt 1.0e4864
 	
 ;;;
 section .init align=16
 %macro put_real10 4
-	mov dword [rel %1 wrt ..gotpcrel], %2
-	mov dword [rel %1+4 wrt ..gotpcrel], %3
-	mov word [rel %1+8 wrt ..gotpcrel], %4
+;;;	mov dword [rel %1 wrt ..gotpcrel], %2
+;;;	mov dword [rel %1+4 wrt ..gotpcrel], %3
+;;;	mov word [rel %1+8 wrt ..gotpcrel], %4
 %endm
 	mov qword [rel pstr wrt ..gotpcrel], 0
 	mov qword [rel szTemp wrt ..gotpcrel], 0
@@ -162,11 +162,56 @@ section .init align=16
 	mov byte [rel SI_PREFIX+15 wrt ..gotpcrel], 'Z'
 	;;
 	put_real10 ten_1, 0, 0xa0000000, 0x4002
+	put_real10 ten_1 0x00000000, 0xA0000000, 0x4002
+	put_real10 ten_2 0x00000000, 0xC8000000, 0x4005
+	put_real10 ten_3 0x00000000, 0xFA000000, 0x4008
+	put_real10 ten_4 0x00000000, 0x9C400000, 0x400C
+	put_real10 ten_5 0x00000000, 0xC3500000, 0x400F
+	put_real10 ten_6 0x00000000, 0xF4240000, 0x4012
+	put_real10 ten_7 0x00000000, 0x98968000, 0x4016
+	put_real10 ten_8 0x00000000, 0xBEBC2000, 0x4019
+	put_real10 ten_9 0x00000000, 0xEE6B2800, 0x401C
+	put_real10 ten_10 0x00000000, 0x9502F900, 0x4020
+	put_real10 ten_11 0x00000000, 0xBA43B740, 0x4023
+	put_real10 ten_12 0x00000000, 0xE8D4A510, 0x4026
+	put_real10 ten_13 0x00000000, 0x9184E72A, 0x402A
+	put_real10 ten_14 0x80000000, 0xB5E620F4, 0x402D
+	put_real10 ten_15 0xA0000000, 0xE35FA931, 0x4030
+	put_real10 ten_16 0x04000000, 0x8E1BC9BF, 0x4034
+	;;
+	put_real10 ten_32 0x2B70B59E, 0x9DC5ADA8, 0x4069
+	put_real10 ten_48 0x0E4395D7, 0xAF298D05, 0x409E
+	put_real10 ten_64 0xFFCFA6D5, 0xC2781F49, 0x40D3
+	put_real10 ten_80 0x87DAF7FC, 0xD7E77A8F, 0x4108
+	put_real10 ten_96 0xC59B14A3, 0xEFB3AB16, 0x413D
+	put_real10 ten_112 0x9923329E, 0x850FADC0, 0x4173
+	put_real10 ten_128 0x80E98CE0, 0x93BA47C9, 0x41A8
+	put_real10 ten_144 0xA8D3A6E7, 0xA402B9C5, 0x41DD
+	put_real10 ten_160 0x7FE617AA, 0xB616A12B, 0x4212
+	put_real10 ten_176 0x859BBF93, 0xCA28A291, 0x4247
+	put_real10 ten_192 0x3927556B, 0xE070F78D, 0x427C
+	put_real10 ten_208 0x37826146, 0xF92E0C35, 0x42B1
+	put_real10 ten_224 0xE33CC930, 0x8A5296FF, 0x42E7
+	put_real10 ten_240 0xD6BF1766, 0x9991A6F3, 0x431C
+	put_real10 ten_256 0x9DF9DE8E, 0xAA7EEBFB, 0x4351
+	;;
+	put_real10 ten_768 0xCD00A68C, 0x973F9CA8, 0x49F6
+	put_real10 ten_1024 0x81750C17, 0xC9767586, 0x4D48
+	put_real10 ten_1280 0xEB856ECB, 0x862C8C0E, 0x509B
+	put_real10 ten_1536 0x3993A7E4, 0xB2B8353B, 0x53ED
+	put_real10 ten_1792 0x924AB88C, 0xEE0DDD84, 0x573F
+	put_real10 ten_2048 0xC53D5DE5, 0x9E8B3B5D, 0x5A92
+	put_real10 ten_2304 0x41F4806F, 0xD32E2032, 0x5DE4
+	put_real10 ten_2560 0x20A1F0A6, 0x8CA554C0, 0x6137
+	put_real10 ten_2816 0x9BD977CC, 0xBB570A9A, 0x6489
+	put_real10 ten_3072 0xD88B5A8B, 0xF9895D25, 0x67DB
+	put_real10 ten_3328 0x5699FE45, 0xA630EF7D, 0x6B2E
+	put_real10 ten_3584 0xBF27F3F8, 0xDD5DC8A2, 0x6E80
+	put_real10 ten_4096 0x8A20979B, 0xC4605202, 0x7525
+	put_real10 ten_4352 0x7BE11CB4, 0x82C952E3, 0x7878
+	put_real10 ten_4608 0x6ED559F0, 0xAE351162, 0x7BCA
+	put_real10 ten_4864 0xB9146D6D, 0xE80B387F, 0x7F1C
 	
-;;	mov dword [rel ten_1 wrt ..gotpcrel],0
-;;	mov dword [rel ten_1+4 wrt ..gotpcrel], 0xa0000000
-;;	mov word [rel ten_1+8 wrt ..gotpcrel], 0x4002
-
 ;;; 
 section .text align=16
 
