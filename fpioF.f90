@@ -126,20 +126,20 @@ contains
 
     xx=real(x,kind=dispp)
     rtoa=""
-!#ifdef _NO_ASM_
+#ifdef _NO_ASM_
     write(rtoa,sfmt(f),iostat=istat) x
     if(istat==0) rtoa=adjustl(rtoa)
     rtoa=trim_zero(rtoa)
-!#else
-!!$    opt=FP2A_DEFAULT
-!!$    if(dispp==ep) opt=ior(opt,FP2A_INPUT_REAL10)
-!!$    len=f2str(loc(xx),loc(rtoa),opt)
-!!$    if(len>0) then
-!!$       istat=0
-!!$    else
-!!$       istat=-1
-!!$    end if
-!#endif
+#else
+    opt=FP2A_DEFAULT
+    if(dispp==ep) opt=ior(opt,FP2A_INPUT_REAL10)
+    len=f2str(loc(xx),loc(rtoa),opt)
+    if(len>0) then
+       istat=0
+    else
+       istat=-1
+    end if
+#endif
     if(present(ok)) ok=(istat==0)
   end function rtoa
   

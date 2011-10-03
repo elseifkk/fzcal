@@ -47,8 +47,8 @@ stop
      case(CID_DEL_F)
      end select
      
-     istat=rpn_set_formula(loc(str),loc(rpnc))
-!     istat=parse_formula(str,rpnc,drpnb)
+!     istat=rpn_set_formula(loc(str),loc(rpnc))
+     istat=parse_formula(str,rpnc)
 
      if(istat>0) then
         write(*,*)  "*** parse_formula failed: code = ",istat
@@ -59,8 +59,9 @@ stop
            call dump_rpnc(rpnc)
         end if
         
-        istat=rpn_eval(loc(rpnc))
-        
+!        istat=rpn_eval(loc(rpnc))
+        istat=eval(rpnc)
+
         if(istat/=0) then
            write(*,*) "*** rpn_eval failed: code = ",istat
            call dump_rpnc(rpnc)
