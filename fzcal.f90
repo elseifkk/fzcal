@@ -15,9 +15,6 @@ program fzcal
   integer*8 aaa
   p=init_rpnc()
 
-  write(*,*) itoa(123)
-stop
-
   do
      rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DBG))
      write(*,10) "> "

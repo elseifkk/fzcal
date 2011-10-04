@@ -66,6 +66,9 @@ ten_12 dt 1.0e12
 ten_13 dt 1.0e13
 ten_14 dt 1.0e14
 ten_15 dt 1.0e15
+ten16  dt 1.0e16		; for checking
+ten17  dt 1.0e17		; results of
+ten18  dt 1.0e18		; PowerOf10
 ;;; 
 ten_16  dt 1.0e16
 ten_32  dt 1.0e32
@@ -204,6 +207,12 @@ section .init
 section .text align=16
 
 global f2str_
+
+;;; DEBUG
+%assign arg1 08
+%assign arg2 12
+%assign arg3 16
+;;; end DEBUG
 	
 %macro start_proc 0
 %ifdef _USE32_
@@ -255,7 +264,7 @@ _PowerOf10:
 %ifdef _USE32_
 	fld tword [ten_1+edx*2-10]
 %else
-	lea rbx, [rel ten_1 wrt ..gotpcrel]
+	;; 	lea rbx, [rel ten_1 wrt ..gotpcrel]
 	fld tword [rbx]
 %endif
 	fmulp st1, st0
@@ -376,23 +385,18 @@ _FloatToBCD:
 ; local nDigit: DWORD ; number of significant digit
 ; local prefix: BYTE ; for engineering notation
 f2str_:	
-	start_proc
+	push ebp
+	mov ebp, esp
+	push edi
+	push esi
+	push ebx
+	;; 	start_proc
 	;; 
-lea rax, [rel ten_1 wrt ..gotpcrel]
-mov rax, [rax]
-lea rax, [rel ten_16 wrt ..gotpcrel]
-mov rax, [rax]
-lea rax, [rel ten_256 wrt ..gotpcrel]
-mov rax, [rax]
-
-
-
-
 %ifdef _USE32_
 	mov esi, [ebp+arg1] ; fpin	
 	mov edi, [ebp+arg2] ; szDbl
 	mov eax, [ebp+arg3] ; opt
-	mov pstr, edi
+	mov dword [pstr], edi
 %else
 	;; rdi rsi rdx
 	mov rax, rdx		; opt
@@ -545,7 +549,7 @@ mov rax, [rax]
         mov byte [edi], 0x2E
         inc edi
         mov ecx, dword [format]
-%elseif
+%else
         mov byte [rdi], 0x2E
         inc rdi
         mov ecx, dword [rel format wrt ..gotpcrel]
@@ -742,10 +746,10 @@ mov rax, [rax]
 ; ; algebra realize that log2(fpin) x log10(2) = log10(fpin), which is
 ; ; what we want.
 
-	fxtract   ; ST=> mantissa, exponent, fpin
-	fstp st0   ; drop the mantissa
-	fldlg2   ; push log10(2)
-	fmulp st1, st0  ; ST = log10(fpin), fpin
+	fxtract             ; ST=> mantissa, exponent, fpin
+	fstp st0            ; drop the mantissa
+	fldlg2              ; push log10(2)
+	fmulp st1, st0      ; ST = log10(fpin), fpin
 %ifdef _USE32_
 	fistp dword [iExp]  ; ST = fpin
 %else
@@ -770,8 +774,8 @@ mov rax, [rax]
 	cmp dword [rel iExp wrt ..gotpcrel], 18
 %endif
 	jae .end_cmp_iexp_18
-	fld st0   ; ST = fpin, fpin
-	frndint   ; ST = int(fpin), fpin
+	fld st0    ; ST = fpin, fpin
+	frndint    ; ST = int(fpin), fpin
 	fcomp st1  ; ST = fpin, status set
 	fstsw ax
 	test ah, FP_EQUALTO
@@ -823,36 +827,36 @@ mov rax, [rax]
 ; ; We use the format [-]d.ddddddE+ddd.  That means we only need a maximum
 ; ; of NUMBER_OF_DIGIT decimal places.  Let's have fbstp do our rounding for us.
 %ifdef _USE32_
-	mov eax, dword [format]      ; X07h
+	mov eax, dword [format]
 %else
 	mov eax, dword [rel format wrt ..gotpcrel]
 %endif
-	and eax, 0x0FF
+	and eax, 0x0FF		; eax = 18
 	cmp al, FP2A_MAXIMUM_DIGIT
 	ja near .ftsExit
 	cmp al, FP2A_MINIMUM_DIGIT
 	jb near .ftsExit
-	mov esi, eax
-	sub esi, 2
+	mov esi, eax		; esi = 18
+	sub esi, 2		; esi = 16
 %ifdef _USE32_
-	mov dword [nDigit], eax
+	mov dword [nDigit], eax	; nDigit = 18
 %else
 	mov dword [rel nDigit wrt ..gotpcrel], eax
 %endif
-	add esi, esi
+	add esi, esi		; esi = 16*2
 	jz .L30
-	lea esi, [esi+esi*4]
+	lea esi, [esi+esi*4]	; esi = 16*10
 %ifdef _USE32_
-	mov ebx, ten_1
-	add ebx, esi
+	mov ebx, ten_1		; ebx = ptr ten_1
+	add ebx, esi		; ebx = ptr ten_1 + 16*10
 %else
 	lea rbx, [rel ten_1 wrt ..gotpcrel]
 	add rbx, rsi	
 %endif
 .L30:	
-	dec eax
+	dec eax			; 17
 %ifdef _USE32_
-	sub eax, [iExp]       ; adjust exponent to NUMBER_OF_DIGIT
+	sub eax, [iExp]         ; adjust exponent to NUMBER_OF_DIGIT
 %else
 	sub eax, [rel iExp wrt ..gotpcrel]
 %endif
@@ -987,7 +991,6 @@ mov rax, [rax]
 ; ;
 ; ; We need to copy ecx+1 digits, then a decimal point (maybe), then
 ; ; the remaining 6-ecx digits.  If exponent is 0, add a leading 0.
-
 	cmp ecx, -1
 	jne .L27
 %ifdef _USE32_
@@ -1294,7 +1297,7 @@ mov rax, [rax]
 %ifdef _USE32_
 	mov byte [edi], al
 	mov eax, edi
-	sub eax, dowrd [pstr]
+	sub eax, dword [pstr]
 	test dword [format], FP2A_ADJUSTR
 %else
 	mov byte [rdi], al

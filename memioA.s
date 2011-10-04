@@ -10,8 +10,12 @@ str_buf dd 0
 ;;; 
 section .text align=16
 global mcp_
+%ifdef _USE32_
 global dw2str_
-
+%else
+global qw2str_
+%endif
+	
 %macro start_proc 0
 %ifdef _USE32_
 %assign arg1 08
@@ -22,7 +26,6 @@ global dw2str_
 	push edi
 	push esi
 	push ebx
-	;; 
 %else
 	push rbp
 	mov rbp, rsp
@@ -37,7 +40,6 @@ global dw2str_
 	pop ebp
 	ret
 %else
-	mov rsp, rbp
 	pop rbp
 	ret
 %endif
@@ -78,13 +80,10 @@ mcp_:
 %endif	
 	end_proc
 	
-;;; 
+;;;
+
 %macro div10m 0
-%ifdef _USE32_
 	push eax
-%else
-	push rax
-%endif
 ;;-------------------; x*0.11b
 	shr eax, 1   ; x*0.1b
 	mov ebx, eax ;
@@ -109,11 +108,7 @@ mcp_:
 %%.next:             ;
 	shr eax, 3   ; x*0.000110011001100110011001100110011b (34 bit)
 ;-------------------------------;
-%ifdef _USE32_	                ;
 	pop edx	                ; this method evaluates [a/10] or [a/10]-1. we have to
-%else				;
-	pop rdx			;
-%endif				;
 	mov ecx, eax            ; examine which one is obtained by calculating remainder of them
 	lea eax, [eax+eax*4]	;
 	add eax, eax		;
@@ -128,16 +123,16 @@ mcp_:
 %%.exit:          		;
 	mov eax, ecx		;
 %endm
-
+	
+%ifdef _USE32_
 dw2str_:
 ;;      integer function dw2str(dw,pstr)
-%assign D2STR_BUFFER_SIZE 16
-	start_proc
+%assign D2STR_BUFFER_SIZE 11
+ 	start_proc
 	;;
-%ifdef _USE32_
-	lea edi, [rel str_buf wrt ..gotpcrel] ; edi = ptr str_buf
+	lea edi, [str_buf]                    ; edi = ptr str_buf
 	mov esi, edi                          ; esi = ptr str_buf
- 	mov eax, [ebp+arg1]
+	mov eax, [ebp+arg1]
 	and eax, 0x7FFFFFFF		      ; eax = positive i
 	;; 
 	add edi, D2STR_BUFFER_SIZE-1
@@ -168,17 +163,20 @@ dw2str_:
 	rep movsb
 	;; 
 .exit
-	end_proc
+ 	end_proc
 	;; 
 .putminus:
 	mov byte [edi], "-"
 	inc edi
 	inc eax
 	jmp .cont
-
 %else
+qw2str_:
+%assign D2STR_BUFFER_SIZE 21
+	start_proc
+	;; 
  	mov rax, rdi			; rax  = a
-	and eax, 0x7FFFFFFF		; eax = positive i
+	and rax, 0x7FFFFFFFFFFFFFFF	; eax = positive i
 	push rax			; save dw
 	push rsi			; save pstr
 	;; 
@@ -187,17 +185,18 @@ dw2str_:
 	;; 
 	add rdi, D2STR_BUFFER_SIZE-1
 	mov [rdi], byte 30h
-	or eax, eax         
+	or rax, rax         
 	jz .cpbuf
 	inc rdi             
 	;; 
 .L10:
-       	div10m
-	add edx, 0x30       
+	xor rdx, rdx
+       	div 10
+	add rdx, 0x30       
 	dec rdi             
 	mov [rdi], BYTE dl  
 .L20:               
-	or eax, eax         
+	or rax, rax         
 	jnz .L10          
 .cpbuf:
 	mov rcx, rsi                    ;
@@ -206,8 +205,8 @@ dw2str_:
 	mov rsi, rdi
 	pop rdi			        ; restore pstr
 	pop rdx			        ; restore dw
-	mov eax, ecx			; return code = len str
-	cmp edx, 0
+	mov rax, rcx			; return code = len str
+	cmp rdx, 0
 	jl .putminus
 .cont:	
 	rep movsb
@@ -218,7 +217,7 @@ dw2str_:
 .putminus:
 	mov byte [rdi], "-"
 	inc rdi
-	inc eax
+	inc rax
 	jmp .cont
 
 %endif
