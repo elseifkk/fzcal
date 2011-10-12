@@ -1,7 +1,14 @@
+%undef _REL_
 %ifdef _USE32_
-BITS 32
+	BITS 32
 %else
-BITS 64
+	BITS 64
+	%ifdef _DYNAMIC_
+		%define _REL_
+		%define ADDR(x) rel (x) wrt ..gotpcrel
+	%else
+		%define ADDR(x) (x)
+	%endif
 %endif
 
 ; parameters to set format for fptoa proc
@@ -30,7 +37,8 @@ FP2A_SUPRESS_E0 | \
 FP2A_TRIM_TRAILING_ZEROS
 
 section .bss align=16
-%ifndef _USE32_
+
+%ifdef _REL_
 ten_1   resb 16*15
 ten_16  resb 16*15
 ten_256 resb 16*18
@@ -45,12 +53,12 @@ prefix	resq 1
 szTemp  resb 32
 tmpreal resb 16
 
-%ifndef _USE32_
+%ifdef _REL_
 SI_PREFIX resb 32
 %endif
 
 section .data align=16
-%ifdef _USE32_
+%ifndef _REL_
 ten_1  dt 1.0e1
 ten_2  dt 1.0e2
 ten_3  dt 1.0e3
@@ -110,7 +118,7 @@ SI_PREFIX db 'y','z','a','f','p','n','u','m' ; 9
           db 'k','M','G','T','P','E','Z','Y' ; 9
 %endif
 	
-%ifndef _USE32_
+%ifdef _REL_
 section .init
 
 %macro put_real10 5
@@ -264,8 +272,7 @@ _PowerOf10:
 %ifdef _USE32_
 	fld tword [ten_1+edx*2-10]
 %else
-	;; 	lea rbx, [rel ten_1 wrt ..gotpcrel]
-	fld tword [rbx]
+	fld tword [ADDR(ten_1+rdx*2-10)]	
 %endif
 	fmulp st1, st0
 .L2
@@ -277,7 +284,7 @@ _PowerOf10:
 %ifdef _USE32_
 	fld tword [ten_16+edx*2-10]
 %else
-	fld tword [rel ten_16+rdx*2-10 wrt ..gotpcrel]
+	fld tword [ADDR(ten_16+rdx*2-10)]
 %endif
 	fmulp st1, st0
 .L3
@@ -288,7 +295,7 @@ _PowerOf10:
 %ifdef _USE32_
 	fld tword [ten_256+edx*2-10]
 %else
-	fld tword [rel ten_256+rdx*2-10 wrt ..gotpcrel]
+	fld tword [ADDR(ten_256+rdx*2-10)]
 %endif
 	fmulp st1, st0
 .L4
@@ -331,7 +338,7 @@ _FloatToBCD:
 	mov edi, szTemp
 %else
 	lea rsi, [rsp+8]
-	lea rdi, [rel szTemp wrt ..gotpcrel]
+	lea rdi, [ADDR(szTemp)]
 %endif
 	mov ecx, 9
 .do
@@ -385,12 +392,7 @@ _FloatToBCD:
 ; local nDigit: DWORD ; number of significant digit
 ; local prefix: BYTE ; for engineering notation
 f2str_:	
-	push ebp
-	mov ebp, esp
-	push edi
-	push esi
-	push ebx
-	;; 	start_proc
+ 	start_proc
 	;; 
 %ifdef _USE32_
 	mov esi, [ebp+arg1] ; fpin	
@@ -410,7 +412,7 @@ f2str_:
 %ifdef _USE32_
 	mov dword [format], FP2A_DEFAULT
 %else
-	mov dword [rel format wrt ..gotpcrel], FP2A_DEFAULT
+	mov dword [ADDR(format)], FP2A_DEFAULT
 %endif
 	jmp .begin
 
@@ -418,7 +420,7 @@ f2str_:
 %ifdef _USE32_
 	mov [format], eax
 %else
-	mov [rel format wrt ..gotpcrel], eax
+	mov [ADDR(format)], eax
 %endif
 	test eax, FP2A_INPUT_REAL4
 	jz .begin
@@ -428,7 +430,7 @@ f2str_:
 	fstp qword [esi]
 %else
 	fld dword [rsi]
-	lea rsi, [rel tmpreal wrt ..gotpcrel]
+	lea rsi, [ADDR(tmpreal)]
 	fstp qword [rsi]
 %endif
 	
@@ -443,7 +445,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_INPUT_REAL10
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_INPUT_REAL10
+	test dword [ADDR(format)], FP2A_INPUT_REAL10
 %endif
 	jne .L2
 %ifdef _USE32_
@@ -487,7 +489,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_INPUT_REAL10
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_INPUT_REAL10	
+	test dword [ADDR(format)], FP2A_INPUT_REAL10	
 %endif
 	je .L7
 %ifdef _USE32_
@@ -506,7 +508,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_FORCE_SHOW_SIGN
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_FORCE_SHOW_SIGN
+	test dword [ADDR(format)], FP2A_FORCE_SHOW_SIGN
 %endif	
 	jz .L9
 %ifdef _USE32_
@@ -525,13 +527,13 @@ f2str_:
 %else
 	mov byte [rdi], 0x30
 	inc rdi
-	test dword [rel format wrt ..gotpcrel], FP2A_ALLOW_ORDINARY_EXPRESSION	
+	test dword [ADDR(format)], FP2A_ALLOW_ORDINARY_EXPRESSION	
 %endif
 	jnz .L10
 %ifdef _USE32_
 	test dword [format], FP2A_TRIM_TRAILING_ZEROS
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_TRIM_TRAILING_ZEROS
+	test dword [ADDR(format)], FP2A_TRIM_TRAILING_ZEROS
 %endif
 	jz .L11
 %ifdef _USE32_
@@ -552,7 +554,7 @@ f2str_:
 %else
         mov byte [rdi], 0x2E
         inc rdi
-        mov ecx, dword [rel format wrt ..gotpcrel]
+        mov ecx, dword [ADDR(format)]
 %endif
         mov edx, ecx
         and ecx, 0x0FF
@@ -563,7 +565,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_ALLOW_ORDINARY_EXPRESSION | FP2A_SUPRESS_E0
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_ALLOW_ORDINARY_EXPRESSION | FP2A_SUPRESS_E0	
+	test dword [ADDR(format)], FP2A_ALLOW_ORDINARY_EXPRESSION | FP2A_SUPRESS_E0	
 %endif
 	jnz .L10
 %ifdef _USE32_
@@ -573,7 +575,7 @@ f2str_:
 %else
         mov byte [rdi], 0x65 ; e
         inc rdi
-	test dword [rel format wrt ..gotpcrel], FP2A_FORCE_NOT_SHOW_EXPSIGN
+	test dword [ADDR(format)], FP2A_FORCE_NOT_SHOW_EXPSIGN
 %endif
 	jnz .L11a
 %ifdef _USE32_
@@ -596,7 +598,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_NULLTERM
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_NULLTERM	
+	test dword [ADDR(format)], FP2A_NULLTERM	
 %endif
 	jz .L11b
         xor al, al
@@ -612,7 +614,7 @@ f2str_:
 %else
 	mov byte [rdi], al
 	mov rax, rdi
-	sub rax, qword [rel pstr wrt ..gotpcrel]
+	sub rax, qword [ADDR(pstr)]
 %endif
 .return:
 	end_proc
@@ -623,7 +625,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_INPUT_REAL10
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_INPUT_REAL10	
+	test dword [ADDR(format)], FP2A_INPUT_REAL10	
 %endif
 	jz .L13
 %ifdef _USE32_
@@ -673,7 +675,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_FORCE_SHOW_SIGN
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_FORCE_SHOW_SIGN
+	test dword [ADDR(format)], FP2A_FORCE_SHOW_SIGN
 %endif
 	jz .L16
 %ifdef _USE32_
@@ -695,7 +697,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_INPUT_REAL10
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_INPUT_REAL10
+	test dword [ADDR(format)], FP2A_INPUT_REAL10
 %endif
 	jz .L20
 	;; Sep 12, 2011
@@ -709,7 +711,7 @@ f2str_:
 	fld tword [esi]
 %else
 	fld tword [rsi]
-	lea rsi, [rel tmpreal wrt ..gotpcrel]
+	lea rsi, [ADDR(tmpreal)]
 	fstp tword [rsi]
 	or dword [rsi+4],0x80000000
 	fld tword [rsi]	
@@ -753,7 +755,7 @@ f2str_:
 %ifdef _USE32_
 	fistp dword [iExp]  ; ST = fpin
 %else
-	fistp dword [rel iExp wrt ..gotpcrel]
+	fistp dword [ADDR(iExp)]
 %endif
 ; ; An 8-byte double can carry almost 16 digits of precision.  Actually, it's
 ; ; 15.9 digits, so some numbers close to 1E17 will be wrong in the bottom
@@ -765,13 +767,13 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_ALLOW_INTEGER_EXPRESSION
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_ALLOW_INTEGER_EXPRESSION
+	test dword [ADDR(format)], FP2A_ALLOW_INTEGER_EXPRESSION
 %endif
 	je .end_aie
 %ifdef _USE32_
 	cmp dword [iExp], 18
 %else
-	cmp dword [rel iExp wrt ..gotpcrel], 18
+	cmp dword [ADDR(iExp)], 18
 %endif
 	jae .end_cmp_iexp_18
 	fld st0    ; ST = fpin, fpin
@@ -789,14 +791,14 @@ f2str_:
 %ifdef _USE32_
 	mov ecx, [iExp]
 %else
-	mov ecx, [rel iExp wrt ..gotpcrel]
+	mov ecx, [ADDR(iExp)]
 %endif
 	sub eax, ecx
 	inc ecx
 %ifdef _USE32_
 	lea esi, [szTemp+eax]
 %else
-	lea rsi, [rel szTemp+rax wrt ..gotpcrel]	
+	lea rsi, [ADDR(szTemp+rax)]	
 %endif
 ; ; The off-by-one order of magnitude problem below can hit us here.
 ; ; We just trim off the possible leading zero.
@@ -829,7 +831,7 @@ f2str_:
 %ifdef _USE32_
 	mov eax, dword [format]
 %else
-	mov eax, dword [rel format wrt ..gotpcrel]
+	mov eax, dword [ADDR(format)]
 %endif
 	and eax, 0x0FF		; eax = 18
 	cmp al, FP2A_MAXIMUM_DIGIT
@@ -841,7 +843,7 @@ f2str_:
 %ifdef _USE32_
 	mov dword [nDigit], eax	; nDigit = 18
 %else
-	mov dword [rel nDigit wrt ..gotpcrel], eax
+	mov dword [ADDR(nDigit)], eax
 %endif
 	add esi, esi		; esi = 16*2
 	jz .L30
@@ -850,7 +852,7 @@ f2str_:
 	mov ebx, ten_1		; ebx = ptr ten_1
 	add ebx, esi		; ebx = ptr ten_1 + 16*10
 %else
-	lea rbx, [rel ten_1 wrt ..gotpcrel]
+	lea rbx, [ADDR(ten_1)]
 	add rbx, rsi	
 %endif
 .L30:	
@@ -858,7 +860,7 @@ f2str_:
 %ifdef _USE32_
 	sub eax, [iExp]         ; adjust exponent to NUMBER_OF_DIGIT
 %else
-	sub eax, [rel iExp wrt ..gotpcrel]
+	sub eax, [ADDR(iExp)]
 %endif
 	call _PowerOf10
 
@@ -880,13 +882,13 @@ f2str_:
 %ifdef _USE32_
 	fld tword [ten_1]
 %else
-	fld tword [rel ten_1 wrt ..gotpcrel]
+	fld tword [ADDR(ten_1)]
 %endif
 	fmulp st1, st0
 %ifdef _USE32_
 	dec dword [iExp]	
 %else
-	dec dword [rel iExp wrt ..gotpcrel]
+	dec dword [ADDR(iExp)]
 %endif
 
 .L40:	
@@ -897,9 +899,9 @@ f2str_:
 	sub esi, [nDigit]    ;
 	cmp dword [nDigit], FP2A_MAXIMUM_DIGIT
 %else
-	lea rsi, [rel szTemp+18 wrt ..gotpcrel] ; point to converted buffer
-	sub rsi, [rel nDigit wrt ..gotpcrel]    ;
-	cmp dword [rel nDigit wrt ..gotpcrel], FP2A_MAXIMUM_DIGIT	
+	lea rsi, [ADDR(szTemp+18)] ; point to converted buffer
+	sub rsi, [ADDR(nDigit)]    ;
+	cmp dword [ADDR(nDigit)], FP2A_MAXIMUM_DIGIT	
 %endif
 	je .L41
 %ifdef _USE32_
@@ -913,7 +915,7 @@ f2str_:
 	inc dword [iExp]
 %else
 	dec rsi
-	inc dword [rel iExp wrt ..gotpcrel]
+	inc dword [ADDR(iExp)]
 %endif
 
 .L41:	
@@ -923,15 +925,15 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_ALLOW_ORDINARY_EXPRESSION
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_ALLOW_ORDINARY_EXPRESSION
+	test dword [ADDR(format)], FP2A_ALLOW_ORDINARY_EXPRESSION
 %endif
 	jz near .end_aoe
 %ifdef _USE32_
 	push dword [iExp]
 	mov ecx, [iExp]
 %else
-	push qword [rel iExp wrt ..gotpcrel]
-	mov ecx, dword [rel iExp wrt ..gotpcrel]
+	push qword [ADDR(iExp)]
+	mov ecx, dword [ADDR(iExp)]
 %endif
 
 ; ; if you allow use of SI prefixes, the exponent -24 to 24 can be as
@@ -940,8 +942,8 @@ f2str_:
 	mov byte [prefix], 0
 	test dword [format], FP2A_ALLOW_ENGINEERING_NOTATION
 %else
-	mov byte [rel prefix wrt ..gotpcrel], 0
-	test dword [rel format wrt ..gotpcrel], FP2A_ALLOW_ENGINEERING_NOTATION	
+	mov byte [ADDR(prefix)], 0
+	test dword [ADDR(format)], FP2A_ALLOW_ENGINEERING_NOTATION	
 %endif
 	jz .end_aen
 	mov eax, ecx
@@ -960,27 +962,27 @@ f2str_:
 %ifdef _USE32_
 	mov [iExp], edx
 %else
-	mov [rel iExp wrt ..gotpcrel], edx
+	mov [ADDR(iExp)], edx
 %endif
 	add eax, 8
 %ifdef _USE32_
 	mov ebx, SI_PREFIX
 %else
-	lea rbx, [rel SI_PREFIX wrt ..gotpcrel]
+	lea rbx, [ADDR(SI_PREFIX)]
 %endif
 	xlatb
 %ifdef _USE32_
 	mov byte [prefix], al
 %else
-	mov byte [rel prefix wrt ..gotpcrel], al
+	mov byte [ADDR(prefix)], al
 %endif
 .end_aen
 %ifdef _USE32_
 	mov ecx, [iExp]
 	mov edx, [format]
 %else
-	mov ecx, [rel iExp wrt ..gotpcrel]
-	mov edx, [rel format wrt ..gotpcrel]
+	mov ecx, [ADDR(iExp)]
+	mov edx, [ADDR(format)]
 %endif
 	and edx, 0x0FF
 	dec dl
@@ -1011,7 +1013,7 @@ f2str_:
 %else
 	mov byte [rdi], 0x2E	; "."
 	inc rdi
-	sub ecx, dword [rel iExp wrt ..gotpcrel]	
+	sub ecx, dword [ADDR(iExp)]	
 %endif
 	rep movsb
 
@@ -1019,7 +1021,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_TRIM_TRAILING_ZEROS
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_TRIM_TRAILING_ZEROS
+	test dword [ADDR(format)], FP2A_TRIM_TRAILING_ZEROS
 %endif	
 	jz .L28
 .L29:
@@ -1059,7 +1061,7 @@ f2str_:
 %ifdef _USE32_
 	cmp byte [prefix], 0
 %else
-	cmp byte [rel prefix wrt ..gotpcrel], 0
+	cmp byte [ADDR(prefix)], 0
 %endif
 	je .L2B
 %ifdef _USE32_
@@ -1067,7 +1069,7 @@ f2str_:
         mov byte [edi], al
         inc edi
 %else
-        mov al, byte [rel prefix wrt ..gotpcrel]
+        mov al, byte [ADDR(prefix)]
         mov byte [rdi], al
         inc rdi	
 %endif
@@ -1085,7 +1087,7 @@ f2str_:
 %ifdef _USE32_
 	pop dword [iExp]
 %else
-	pop qword [rel iExp wrt ..gotpcrel]
+	pop qword [ADDR(iExp)]
 %endif
 	
 .end_aoe
@@ -1103,7 +1105,7 @@ f2str_:
 %else
 	mov byte [rdi], 0x2E  ; plop in a decimal point
 	inc rdi
-	mov ecx, [rel nDigit wrt ..gotpcrel]
+	mov ecx, [ADDR(nDigit)]
 %endif
 	dec ecx
 %ifdef _USE32_
@@ -1127,7 +1129,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_TRIM_TRAILING_ZEROS
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_TRIM_TRAILING_ZEROS
+	test dword [ADDR(format)], FP2A_TRIM_TRAILING_ZEROS
 %endif
 	jz .L50
 .L51
@@ -1149,7 +1151,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_TRIM_ALL_TRAILING_ZEROS
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_TRIM_ALL_TRAILING_ZEROS
+	test dword [ADDR(format)], FP2A_TRIM_ALL_TRAILING_ZEROS
 %endif
 	jnz .L50
 %ifdef _USE32_
@@ -1173,8 +1175,8 @@ f2str_:
 	mov eax, [iExp]
 	test dword [format], FP2A_SUPRESS_E0
 %else
-	mov eax, [rel iExp wrt ..gotpcrel]
-	test dword [rel format wrt ..gotpcrel], FP2A_SUPRESS_E0	
+	mov eax, [ADDR(iExp)]
+	test dword [ADDR(format)], FP2A_SUPRESS_E0	
 %endif
 	jz .L52
 	or eax, eax
@@ -1200,7 +1202,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_FORCE_NOT_SHOW_EXPSIGN
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_FORCE_NOT_SHOW_EXPSIGN
+	test dword [ADDR(format)], FP2A_FORCE_NOT_SHOW_EXPSIGN
 %endif
 	jnz .L54
 %ifdef _USE32_
@@ -1219,7 +1221,7 @@ f2str_:
 %ifdef _USE32_
 	mov ebx, dword [format]
 %else
-	mov ebx, dword [rel format wrt ..gotpcrel]
+	mov ebx, dword [ADDR(format)]
 %endif
 	and ebx, FP2A_KEEP_LEADING_ZEROS
 	shr ebx, 12 ; 0 if remove leading zeros
@@ -1284,7 +1286,7 @@ f2str_:
 %ifdef _USE32_
 	test dword [format], FP2A_NULLTERM
 %else
-	test dword [rel format wrt ..gotpcrel], FP2A_NULLTERM
+	test dword [ADDR(format)], FP2A_NULLTERM
 %endif
 	jz .L60
 	xor al, al
@@ -1303,7 +1305,7 @@ f2str_:
 	mov byte [rdi], al
 	mov rax, rdi
 	sub rax, qword [rel pstr wrt ..gotpcrel]
-	test dword [rel format wrt ..gotpcrel], FP2A_ADJUSTR
+	test dword [ADDR(format)], FP2A_ADJUSTR
 %endif
 	jnz .adjustR
 
@@ -1313,7 +1315,7 @@ f2str_:
 %ifdef _USE32_
 	mov eax, [format]
 %else
-	mov eax, [rel format wrt ..gotpcrel]
+	mov eax, [ADDR(format)]
 %endif
 	shr eax, 28
 	cmp eax, edx
@@ -1327,7 +1329,7 @@ f2str_:
 	dec esi
 	dec edi
 %else
-	mov rsi, qword [rel pstr wrt ..gotpcrel]
+	mov rsi, qword [ADDR(pstr)]
 	mov rdi, rsi
 	add rdi, rax
 	add rsi, rdx
@@ -1341,7 +1343,7 @@ f2str_:
 %ifdef _USE32_
 	mov edi, dword [pstr]
 %else
-	mov rdi, qword [rel pstr wrt ..gotpcrel]
+	mov rdi, qword [ADDR(pstr)]
 %endif
 	mov ecx, eax
 	mov al, 20h

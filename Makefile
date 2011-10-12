@@ -1,35 +1,39 @@
-BINTARG = fzcal
-ALIBTARG = libfzcal.a 
+BINTARG   = fzcal
+ALIBTARG  = libfzcal.a 
 SOLIBTARG = libfzcal.so.0.0.0
-SONAME = libfzcal.so.0
+SONAME    = libfzcal.so.0
+SOFILE    = libfzcal.so
 
+#
 LIBDIR = /usr/local/lib
 BINDIR = /usr/local/bin
 INCDIR = /usr/local/include
 
 #
-FC  = /usr/local/bin/gfortran
-CC  = /usr/local/bin/gcc
-LD  = /usr/local/bin/gfortran
+FC  = /usr/local/bin/gfortran46
+CC  = /usr/local/bin/gcc46
+LD  = /usr/local/bin/gfortran46
 ASM = yasm
 AR  = ar
 
 #
 CFLAGS = -c -Wall
-FFLAGS = -c -Wall -cpp -fbounds-check\
- -fcray-pointer -fbackslash\
+FFLAGS = -c -Wall -cpp -fbounds-check \
+ -fcray-pointer -fbackslash \
  -g -fPIC
-AFLAGS = -g stabs
+AFLAGS  = -g stabs
 ARFLAGS = rv
-LDFLAGS=-L/usr/local/lib
+LDFLAGS = -L/usr/local/lib -L/usr/local/lib/gcc46
 SOFLAGS = -shared -Wl,-soname,$(SONAME)
 
-LD_RUN_PATH=/usr/local/lib
-LD_LIBRARY_PATH=/usr/local/lib
+LD_RUN_PATH     = /usr/local/lib /usr/local/lib/gcc46
+LD_LIBRARY_PATH = /usr/local/lib /usr/local/lib/gcc46
 
+#
 .ifdef _NETWALKER_
     FFLAGS += -D_NO_REAL10_ -D_NO_REAL16_ -D_NO_ASM_ -D_USE32_
     OBJ = memioF.o fpioF.o slist.o plist.o zmath.o rpn.o com.o
+    SOLIBOBJ = $(OBJ)
 .else
     USE64 != uname -m | grep -e x86_64 -e amd64 | wc -c
 .   if( $(USE64) == 0 )
@@ -39,11 +43,14 @@ LD_LIBRARY_PATH=/usr/local/lib
         FFLAGS += -fdefault-integer-8
         AFLAGS += -f elf64 -m amd64
 .   endif
-    OBJ = memioA.o memioF.o fpioA.o fpioF.o slist.o plist.o zmath.o rpn.o com.o
+    OBJ      = memioA.o memioF.o fpioA.o fpioF.o slist.o plist.o zmath.o rpn.o com.o
+    SOLIBOBJ = memioA-d.o memioF.o fpioA-d.o fpioF.o slist.o plist.o zmath.o rpn.o com.o
 .endif
 
-LIBOBJ = $(OBJ) fzc.o
-BINOBJ = $(OBJ) fzcal.o
+#
+ALIBOBJ  = $(OBJ) fzc.o
+SOLIBOBJ += fzc.o
+BINOBJ   = $(OBJ) fzcal.o
 
 #
 .PHONY: clean all install install-lib install-bin
@@ -51,7 +58,7 @@ BINOBJ = $(OBJ) fzcal.o
 .SUFFIXES:
 .SUFFIXES: .o .s .f90 .mod .c
 
-all: $(ALIBTARG) $(SOLIBTARG) $(BINTARG)
+ all: $(ALIBTARG) $(SOLIBTARG) $(BINTARG)
 
 .s.o:
 	$(ASM) $(AFLAGS) $<
@@ -65,26 +72,33 @@ all: $(ALIBTARG) $(SOLIBTARG) $(BINTARG)
 .f90.mod:
 	$(FC) $(FFLAGS) $<
 
-$(ALIBTARG): $(LIBOBJ)
+fpioA-d.o: fpioA.s
+	$(ASM) $(AFLAGS) -D_DYNAMIC_ $(.ALLSRC) -o $@
+
+memioA-d.o: memioA.s
+	$(ASM) $(AFLAGS) -D_DYNAMIC_ $(.ALLSRC) -o $@
+
+$(ALIBTARG): $(ALIBOBJ)
 	$(AR) $(ARFLAGS) $@ $(.ALLSRC)
 
-$(SOLIBTARG): $(LIBOBJ)
+$(SOLIBTARG): $(SOLIBOBJ)
 	$(LD) $(LDFLAGS) $(SOFLAGS) -o $@ $(.ALLSRC)
 
 fzcal: $(BINOBJ)
 	$(FC) $(LDFLAGS) $(.ALLSRC) -o $@
 
-test: test_rpn.o
-	gcc -g -Wall -L/usr/local/lib -lfzcal  $(.ALLSRC) -o $@
+test: test_fzcal.o libfzcal.a
+	gcc -g -Wall -L./ -L/usr/local/lib/gcc46 -lgfortran $(.ALLSRC) -o $@ libfzcal.a
 
 install: install-lib install-bin
 
 install-lib: $(ALIBTARG) $(SOLIBTARG) 
-	cp -pf $(.ALLSRC) $(LIBDIR)
+	ln -sf $(SOLIBTARG) $(SOFILE)
+	cp -pf $(.ALLSRC) $(SOFILE) $(LIBDIR) 
 	cp -pf fzc.h $(INCDIR)
 
 install-bin: $(BINTARG)
 	cp -pf $(.ALLSRC) $(BINDIR)
 
 clean:
-	rm -f *.o *.mod $(BINTARG) $(ALIBTARG) $(SOLIBTARG) test
+	rm -f *.o *.mod $(BINTARG) $(ALIBTARG) $(SOLIBTARG) $(SOFILE) test

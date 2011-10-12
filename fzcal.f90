@@ -9,10 +9,9 @@ program fzcal
   pointer(p,rpnc)
   character*16384 str
   integer istat
-  integer i
   integer ka
   integer cid
-  integer*8 aaa
+
   p=init_rpnc()
 
   do
