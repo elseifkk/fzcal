@@ -4,8 +4,8 @@ module fzc
   implicit none
 
 #define size_t integer(C_SIZE_T)
-#define int integer(C_INT)
-#define retint int
+#define int_t integer(C_INT)
+#define retint int_t
 
 contains
 
@@ -21,7 +21,7 @@ contains
     pointer(pr,rpnc)
     pf=ptr_formula
     pr=ptr_rpnc
-    fzc_set_formula=parse_formula(f,rpnc)
+    fzc_set_formula=int(parse_formula(f,rpnc),kind=C_INT)
   end function fzc_set_formula
 
   retint function fzc_eval(ptr_rpnc)
@@ -29,7 +29,7 @@ contains
     type(t_rpnc) rpnc
     pointer(p,rpnc)
     p=ptr_rpnc
-    fzc_eval=eval(rpnc)
+    fzc_eval=int(eval(rpnc),kind=C_INT)
   end function fzc_eval
 
   subroutine fzc_get_str_ans(ptr_rpnc,ptr_str)
@@ -66,7 +66,7 @@ contains
     pr=ptr_rpnc
     call c2fstr(ptr_str,name)
     fzc_regist_parameter=&
-         add_par_by_reference(rpnc%pars,name,ptr_var,ro=.true.,dble=.true.)
+         int(add_par_by_reference(rpnc%pars,name,ptr_var,ro=.true.,dble=.true.),kind=C_INT)
   end function fzc_regist_parameter
 
 end module fzc

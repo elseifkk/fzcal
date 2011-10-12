@@ -19,12 +19,21 @@ module memio
   end interface
   
 #ifndef _NO_ASM_
+#ifdef _USE32_
   interface dw2str
      integer function dw2str(dw,pstr)
        integer,intent(in),value::dw
        integer,intent(in),value::pstr
      end function dw2str
   end interface dw2str
+#else
+  interface qw2str
+     integer function qw2str(qw,pstr)
+       integer,intent(in),value::qw
+       integer,intent(in),value::pstr
+     end function qw2str
+  end interface qw2str
+#endif
 #endif
 
 contains
@@ -40,7 +49,11 @@ contains
     integer,intent(in)::i
     integer len
     itoa=""
+#ifdef _USE32_
     len=dw2str(i,loc(itoa))
+#else
+    len=qw2str(i,loc(itoa))
+#endif
   end function itoa
 #else
   character*32 function itoa(i)

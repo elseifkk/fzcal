@@ -1,11 +1,18 @@
+%undef _REL_
 %ifdef _USE32_
-BITS 32
+	BITS 32
 %else
-BITS 64
+	BITS 64
+	%ifdef _DYNAMIC_
+		%define _REL_
+		%define ADDR(x) rel (x) wrt ..gotpcrel
+	%else
+		%define ADDR(x) (x)
+	%endif
 %endif
-	
-section .data align=16
-str_buf dd 0
+
+section .bss align=16
+str_buf resq 0
 
 ;;; 
 section .text align=16
@@ -81,7 +88,6 @@ mcp_:
 	end_proc
 	
 ;;;
-
 %macro div10m 0
 	push eax
 ;;-------------------; x*0.11b
@@ -180,18 +186,19 @@ qw2str_:
 	push rax			; save dw
 	push rsi			; save pstr
 	;; 
-	lea rdi, [rel str_buf wrt ..gotpcrel] ; rdi = ptr str_buf
+	lea rdi, [ADDR(str_buf)] 	; rdi = ptr str_buf
 	mov rsi, rdi                    ; esi = ptr str_buf
 	;; 
 	add rdi, D2STR_BUFFER_SIZE-1
 	mov [rdi], byte 30h
 	or rax, rax         
 	jz .cpbuf
-	inc rdi             
+	inc rdi
+        mov r9, 10
 	;; 
 .L10:
 	xor rdx, rdx
-       	div 10
+       	div r9
 	add rdx, 0x30       
 	dec rdi             
 	mov [rdi], BYTE dl  
