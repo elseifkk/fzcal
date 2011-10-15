@@ -34,6 +34,14 @@ module zmath
   public zm_asin
   public zm_acos
   public zm_atan
+
+  public zm_sind
+  public zm_cosd
+  public zm_tand
+  public zm_asind
+  public zm_acosd
+  public zm_atand
+
   public zm_sinh
   public zm_cosh
   public zm_tanh
@@ -258,6 +266,36 @@ contains
     complex(cp),intent(in)::z1
     zm_atan=atan(z1)
   end function zm_atan
+
+  complex(cp) function zm_sind(z1)
+    complex(cp),intent(in)::z1
+    zm_sind=sin(z1/180.0_rp*pi)
+  end function zm_sind
+
+  complex(cp) function zm_cosd(z1)
+    complex(cp),intent(in)::z1
+    zm_cosd=cos(z1/180.0_rp*pi)
+  end function zm_cosd
+
+  complex(cp) function zm_tand(z1)
+    complex(cp),intent(in)::z1
+    zm_tand=tan(z1/180.0_rp*pi)
+  end function zm_tand
+
+  complex(cp) function zm_asind(z1)
+    complex(cp),intent(in)::z1
+    zm_asind=asin(z1)/pi*180.0_rp
+  end function zm_asind
+
+  complex(cp) function zm_acosd(z1)
+    complex(cp),intent(in)::z1
+    zm_acosd=acos(z1)/pi*180.0_rp
+  end function zm_acosd
+
+  complex(cp) function zm_atand(z1)
+    complex(cp),intent(in)::z1
+    zm_atand=atan(z1)/pi*180.0_rp
+  end function zm_atand
 
   complex(cp) function zm_sinh(z1)
     complex(cp),intent(in)::z1

@@ -21,7 +21,7 @@ program fzcal
      read(*,"(a)") str
      if(str=="") cycle
      str=adjustl(str)
-     cid=parse_command(str,ka)
+     cid=parse_command(rpnc,str,ka)
      select case(cid)
      case(CID_EXI)
         exit
@@ -41,6 +41,8 @@ program fzcal
         cycle
      case(CID_DEL_M)
      case(CID_DEL_F)
+     case(CID_DONE)
+        cycle
      end select
      
 !     istat=rpn_set_formula(loc(str),loc(rpnc))

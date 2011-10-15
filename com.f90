@@ -1,27 +1,31 @@
 module com
+  use rpn
   implicit none
-  integer,parameter::CID_INV    = -1
-  integer,parameter::CID_NOP    =  0
-  integer,parameter::CID_DEL    =  1
-  integer,parameter::CID_DEL_P  =  2
-  integer,parameter::CID_DEL_F  =  3
-  integer,parameter::CID_DEL_M  =  4
-  integer,parameter::CID_DMP    =  5
-  integer,parameter::CID_DMP_P  =  6
-  integer,parameter::CID_DMP_F  =  7
-  integer,parameter::CID_DMP_M  =  8
-  integer,parameter::CID_DMP_C  =  9
-  integer,parameter::CID_DMP_B  = 10
-  integer,parameter::CID_SET    = 11
-  integer,parameter::CID_SET_DM = 12
-  integer,parameter::CID_SET_MD = 13
-  integer,parameter::CID_INI    = 14
-  integer,parameter::CID_DBG    = 15
-  integer,parameter::CID_EXI    = 16
+  integer,parameter::CID_INV     = -1
+  integer,parameter::CID_NOP     =  0
+  integer,parameter::CID_DEL     =  1
+  integer,parameter::CID_DEL_P   =  2
+  integer,parameter::CID_DEL_F   =  3
+  integer,parameter::CID_DEL_M   =  4
+  integer,parameter::CID_DMP     =  5
+  integer,parameter::CID_DMP_P   =  6
+  integer,parameter::CID_DMP_F   =  7
+  integer,parameter::CID_DMP_M   =  8
+  integer,parameter::CID_DMP_C   =  9
+  integer,parameter::CID_DMP_B   = 10
+  integer,parameter::CID_SET     = 11
+  integer,parameter::CID_SET_DM  = 12
+  integer,parameter::CID_SET_MD  = 13
+  integer,parameter::CID_INI     = 14
+  integer,parameter::CID_DBG     = 15
+  integer,parameter::CID_EXI     = 16
+  integer,parameter::CID_SET_DEG = 17
+  integer,parameter::CID_DONE    =999
 
 contains
 
-  integer function parse_command(a,karg)
+  integer function parse_command(rpnc,a,karg)
+    type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(inout)::a
     integer,intent(out)::karg
     integer k,ko,ke,cid
@@ -29,6 +33,8 @@ contains
     parse_command=CID_NOP
 
     if(len_trim(a)==0) return
+    if(a(1:1)/=".") return
+
     k=index(a," ")-1
     if(k<=0) then
        ke=len_trim(a)
@@ -39,9 +45,17 @@ contains
     end if
 
     cid=CID_NOP
-    select case(a(1:ke))
+    select case(a(2:ke))
     case("q","quit")
        parse_command=CID_EXI
+       return
+    case("deg")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_DEG)
+       parse_command=CID_DONE
+       return
+    case("rad")
+       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DEG))
+       parse_command=CID_DONE
        return
     case("del","delete")
        if(karg<=0) return

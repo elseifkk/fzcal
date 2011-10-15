@@ -8,16 +8,14 @@ module memio
   integer,parameter::ptrsz=selected_int_kind(10)
 #endif
 
-  interface mcp
-#ifdef _NO_ASM_
-     module procedure cpmem
-#else
+#ifndef _NO_ASM_
+  interface
      subroutine mcp(dst,src,len)
        integer,intent(in),value::dst,src,len
      end subroutine mcp
+  end interface mcp
 #endif
-  end interface
-  
+
 #ifndef _NO_ASM_
 #ifdef _USE32_
   interface dw2str
@@ -66,7 +64,7 @@ contains
 #endif
 
 #ifdef _NO_ASM_
-  subroutine cpmem(dst,src,len)
+  subroutine mcp(dst,src,len)
     integer,intent(in)::dst,src,len
     integer*1 s,d
     integer i
@@ -79,7 +77,7 @@ contains
        di=di+1
        d=s
     end do
-  end subroutine cpmem
+  end subroutine mcp
 #endif
   
 end module memio
