@@ -141,9 +141,9 @@ module rpn
   end type t_rpnc
 
   integer,parameter::RPNCOPT_NOP  =  0
-  integer,parameter::RPNCOPT_DMSK =  Z"FF"
   integer,parameter::RPNCOPT_DBG  =  Z"08000000"
   integer,parameter::RPNCOPT_SET  =  Z"00000001"
+  integer,parameter::RPNCOPT_DEG  =  Z"00000002"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
@@ -1709,22 +1709,48 @@ contains
       istat=RPNERR_PARSER
     end subroutine find_delim
 
+#define isdeg iand(rpnc%opt,RPNCOPT_DEG)/=0
+
     integer function get_fid(fid)
       use zmath
       integer,intent(in)::fid
       select case(fid)
       case(FID_SIN)
-         get_fid=loc(zm_sin)
+         if(isdeg) then
+            get_fid=loc(zm_sind)
+         else
+            get_fid=loc(zm_sin)
+         end if
       case(FID_COS)
-         get_fid=loc(zm_cos)
+         if(isdeg) then
+            get_fid=loc(zm_cosd)
+         else
+            get_fid=loc(zm_cos)
+         end if
       case(FID_TAN)
-         get_fid=loc(zm_tan)
+         if(isdeg) then
+            get_fid=loc(zm_tand)
+         else
+            get_fid=loc(zm_tan)
+         end if
       case(FID_ASIN)
-         get_fid=loc(zm_asin)
+         if(isdeg) then 
+            get_fid=loc(zm_asind)
+         else
+            get_fid=loc(zm_asin)
+         end if
       case(FID_ACOS)
-         get_fid=loc(zm_acos)
+         if(isdeg) then
+            get_fid=loc(zm_acosd)
+         else
+            get_fid=loc(zm_acos)
+         end if
       case(FID_ATAN)
-         get_fid=loc(zm_atan)
+         if(isdeg) then
+            get_fid=loc(zm_atand)
+         else
+            get_fid=loc(zm_atan)
+         end if
       case(FID_EXP)
          get_fid=loc(zm_exp)
       case(FID_SQRT)
