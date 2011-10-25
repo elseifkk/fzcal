@@ -13,7 +13,7 @@ module memio
      subroutine mcp(dst,src,len)
        integer,intent(in),value::dst,src,len
      end subroutine mcp
-  end interface mcp
+  end interface
 #endif
 
 #ifndef _NO_ASM_

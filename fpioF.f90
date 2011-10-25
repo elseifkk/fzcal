@@ -118,8 +118,13 @@ contains
     if(abs(x)>disp_huge) f=DISP_FMT_RAW
 
     if(f==DISP_FMT_RAW) then
-       write(rtoa,*,iostat=istat) x
-       if(istat==0) rtoa=adjustl(rtoa)
+       if(x/=rzero) then
+          write(rtoa,*,iostat=istat) x
+          if(istat==0) rtoa=adjustl(rtoa)
+          call rmzero(rtoa)
+       else
+          rtoa="0"
+       end if
        if(present(ok)) ok=(istat==0)
        return
     end if
@@ -180,5 +185,37 @@ contains
     ztoa=trim(rtoa(realpart(z),retlog))//trim(ztoa)
     if(present(ok)) ok=retlog
   end function ztoa
+
+  subroutine rmzero(s)
+    character*(*),intent(inout)::s
+    integer i,k,j
+    integer p
+    p=index(s,"e")
+    if(p==0) p=index(s,"E")
+    if(p==0) then
+       k=len_trim(s)
+    else
+       k=p-1
+    end if
+    j=0
+    do i=k,1,-1
+       select case(s(i:i))
+       case("0")
+          s(i:i)=" "
+       case(".") 
+          s(i+1:i+1)="0"
+          j=i+1
+          exit
+       case default
+          j=i
+          exit
+       end select
+    end do
+    if(j==0) then
+       s="0"
+    else if(p/=0) then
+       s(j+1:)=s(p:)
+    end if
+  end subroutine rmzero
 
 end module fpio
