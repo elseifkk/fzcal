@@ -17,13 +17,14 @@ module slist
   
   integer,parameter,public::LEN_SLIST_HDR=2 ! len+code
   
-  integer*1,parameter,public::SC_NOP = 0
-  integer*1,parameter,public::SC_RO  = Z"01"
-  integer*1,parameter,public::SC_REF = Z"02"
-  integer*1,parameter,public::SC_DBL = Z"04"
+  integer*1,parameter,public::SC_NOP  = 0
+  integer*1,parameter,public::SC_RO   = Z"01"
+  integer*1,parameter,public::SC_REF  = Z"02"
+  integer*1,parameter,public::SC_DBLE = Z"04"
+  integer*1,parameter,public::SC_REAL = Z"08"
   !                  
-  integer*1,parameter,public::SC_MAC = Z"02"
-  integer*1,parameter,public::SC_FNC = Z"04"
+  integer*1,parameter,public::SC_MAC  = Z"02"
+  integer*1,parameter,public::SC_FNC  = Z"04"
 
   public get_sc
   public get_str_ptr
@@ -38,6 +39,7 @@ module slist
   public min_cp_slist
   public uinit_slist
   public is_double
+  public is_real
   public dump_slist
   public trim_slist
 
@@ -162,8 +164,13 @@ contains
 
   logical function is_double(c)
     integer*1,intent(in)::c
-    is_double=(iand(c,SC_DBL)/=0)
+    is_double=(iand(c,SC_DBLE)/=0)
   end function is_double
+
+  logical function is_real(c)
+    integer*1,intent(in)::c
+    is_real=(iand(c,SC_REAL)/=0)
+  end function is_real
   
   integer function change_sc(sl,k,code)
     type(t_slist),intent(in)::sl

@@ -83,10 +83,12 @@ contains
     integer*1 code
     integer si
     real(dp) r
+    real(rp) x
     complex(cp) z
     pointer(pr,r)
     pointer(pz,z)
     pointer(ptr,si)
+    pointer(px,x)
     do i=1,pl%s%n
        istat=get_str_ptr(pl%s,i,ptr,len,code=code)
        write(*,10) i,code,trim(cpstr(ptr,len))
@@ -94,8 +96,13 @@ contains
           ptr=loc(pl%v(i))
           write(*,20) si
           if(.not.is_double(code)) then
-             pz=si
-             write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
+             if(.not.is_real(code)) then
+                pz=si
+                write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
+             else
+                px=si
+                write(*,*) trim(rtoa(x,fmt=DISP_FMT_RAW))                
+             end if
           else
              pr=si
              write(*,*) trim(rtoa(real(r,kind=rp),fmt=DISP_FMT_RAW))
@@ -156,11 +163,13 @@ contains
     integer k
     integer*1 c
     integer si
-    complex(cp) x
-    real*8 r8
+    complex(cp) z
+    real(rp) x
+    real(dp) r8
     pointer(ptr,si)
-    pointer(pr,x)
+    pointer(pz,z)
     pointer(pr8,r8)
+    pointer(px,x)
     if(present(ent)) ent=0
     k=find_str(pl%s,s,found_code=c)
     if(k==0) then
@@ -172,8 +181,13 @@ contains
        if(is_reference(c)) then
           ptr=loc(pl%v(k))
           if(.not.is_double(c)) then
-             pr=si
-             val=x
+             if(.not.is_real(c)) then
+                pz=si
+                val=z
+             else
+                px=si
+                val=x
+             end if
           else
              pr8=si
              val=r8
@@ -271,12 +285,13 @@ contains
     add_par_by_entry=try_add_par(pl,s,c,ent)
   end function add_par_by_entry
 
-  integer function add_par_by_reference(pl,s,ptr,ro,dble,ent)
+  integer function add_par_by_reference(pl,s,ptr,ro,dble,real,ent)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     integer,intent(in)::ptr
     logical,intent(in),optional::ro
     logical,intent(in),optional::dble
+    logical,intent(in),optional::real
     integer,intent(out),optional::ent
     integer istat
     integer k
@@ -289,7 +304,8 @@ contains
     else
        c=SC_REF
     end if
-    if(present(dble).and.dble) c=ior(c,ior(SC_DBL,SC_RO)) ! <<<<
+    if(present(dble).and.dble) c=ior(c,ior(SC_DBLE,SC_RO)) ! <<<<
+    if(present(real).and.real) c=ior(c,ior(SC_REAL,SC_RO))
     istat=try_add_par(pl,s,c,k)
     if(istat/=0) then
        add_par_by_reference=istat
@@ -364,11 +380,13 @@ contains
     integer*1 c
     integer istat
     real(dp) r
+    real(rp) x
     complex(cp) z
     integer p
     pointer(pr,r)
     pointer(pz,z)
     pointer(si,p)
+    pointer(px,x)
     istat=get_sc(pl%s,k,c)
     if(istat/=0) then
        get_par=PLERR_NOPAR
@@ -380,8 +398,13 @@ contains
     else 
        si=loc(pl%v(k))
        if(.not.is_double(c)) then
-          pz=p
-          v=z
+          if(.not.is_real(c)) then
+             pz=p
+             v=z
+          else
+             px=p
+             v=x
+          end if
        else
           ! double real only allowed by reference
           pr=p

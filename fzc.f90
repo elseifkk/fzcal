@@ -13,15 +13,15 @@ contains
     fzc_init=init_rpnc()
   end function fzc_init
 
-  retint function fzc_set_formula(ptr_formula,ptr_rpnc)
-    integer,intent(in),value::ptr_formula,ptr_rpnc
+  retint function fzc_set_formula(ptr_rpnc,ptr_formula)
+    integer,intent(in),value::ptr_rpnc,ptr_formula
     character(LEN_FORMULA_MAX) f
     pointer(pf,f)
     type(t_rpnc) rpnc
     pointer(pr,rpnc)
     pf=ptr_formula
     pr=ptr_rpnc
-    fzc_set_formula=int(parse_formula(f,rpnc),kind=C_INT)
+    fzc_set_formula=int(parse_formula(rpnc,f),kind=C_INT)
   end function fzc_set_formula
 
   retint function fzc_eval(ptr_rpnc)
@@ -58,15 +58,17 @@ contains
     end do
   end subroutine c2fstr
 
-  retint function fzc_regist_parameter(ptr_rpnc,ptr_var,ptr_str)
-    integer,intent(in),value::ptr_rpnc,ptr_var,ptr_str
+  retint function fzc_regist_parameter(ptr_rpnc,ptr_var,ptr_str,dble)
+    integer,intent(in),value::ptr_rpnc,ptr_var,ptr_str,dble
     character(LEN_STR_MAX) name
+    logical d
     type(t_rpnc) rpnc
     pointer(pr,rpnc)
     pr=ptr_rpnc
     call c2fstr(ptr_str,name)
+    d=(dble/=0)
     fzc_regist_parameter=&
-         int(add_par_by_reference(rpnc%pars,name,ptr_var,ro=.true.,dble=.true.),kind=C_INT)
+         int(add_par_by_reference(rpnc%pars,name,ptr_var,ro=.true.,dble=d,real=.true.),kind=C_INT)
   end function fzc_regist_parameter
 
 end module fzc

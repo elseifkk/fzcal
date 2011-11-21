@@ -7,11 +7,11 @@
 extern "C"
 {
 #endif
-	size_t  __fzc_MOD_fzc_init ( void );
-	int  __fzc_MOD_fzc_set_formula ( const size_t, const size_t );
-	int  __fzc_MOD_fzc_eval ( const size_t );
-	void __fzc_MOD_fzc_get_str_ans ( const size_t, const size_t );
-	int __fzc_MOD_fzc_regist_parameter ( const size_t, const size_t, const size_t );
+  size_t  __fzc_MOD_fzc_init ( void );
+  int  __fzc_MOD_fzc_set_formula ( const size_t, const size_t );
+  int  __fzc_MOD_fzc_eval ( const size_t );
+  void __fzc_MOD_fzc_get_str_ans ( const size_t, const size_t );
+  int __fzc_MOD_fzc_regist_parameter ( const size_t, const size_t, const size_t, const size_t );
 #ifdef __cplusplus
 }
 #endif
