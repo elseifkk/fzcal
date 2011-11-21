@@ -1610,7 +1610,7 @@ contains
              end if
           end if
           if(istat==0) then
-             if(.not.is_double(c)) then
+             if(.not.is_double(c).and..not.is_real(c)) then
                 q%tid=TID_PAR
                 q%cid=get_par_loc(rpnc%pars,k)
              else
@@ -2063,9 +2063,9 @@ contains
     if(present(p2)) q%p2=ior(q%p2,ishft(p2,16))
   end subroutine revert_tid
 
-  integer function parse_formula(formula,rpnc)
-    character*(*),intent(in)::formula
+  integer function parse_formula(rpnc,formula)
     type(t_rpnc),intent(inout)::rpnc
+    character*(*),intent(in)::formula
     type(t_rpnb),target::rpnb
     integer t,told,btold,istat
     integer p1,p2

@@ -45,8 +45,7 @@ program fzcal
         cycle
      end select
      
-!     istat=rpn_set_formula(loc(str),loc(rpnc))
-     istat=parse_formula(str,rpnc)
+     istat=parse_formula(rpnc,str)
 
      if(istat>0) then
         write(*,*)  "*** parse_formula failed: code = ",istat
@@ -57,7 +56,6 @@ program fzcal
            call dump_rpnc(rpnc)
         end if
         
-!        istat=rpn_eval(loc(rpnc))
         istat=eval(rpnc)
 
         if(istat/=0) then
