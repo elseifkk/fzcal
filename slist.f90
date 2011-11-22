@@ -50,6 +50,7 @@ contains
     type(t_slist) tmp
     tmp%p=0
     call min_cp_slist(sl,tmp)
+    call uinit_slist(sl)
     sl=tmp
   end subroutine trim_slist
 
