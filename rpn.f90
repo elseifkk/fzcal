@@ -1573,6 +1573,7 @@ contains
           q%tid=TID_PAR
           istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
           if(istat==0) then
+             istat=alloc_par(rpnc%pars,k,PK_COMP)
              q%cid=get_par_loc(rpnc%pars,k)
           else
              write(*,*) "*** add_par_by_entry failed: code = ",istat

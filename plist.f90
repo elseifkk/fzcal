@@ -11,9 +11,21 @@ module plist
   integer,parameter::PLERR_RDONL = 4
   integer,parameter::PLERR_NOPAR = 5
   
+  integer,parameter,public::PK_COMP = 1
+  integer,parameter,public::PK_REAL = 2
+  integer,parameter,public::PK_DBLE = 3
+  integer,parameter,public::PK_REF  = 4
+
+  type t_vbuf
+     complex(cp),allocatable::z
+     real(rp),allocatable::x
+     real(dp),allocatable::r
+     integer,allocatable::p
+  end type t_vbuf
+
   type,public::t_plist
      type(t_slist) s
-     complex(cp),allocatable::v(:)
+     type(t_vbuf),allocatable::v(:)
   end type t_plist
   
   interface add_par_by_value
@@ -32,10 +44,11 @@ module plist
   public get_par_loc
   public is_double
   public get_par
+  public alloc_par
 
 contains
 
- function init_plist(sz,nmax)
+  function init_plist(sz,nmax)
     type(t_plist) init_plist
     integer,intent(in)::sz
     integer,intent(in)::nmax
@@ -43,11 +56,96 @@ contains
     allocate(init_plist%v(nmax))
   end function init_plist
 
+  subroutine uinit_vbuf(vl)
+    type(t_vbuf),intent(inout)::vl
+    if(allocated(vl%z)) deallocate(vl%z)
+    if(allocated(vl%x)) deallocate(vl%x)
+    if(allocated(vl%r)) deallocate(vl%r)
+    if(allocated(vl%p)) deallocate(vl%p)
+  end subroutine uinit_vbuf
+
+  subroutine uinit_vbufs(n,vl)
+    integer,intent(in)::n
+    type(t_vbuf),intent(inout)::vl(n)
+    integer i
+    do i=1,n
+       call uinit_vbuf(vl(i))
+    end do
+  end subroutine uinit_vbufs
+
   subroutine uinit_plist(pl)
     type(t_plist),intent(inout)::pl
     call uinit_slist(pl%s)
-    if(allocated(pl%v)) deallocate(pl%v)
+    if(.not.allocated(pl%v)) return
+    call uinit_vbufs(size(pl%v),pl%v)
+    deallocate(pl%v)
   end subroutine uinit_plist
+
+  subroutine mv_vbufs(n,v1,v2)
+    integer,intent(in)::n
+    type(t_vbuf),intent(inout)::v1(n),v2(n)
+    call cp_vbufs(n,v1,v2)
+    call uinit_vbufs(n,v1)
+  end subroutine mv_vbufs
+
+  subroutine mv_vbuf(v1,v2)
+    type(t_vbuf),intent(inout)::v1,v2
+    call cp_vbuf(v1,v2)
+    call uinit_vbuf(v1)
+  end subroutine mv_vbuf
+
+  subroutine cp_vbufs(n,v1,v2)
+    integer,intent(in)::n
+    type(t_vbuf),intent(in)::v1(n)
+    type(t_vbuf),intent(inout)::v2(n)
+    integer i
+    do i=1,n
+       call cp_vbuf(v1(i),v2(i))
+    end do
+  end subroutine cp_vbufs
+
+  subroutine cp_vbuf(v1,v2)
+    type(t_vbuf),intent(in)::v1
+    type(t_vbuf),intent(inout)::v2
+    call uinit_vbuf(v2)
+    if(allocated(v1%z)) then
+       if(.not.allocated(v2%z)) allocate(v2%z)
+       v2%z=v1%z
+    end if
+    if(allocated(v1%x)) then
+       if(.not.allocated(v2%x)) allocate(v2%z)
+       v2%x=v1%x
+    end if
+    if(allocated(v1%r)) then
+       if(.not.allocated(v2%r)) allocate(v2%r)
+       v2%r=v1%r
+    end if
+    if(allocated(v1%p)) then
+       if(.not.allocated(v2%p)) allocate(v2%p)
+       v2%p=v1%p
+    end if
+  end subroutine cp_vbuf
+
+  integer function alloc_par(pl,k,pk)
+    type(t_plist),intent(inout)::pl
+    integer,intent(in)::k
+    integer,intent(in)::pk
+    if(k>size(pl%v).or.k<=0) then
+       alloc_par=PLERR_NOENT
+       return
+    end if
+    select case(pk)
+    case(PK_COMP)
+       if(.not.allocated(pl%v(k)%z)) allocate(pl%v(k)%z)
+    case(PK_REAL)
+       if(.not.allocated(pl%v(k)%x)) allocate(pl%v(k)%x)
+    case(PK_DBLE)
+       if(.not.allocated(pl%v(k)%r)) allocate(pl%v(k)%r)
+    case(PK_REF)
+       if(.not.allocated(pl%v(k)%p)) allocate(pl%v(k)%p)
+    end select
+    alloc_par=0
+  end function alloc_par
 
   integer function rm_par(pl,s)
     type(t_plist),intent(inout)::pl
@@ -60,8 +158,9 @@ contains
        rm_par=istat
        return
     end if
+    call uinit_vbuf(pl%v(k))
     do i=k,pl%s%n
-       pl%v(i)=pl%v(i+1)
+       call mv_vbuf(pl%v(i+1),pl%v(i))
     end do
     rm_par=0
   end function rm_par
@@ -69,46 +168,46 @@ contains
   subroutine min_cp_plist(pl1,pl2)
     type(t_plist),intent(in)::pl1
     type(t_plist),intent(out)::pl2
-    if(allocated(pl2%v)) deallocate(pl2%v)
+    if(allocated(pl2%v)) then
+       call uinit_vbufs(size(pl2%v),pl2%v)
+       deallocate(pl2%v)
+    end if
     if(allocated(pl1%v).and.size(pl1%v)>0) then
        allocate(pl2%v(size(pl1%v)))
-       pl2%v=pl1%v
+       call cp_vbufs(pl1%s%n,pl1%v,pl2%v)
     end if
     call min_cp_slist(pl1%s,pl2%s)
   end subroutine min_cp_plist
   
   subroutine dump_plist(pl)
     type(t_plist),intent(in)::pl
-    integer i,len,istat
+    integer i,len,istat,ptr
     integer*1 code
-    integer si
     real(dp) r
     real(rp) x
     complex(cp) z
     pointer(pr,r)
     pointer(pz,z)
-    pointer(ptr,si)
     pointer(px,x)
     do i=1,pl%s%n
        istat=get_str_ptr(pl%s,i,ptr,len,code=code)
        write(*,10) i,code,trim(cpstr(ptr,len))
        if(is_reference(code)) then
-          ptr=loc(pl%v(i))
-          write(*,20) si
+          write(*,20) pl%v(i)%p
           if(.not.is_double(code)) then
              if(.not.is_real(code)) then
-                pz=si
+                pz=pl%v(i)%p
                 write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
              else
-                px=si
+                px=pl%v(i)%p
                 write(*,*) trim(rtoa(x,fmt=DISP_FMT_RAW))                
              end if
           else
-             pr=si
+             pr=pl%v(i)%p
              write(*,*) trim(rtoa(real(r,kind=rp),fmt=DISP_FMT_RAW))
           end if
        else
-          write(*,*) trim(ztoa(pl%v(i),fmt=DISP_FMT_RAW))
+          write(*,*) trim(ztoa(pl%v(i)%z,fmt=DISP_FMT_RAW))
        end if
     end do
 20  format(x,z16,$)
@@ -118,40 +217,20 @@ contains
   subroutine trim_plist(pl)
     use memio
     type(t_plist),intent(inout)::pl
-    complex(cp),allocatable::tmpv(:)
-    integer tmpp
-    integer sz
-
+    type(t_vbuf),allocatable::tmpv(:)
     if(allocated(pl%v)) then
        if(pl%s%n>=1) then
           allocate(tmpv(pl%s%n))
-          tmpv(1:pl%s%n)=pl%v(1:pl%s%n)
+          call mv_vbufs(pl%s%n,pl%v,tmpv)
           deallocate(pl%v)
           allocate(pl%v(pl%s%n))
-          pl%v(1:pl%s%n)=tmpv(1:pl%s%n)
+          call mv_vbufs(pl%s%n,tmpv,pl%v)
           deallocate(tmpv)
        else
           deallocate(pl%v)
        end if
     end if
-
-    sz=pl%s%st-pl%s%p+1
-    if(sz>=0) then
-       tmpp=malloc(pl%s%st)
-       call mcp(tmpp,pl%s%p,sz)
-       call free(pl%s%p)
-       pl%s%p=malloc(sz)
-       call mcp(pl%s%p,tmpp,sz)
-       call free(tmpp)
-       pl%s%sz=pl%s%sz
-    else if(pl%s%p/=0) then
-       call free(pl%s%p)
-       pl%s%p=0
-       pl%s%st=0
-       pl%s%n=0
-       pl%s%sz=0
-    end if
-    
+    call trim_slist(pl%s)
   end subroutine trim_plist
  
   integer function find_par(pl,s,val,ent,code)
@@ -162,11 +241,9 @@ contains
     integer*1,intent(out),optional::code
     integer k
     integer*1 c
-    integer si
     complex(cp) z
     real(rp) x
     real(dp) r8
-    pointer(ptr,si)
     pointer(pz,z)
     pointer(pr8,r8)
     pointer(px,x)
@@ -178,22 +255,24 @@ contains
     end if
     if(present(code)) code=c
     if(present(val)) then
+       find_par=PLERR_NOENT
        if(is_reference(c)) then
-          ptr=loc(pl%v(k))
+          if(.not.allocated(pl%v(k)%p)) return
           if(.not.is_double(c)) then
              if(.not.is_real(c)) then
-                pz=si
+                pz=pl%v(k)%p
                 val=z
              else
-                px=si
+                px=pl%v(k)%p
                 val=x
              end if
           else
-             pr8=si
+             pr8=pl%v(k)%p
              val=r8
           end if
-       else
-          val=pl%v(k)
+       else 
+          if(.not.allocated(pl%v(k)%z)) return
+          val=pl%v(k)%z
        end if
     end if
     if(present(ent)) ent=k
@@ -218,9 +297,12 @@ contains
        put_par=PLERR_RDONL
        return
     end if
+    put_par=PLERR_NOENT
     if(.not.is_reference(c)) then
-       pl%v(k)=v
+       if(.not.allocated(pl%v(k)%z)) return
+       pl%v(k)%z=v
     else
+       if(.not.allocated(pl%v(k)%p)) return
        call put_par_by_reference(pl,k,v)
     end if
     put_par=0
@@ -230,26 +312,23 @@ contains
     type(t_plist),intent(in)::pl
     integer,intent(in)::k
     complex(cp),intent(in)::v
-    integer ptr
-    complex(cp) x
-    pointer(pptr,ptr)
-    pointer(px,x)
-    pptr=loc(pl%v(k))
-    px=ptr
-    x=v
+    complex(cp) z
+    pointer(pz,z)
+    pz=pl%v(k)%p
+    z=v
   end subroutine put_par_by_reference
 
   subroutine inc_par_buf(pl,inc_n)
     type(t_plist),intent(inout)::pl
     integer,intent(in)::inc_n
-    complex(cp),allocatable::v(:)
+    type(t_vbuf),allocatable::v(:)
     if(inc_n<=0) return
     if(allocated(pl%v)) then
        allocate(v(size(pl%v)+inc_n))
-       v(1:size(pl%v))=pl%v
+       call mv_vbufs(size(pl%v),pl%v,v)
        deallocate(pl%v)
        allocate(pl%v(size(v)))
-       pl%v=v
+       call mv_vbufs(size(pl%v),v,pl%v)
        deallocate(v)
     else
        allocate(pl%v(inc_n))
@@ -295,9 +374,7 @@ contains
     integer,intent(out),optional::ent
     integer istat
     integer k
-    integer si !<<<<<<<<< size undetermined
     integer*1 c
-    pointer(p,si)
     if(present(ent)) ent=0
     if(present(ro).and.ro) then
        c=ior(SC_REF,SC_RO)
@@ -311,9 +388,8 @@ contains
        add_par_by_reference=istat
        return
     end if
-    pl%v(k)=0
-    p=loc(pl%v(k))
-    si=ptr
+    if(.not.allocated(pl%v(k)%p)) allocate(pl%v(k)%p)
+    pl%v(k)%p=ptr
     if(present(ent)) ent=k
     add_par_by_reference=0
   end function add_par_by_reference
@@ -325,7 +401,7 @@ contains
     logical,intent(in),optional::ro
     integer,intent(out),optional::ent
     complex(cp) z
-    z=complex(v,0.)
+    z=complex(v,rzero)
     add_par_by_value_r=add_par_by_value_c(pl,s,z,ro,ent)
   end function add_par_by_value_r
 
@@ -349,7 +425,8 @@ contains
        add_par_by_value_c=istat
        return
     end if
-    pl%v(k)=v
+    if(.not.allocated(pl%v(k)%z)) allocate(pl%v(k)%z)
+    pl%v(k)%z=v
     if(present(ent)) ent=k
     add_par_by_value_c=0
   end function add_par_by_value_c
@@ -359,17 +436,16 @@ contains
     integer,intent(in)::k
     integer istat
     integer*1 c
-    integer p
-    pointer(si,p)
     get_par_loc=0
     if(k>pl%s%n.or.k<=0) return
     istat=get_sc(pl%s,k,c)
     if(istat/=0) return
-    si=loc(pl%v(k))
     if(is_reference(c)) then
-       get_par_loc=p
+       if(.not.allocated(pl%v(k)%p)) return
+       get_par_loc=pl%v(k)%p
     else
-       get_par_loc=si
+       if(.not.allocated(pl%v(k)%z)) return
+       get_par_loc=loc(pl%v(k)%z)
     end if
   end function get_par_loc
 
@@ -382,32 +458,31 @@ contains
     real(dp) r
     real(rp) x
     complex(cp) z
-    integer p
     pointer(pr,r)
     pointer(pz,z)
-    pointer(si,p)
     pointer(px,x)
     istat=get_sc(pl%s,k,c)
     if(istat/=0) then
        get_par=PLERR_NOPAR
        return
     end if
+    get_par=PLERR_NOENT
     if(.not.is_reference(c)) then
+       if(.not.allocated(pl%v(k)%z)) return
        ! always complex
-       v=pl%v(k)
+       v=pl%v(k)%z
     else 
-       si=loc(pl%v(k))
+       if(.not.allocated(pl%v(k)%p)) return
        if(.not.is_double(c)) then
           if(.not.is_real(c)) then
-             pz=p
+             pz=pl%v(k)%p
              v=z
           else
-             px=p
-             v=x
+             px=pl%v(k)%p
+             v=complex(x,rzero)
           end if
        else
-          ! double real only allowed by reference
-          pr=p
+          pr=pl%v(k)%p
           v=complex(real(r,kind=rp),rzero)
        end if
     end if
