@@ -144,6 +144,7 @@ module rpn
   integer,parameter::RPNCOPT_DBG  =  Z"08000000"
   integer,parameter::RPNCOPT_SET  =  Z"00000001"
   integer,parameter::RPNCOPT_DEG  =  Z"00000002"
+  integer,parameter::RPNCOPT_NEW  =  Z"00000004"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
@@ -582,6 +583,7 @@ contains
       pointer(pz,z)
       pz=pvs(1)
       z=v
+      rpnc%opt=ior(rpnc%opt,RPNCOPT_NEW)
     end subroutine set_assign
 
   end function eval_n
@@ -792,7 +794,12 @@ contains
     else
        rpnc%answer=rpnc%tmpans
     end if
-    
+
+    if(iand(rpnc%opt,RPNCOPT_NEW)/=0) then
+       istat=realloc_new(rpnc%pars)
+    end if
+    istat=remove_dup(rpnc%pars)
+
     rpnc%rc=rpnc%rc-1
 
   end function eval
@@ -1615,18 +1622,22 @@ contains
              end if
           end if
           if(istat==0) then
-             if(.not.is_double(c).and..not.is_real(c)) then
+!             if(.not.is_double(c).and..not.is_real(c)) then
                 q%tid=TID_PAR
                 q%cid=get_par_loc(rpnc%pars,k)
-             else
-                istat=get_par(rpnc%pars,k,z)
-                if(istat/=0) then
+                if(q%cid==0) then
                    write(*,*) "*** get_par failed: code = ",istat
                    istat=RPNERR_GETPAR
-                else
-                   call put_vbuf(rpnc,i,z)
                 end if
-             end if
+!!$             else
+!!$                istat=get_par(rpnc%pars,k,z)
+!!$                if(istat/=0) then
+!!$                   write(*,*) "*** get_par failed: code = ",istat
+!!$                   istat=RPNERR_GETPAR
+!!$                else
+!!$                   call put_vbuf(rpnc,i,z)
+!!$                end if
+!!$             end if
           else
              write(*,*) "*** No such parameter: "//_EXPR_(i)
              istat=RPNERR_NOPAR
