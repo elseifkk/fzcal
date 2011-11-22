@@ -22,16 +22,23 @@ module slist
   integer*1,parameter,public::SC_REF  = Z"02"
   integer*1,parameter,public::SC_DBLE = Z"04"
   integer*1,parameter,public::SC_REAL = Z"08"
+  integer*1,parameter,public::SC_DUP  = Z"10"
+  integer*1,parameter,public::SC_NEW  = Z"20"
   !                  
   integer*1,parameter,public::SC_MAC  = Z"02"
   integer*1,parameter,public::SC_FNC  = Z"04"
 
   public get_sc
+  public set_sc
+  public add_sc
   public get_str_ptr
   public try_add_str
   public is_read_only
+  public is_duplicated
+  public is_new
   public cpstr
   public is_reference
+  public is_value
   public find_str
   public rm_str
   public init_slist
@@ -40,6 +47,7 @@ module slist
   public uinit_slist
   public is_double
   public is_real
+  public is_complex
   public dump_slist
   public trim_slist
 
@@ -152,6 +160,40 @@ contains
     code=b
     get_sc=0
   end function get_sc
+
+  integer function set_sc(sl,k,code)
+    type(t_slist),intent(inout)::sl
+    integer,intent(in)::k
+    integer*1,intent(in)::code
+    integer istat
+    integer*1 b
+    pointer(p,b)
+    istat=get_str_ptr(sl,k,p)
+    if(istat/=0) then
+       set_sc=istat
+       return
+    end if
+    p=p+1
+    b=code
+    set_sc=0
+  end function set_sc
+
+  integer function add_sc(sl,k,code)
+    type(t_slist),intent(inout)::sl
+    integer,intent(in)::k
+    integer*1,intent(in)::code
+    integer istat
+    integer*1 b
+    pointer(p,b)
+    istat=get_str_ptr(sl,k,p)
+    if(istat/=0) then
+       add_sc=istat
+       return
+    end if
+    p=p+1
+    b=ior(b,code)
+    add_sc=0
+  end function add_sc
   
   logical function is_read_only(c)
     integer*1,intent(in)::c
@@ -163,6 +205,11 @@ contains
     is_reference=(iand(c,SC_REF)/=0)
   end function is_reference
 
+  logical function is_value(c)
+    integer*1,intent(in)::c
+    is_value=(iand(c,SC_REF)==0)
+  end function is_value
+
   logical function is_double(c)
     integer*1,intent(in)::c
     is_double=(iand(c,SC_DBLE)/=0)
@@ -173,6 +220,21 @@ contains
     is_real=(iand(c,SC_REAL)/=0)
   end function is_real
   
+  logical function is_complex(c)
+    integer*1,intent(in)::c
+    is_complex=(iand(c,ior(SC_DBLE,SC_REAL))==0)
+  end function is_complex
+
+  logical function is_duplicated(c)
+    integer*1,intent(in)::c
+    is_duplicated=(iand(c,SC_DUP)/=0)
+  end function is_duplicated
+
+  logical function is_new(c)
+    integer*1,intent(in)::c
+    is_new=(iand(c,SC_NEW)/=0)
+  end function is_new
+
   integer function change_sc(sl,k,code)
     type(t_slist),intent(in)::sl
     integer,intent(in)::k

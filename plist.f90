@@ -28,9 +28,10 @@ module plist
      type(t_vbuf),allocatable::v(:)
   end type t_plist
   
+  public add_par_by_value_r
   interface add_par_by_value
-     module procedure add_par_by_value_r
-     module procedure add_par_by_value_c
+     module procedure add_par_by_value_x
+     module procedure add_par_by_value_z
   end interface add_par_by_value
 
   public add_par_by_value
@@ -45,6 +46,8 @@ module plist
   public is_double
   public get_par
   public alloc_par
+  public remove_dup
+  public realloc_new
 
 contains
 
@@ -144,7 +147,7 @@ contains
     case(PK_REF)
        if(.not.allocated(pl%v(k)%p)) allocate(pl%v(k)%p)
     end select
-    alloc_par=0
+    alloc_par=add_sc(pl%s,k,SC_NEW)
   end function alloc_par
 
   integer function rm_par(pl,s)
@@ -180,9 +183,10 @@ contains
   end subroutine min_cp_plist
   
   subroutine dump_plist(pl)
-    type(t_plist),intent(in)::pl
+    type(t_plist),intent(in),target::pl
     integer i,len,istat,ptr
-    integer*1 code
+    type(t_vbuf),pointer::v
+    integer*1 c
     real(dp) r
     real(rp) x
     complex(cp) z
@@ -190,28 +194,49 @@ contains
     pointer(pz,z)
     pointer(px,x)
     do i=1,pl%s%n
-       istat=get_str_ptr(pl%s,i,ptr,len,code=code)
-       write(*,10) i,code,trim(cpstr(ptr,len))
-       if(is_reference(code)) then
-          write(*,20) pl%v(i)%p
-          if(.not.is_double(code)) then
-             if(.not.is_real(code)) then
-                pz=pl%v(i)%p
-                write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
-             else
-                px=pl%v(i)%p
-                write(*,*) trim(rtoa(x,fmt=DISP_FMT_RAW))                
-             end if
+       v => pl%v(i)
+       istat=get_str_ptr(pl%s,i,ptr,len,code=c)
+       write(*,10) i,c,trim(cpstr(ptr,len))
+       if(is_reference(c)) then
+          if(.not.allocated(v%p)) then
+             write(*,30) "(no entry)"
+             cycle
           else
-             pr=pl%v(i)%p
+             write(*,20) v%p
+          end if
+          if(is_complex(c)) then
+             pz=v%p
+             write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
+          else if(is_real(c)) then
+             px=v%p
+             write(*,*) trim(rtoa(x,fmt=DISP_FMT_RAW))                
+          else if(is_double(c)) then
+             pr=v%p
              write(*,*) trim(rtoa(real(r,kind=rp),fmt=DISP_FMT_RAW))
           end if
-       else
-          write(*,*) trim(ztoa(pl%v(i)%z,fmt=DISP_FMT_RAW))
+       else if(is_complex(c)) then
+          if(.not.allocated(v%z)) then
+             write(*,30) "(no entry)"
+             cycle
+          end if
+          write(*,*) trim(ztoa(v%z,fmt=DISP_FMT_RAW))
+       else if(is_real(c)) then
+          if(.not.allocated(v%x)) then
+             write(*,30) "(no entry)"
+             cycle
+          end if
+          write(*,*) trim(rtoa(v%x,fmt=DISP_FMT_RAW))
+       else if(is_double(c)) then
+          if(.not.allocated(v%r)) then
+             write(*,30) "(no entry)"
+             cycle
+          end if
+          write(*,*) trim(rtoa(real(v%r,kind=rp),fmt=DISP_FMT_RAW))
        end if
     end do
+10  format(x,i4,x,b8.8,x,a,$)
 20  format(x,z16,$)
-10  format(x,i4,x,b4.4,x,a,$)
+30  format(x,a)
   end subroutine dump_plist
 
   subroutine trim_plist(pl)
@@ -394,25 +419,57 @@ contains
     add_par_by_reference=0
   end function add_par_by_reference
 
-  integer function add_par_by_value_r(pl,s,v,ro,ent)
+  integer function add_par_by_value_x(pl,s,v,ro,ent)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     real(rp),intent(in)::v
     logical,intent(in),optional::ro
     integer,intent(out),optional::ent
-    complex(cp) z
-    z=complex(v,rzero)
-    add_par_by_value_r=add_par_by_value_c(pl,s,z,ro,ent)
+    integer istat,k
+    integer*1 c
+    if(present(ent)) ent=0
+    c=SC_REAL
+    if(present(ro).and.ro) c=ior(c,SC_RO)
+    istat=try_add_par(pl,s,c,k)
+    if(istat/=0) then
+       add_par_by_value_x=istat
+       return
+    end if
+    if(.not.allocated(pl%v(k)%x)) allocate(pl%v(k)%x)
+    pl%v(k)%x=v
+    if(present(ent)) ent=k
+    add_par_by_value_x=0
+  end function add_par_by_value_x
+
+  integer function add_par_by_value_r(pl,s,v,ro,ent)
+    type(t_plist),intent(inout)::pl
+    character*(*),intent(in)::s
+    real(dp),intent(in)::v
+    logical,intent(in),optional::ro
+    integer,intent(out),optional::ent
+    integer istat,k
+    integer*1 c
+    if(present(ent)) ent=0
+    c=SC_DBLE
+    if(present(ro).and.ro) c=ior(c,SC_RO)
+    istat=try_add_par(pl,s,c,k)
+    if(istat/=0) then
+       add_par_by_value_r=istat
+       return
+    end if
+    if(.not.allocated(pl%v(k)%r)) allocate(pl%v(k)%r)
+    pl%v(k)%r=v
+    if(present(ent)) ent=k
+    add_par_by_value_r=0
   end function add_par_by_value_r
 
-  integer function add_par_by_value_c(pl,s,v,ro,ent)
+  integer function add_par_by_value_z(pl,s,v,ro,ent)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     complex(cp),intent(in)::v
     logical,intent(in),optional::ro
     integer,intent(out),optional::ent
-    integer istat
-    integer k
+    integer istat,k
     integer*1 c
     if(present(ent)) ent=0
     if(present(ro).and.ro) then
@@ -422,37 +479,67 @@ contains
     end if
     istat=try_add_par(pl,s,c,k)
     if(istat/=0) then
-       add_par_by_value_c=istat
+       add_par_by_value_z=istat
        return
     end if
     if(.not.allocated(pl%v(k)%z)) allocate(pl%v(k)%z)
     pl%v(k)%z=v
     if(present(ent)) ent=k
-    add_par_by_value_c=0
-  end function add_par_by_value_c
+    add_par_by_value_z=0
+  end function add_par_by_value_z
 
   integer function get_par_loc(pl,k)
-    type(t_plist),intent(in)::pl
+    type(t_plist),intent(inout),target::pl
     integer,intent(in)::k
+    type(t_vbuf),pointer::v
     integer istat
     integer*1 c
+    real(rp) x
+    real(dp) r
+    pointer(px,x)
+    pointer(pr,r)
     get_par_loc=0
     if(k>pl%s%n.or.k<=0) return
     istat=get_sc(pl%s,k,c)
     if(istat/=0) return
-    if(is_reference(c)) then
-       if(.not.allocated(pl%v(k)%p)) return
-       get_par_loc=pl%v(k)%p
-    else
-       if(.not.allocated(pl%v(k)%z)) return
-       get_par_loc=loc(pl%v(k)%z)
+    v => pl%v(k)
+    if(is_value(c)) then
+       if(is_complex(c)) then
+          if(.not.allocated(v%z)) return
+          get_par_loc=loc(v%z)
+          return
+       else if(is_real(c)) then
+          if(.not.allocated(v%x)) return
+          if(.not.allocated(v%z)) allocate(v%z)
+          v%z=complex(v%x,rzero)
+       else if(is_double(c)) then
+          if(.not.allocated(v%r)) return
+          if(.not.allocated(v%z)) allocate(v%z)
+          v%z=complex(real(v%r,kind=rp),rzero)
+       end if
+    else if(.not.allocated(v%p)) then
+       return
+    else if(is_complex(c)) then
+       get_par_loc=v%p
+       return
+    else if(is_real(c)) then
+       if(.not.allocated(v%z)) allocate(v%z)
+       px=v%p
+       v%z=complex(x,rzero)
+    else if(is_double(c)) then
+       if(.not.allocated(v%z)) allocate(v%z)
+       pr=v%p
+       v%z=complex(real(r,kind=rp),rzero)
     end if
+    get_par_loc=loc(v%z)
+    istat=set_sc(pl%s,k,ior(c,SC_DUP))
   end function get_par_loc
 
-  integer function get_par(pl,k,v)
-    type(t_plist),intent(in)::pl
+  integer function get_par(pl,k,zout)
+    type(t_plist),intent(in),target::pl
     integer,intent(in)::k
-    complex(cp),intent(out)::v
+    complex(cp),intent(out)::zout
+    type(t_vbuf),pointer::v
     integer*1 c
     integer istat
     real(dp) r
@@ -467,26 +554,106 @@ contains
        return
     end if
     get_par=PLERR_NOENT
-    if(.not.is_reference(c)) then
-       if(.not.allocated(pl%v(k)%z)) return
-       ! always complex
-       v=pl%v(k)%z
+    v => pl%v(k)
+    if(is_value(c)) then
+       if(is_complex(c)) then
+          if(.not.allocated(v%z)) return
+          zout=v%z
+       else if(is_real(c)) then
+          if(.not.allocated(v%x)) return
+          zout=complex(v%x,rzero)
+       else if(is_double(c)) then
+          if(.not.allocated(v%r)) return
+          zout=complex(real(v%r,kind=rp),rzero)
+       end if
     else 
-       if(.not.allocated(pl%v(k)%p)) return
-       if(.not.is_double(c)) then
-          if(.not.is_real(c)) then
-             pz=pl%v(k)%p
-             v=z
-          else
-             px=pl%v(k)%p
-             v=complex(x,rzero)
-          end if
-       else
-          pr=pl%v(k)%p
-          v=complex(real(r,kind=rp),rzero)
+       if(.not.allocated(v%p)) return
+       if(is_complex(c)) then
+          pz=v%p
+          zout=z
+       else if(is_real(c)) then
+          px=v%p
+          zout=complex(x,rzero)
+       else if(is_double(c)) then
+          pr=v%p
+          zout=complex(real(r,kind=rp),rzero)
        end if
     end if
     get_par=0
   end function get_par
+
+  integer function remove_dup(pl)
+    type(t_plist),intent(inout),target::pl
+    type(t_vbuf),pointer::v
+    integer i,istat
+    integer*1 c
+    real(rp) x
+    real(dp) r
+    pointer(px,x)
+    pointer(pr,r)
+    remove_dup=PLERR_NOENT
+    do i=1,pl%s%n
+       istat=get_sc(pl%s,i,c)
+       if(istat/=0) then
+          remove_dup=istat
+          return
+       end if
+       if(.not.is_duplicated(c)) cycle
+       v => pl%v(i)
+       if(.not.allocated(v%z)) return
+       if(is_reference(c)) then
+          if(.not.allocated(v%p)) return
+          if(is_real(c)) then
+             px=v%p
+             x=realpart(v%z)
+          else if(is_double(c)) then
+             pr=v%p
+             r=real(realpart(v%z),kind=dp)
+          else
+             ! unexpected error
+          end if
+       else if(is_real(c)) then
+          if(.not.allocated(v%x)) return
+          v%x=realpart(v%z)
+       else if(is_double(c)) then
+          if(.not.allocated(v%r)) return
+          v%r=real(realpart(v%z),kind=dp)
+       else
+          ! unexpected error
+       end if
+       deallocate(v%z)
+       istat=set_sc(pl%s,i,iand(c,not(SC_DUP)))
+    end do
+    remove_dup=0
+  end function remove_dup
+
+  integer function realloc_new(pl)
+    type(t_plist),intent(inout),target::pl
+    type(t_vbuf),pointer::v
+    integer i,istat
+    integer*1 c
+    realloc_new=PLERR_NOENT
+    do i=1,pl%s%n
+       istat=get_sc(pl%s,i,c)
+       if(istat/=0) then
+          realloc_new=istat
+          return
+       end if
+       if(.not.is_new(c)) cycle
+       if(is_complex(c)) then
+          v => pl%v(i)
+          if(.not.allocated(v%z)) return
+          if(imagpart(v%z)==rzero) then
+             if(.not.allocated(v%x)) allocate(v%x)
+             v%x=realpart(v%z)
+             deallocate(v%z)
+             c=ior(c,SC_REAL)
+          end if
+       end if
+       c=iand(c,not(SC_NEW))
+       istat=set_sc(pl%s,i,c)
+    end do
+    realloc_new=0
+  end function realloc_new
 
 end module plist
