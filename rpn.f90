@@ -92,7 +92,6 @@ module rpn
   type t_rrpnq
      integer tid
      integer p1,p2
-     integer opt
   end type t_rrpnq
 
   type t_rpnq
@@ -140,11 +139,11 @@ module rpn
      integer,pointer::pfs(:) 
   end type t_rpnc
 
-  integer,parameter::RPNCOPT_NOP  =  0
-  integer,parameter::RPNCOPT_DBG  =  Z"08000000"
-  integer,parameter::RPNCOPT_SET  =  Z"00000001"
-  integer,parameter::RPNCOPT_DEG  =  Z"00000002"
-  integer,parameter::RPNCOPT_NEW  =  Z"00000004"
+  integer,parameter::RPNCOPT_NOP    =  0
+  integer,parameter::RPNCOPT_DEBUG  =  Z"08000000"
+  integer,parameter::RPNCOPT_READY  =  Z"00000001"
+  integer,parameter::RPNCOPT_DEG    =  Z"00000002"
+  integer,parameter::RPNCOPT_NEW    =  Z"00000004"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
@@ -1157,7 +1156,7 @@ contains
        write(*,*) "(empty)"
        return
     end if
-    if(.not.present(mid).and.iand(rpnc%opt,RPNCOPT_SET)==0) then
+    if(.not.present(mid).and.iand(rpnc%opt,RPNCOPT_READY)==0) then
        write(*,*) "(not set)"
        return
     end if
@@ -1618,26 +1617,16 @@ contains
                 write(*,*) "*** add_par_by_entry failed: code = ",istat
                 istat=RPNERR_ADDPAR
              else
-                istat=alloc_par(rpnc%pars,k,PK_COMP)
+                istat=alloc_par(rpnc%pars,k,PK_COMP,.true.)
              end if
           end if
           if(istat==0) then
-!             if(.not.is_double(c).and..not.is_real(c)) then
-                q%tid=TID_PAR
-                q%cid=get_par_loc(rpnc%pars,k)
-                if(q%cid==0) then
-                   write(*,*) "*** get_par failed: code = ",istat
-                   istat=RPNERR_GETPAR
-                end if
-!!$             else
-!!$                istat=get_par(rpnc%pars,k,z)
-!!$                if(istat/=0) then
-!!$                   write(*,*) "*** get_par failed: code = ",istat
-!!$                   istat=RPNERR_GETPAR
-!!$                else
-!!$                   call put_vbuf(rpnc,i,z)
-!!$                end if
-!!$             end if
+             q%tid=TID_PAR
+             q%cid=get_par_loc(rpnc%pars,k)
+             if(q%cid==0) then
+                write(*,*) "*** get_par failed: code = ",istat
+                istat=RPNERR_GETPAR
+             end if
           else
              write(*,*) "*** No such parameter: "//_EXPR_(i)
              istat=RPNERR_NOPAR
@@ -1703,7 +1692,7 @@ contains
     end if
 
     if(afnc.and.istat==0) istat=RPNSTA_FNCSET
-    if(istat==0) rpnc%opt=ior(rpnc%opt,RPNCOPT_SET)
+    if(istat==0) rpnc%opt=ior(rpnc%opt,RPNCOPT_READY)
     
     build_rpnc=istat
 
@@ -2092,7 +2081,7 @@ contains
 
     call init_rpnb(formula)
 
-    rpnc%opt=iand(rpnc%opt,not(RPNCOPT_SET))
+    rpnc%opt=iand(rpnc%opt,not(RPNCOPT_READY))
 
     call init_stat()
     istat=0
@@ -2264,7 +2253,7 @@ contains
        told=t
     end do
 
-    if(iand(rpnc%opt,RPNCOPT_DBG)/=0) call dump_rpnb(rpnb)
+    if(iand(rpnc%opt,RPNCOPT_DEBUG)/=0) call dump_rpnb(rpnb)
 
     if(istat==0) then
        istat=build_rpnc(rpnb,rpnc)       
