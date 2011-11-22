@@ -618,12 +618,13 @@ contains
     fnc%que=rpnm%que
     fnc%p_vbuf=0
 
-    fnc%pars=>rpnc%pars
-    fnc%answer=>rpnc%answer
-    fnc%tmpans=>rpnc%tmpans
-    fnc%rl=>rpnc%rl
-    fnc%rc=>rpnc%rc
-    fnc%pfs=>rpnc%pfs
+    fnc%pars   => rpnc%pars
+    fnc%answer => rpnc%answer
+    fnc%tmpans => rpnc%tmpans
+    fnc%rl     => rpnc%rl
+    fnc%rc     => rpnc%rc
+    fnc%pfs    => rpnc%pfs
+    fnc%opt    => rpnc%opt
     
     istat=0
     do j=1,size(fnc%que)
@@ -634,7 +635,7 @@ contains
        case(TID_PAR,TID_APAR)
           call set_par_ptr(kp)
           if(istat/=0) exit 
-          fnc%que(j)%cid=loc(fnc%pars%v(kp))
+          fnc%que(j)%cid=get_par_loc(fnc%pars,kp)
           fnc%que(j)%tid=TID_PAR
        case(TID_DPAR)
           pv=rpnc%que(ods(fnc%que(j)%cid))%cid
@@ -708,6 +709,7 @@ contains
     mac%rl     => rpnc%rl
     mac%rc     => rpnc%rc
     mac%pfs    => rpnc%pfs
+    mac%opt    => rpnc%opt
 
     istat=0
     do j=1,size(mac%que)
@@ -715,7 +717,7 @@ contains
        case(TID_PAR,TID_APAR)
           call set_par_ptr(kp)
           if(istat/=0) exit
-          mac%que(j)%cid=loc(mac%pars%v(kp))
+          mac%que(j)%cid=get_par_loc(mac%pars,kp)
           mac%que(j)%tid=TID_PAR
        case(TID_FIG)
           mac%que(j)%cid=loc(rpnm%vbuf(mac%que(j)%cid))
@@ -1122,7 +1124,7 @@ contains
           tmprpnc%tmpans=>rpnm%tmpans
           tmprpnc%rl=>rpnc%rl
           tmprpnc%rc=>rpnc%rc
-          tmprpnc%pfs=rpnc%pfs
+          tmprpnc%pfs=>rpnc%pfs
           if(associated(rpnm%na)) write(*,*) "number of arguments = ",rpnm%na
           call dump_rpnc(tmprpnc,i)
           call dump_slist(rpnm%pnames)
@@ -1608,6 +1610,8 @@ contains
              if(istat/=0) then
                 write(*,*) "*** add_par_by_entry failed: code = ",istat
                 istat=RPNERR_ADDPAR
+             else
+                istat=alloc_par(rpnc%pars,k,PK_COMP)
              end if
           end if
           if(istat==0) then
