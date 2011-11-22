@@ -7,24 +7,17 @@ module com
   integer,parameter::CID_DEL_P   =  2
   integer,parameter::CID_DEL_F   =  3
   integer,parameter::CID_DEL_M   =  4
-  integer,parameter::CID_DMP     =  5
-  integer,parameter::CID_DMP_P   =  6
-  integer,parameter::CID_DMP_F   =  7
-  integer,parameter::CID_DMP_M   =  8
-  integer,parameter::CID_DMP_C   =  9
-  integer,parameter::CID_DMP_B   = 10
-  integer,parameter::CID_SET     = 11
-  integer,parameter::CID_SET_DM  = 12
-  integer,parameter::CID_SET_MD  = 13
+  integer,parameter::CID_DUMP_P  =  6
+  integer,parameter::CID_DUMP_F  =  7
+  integer,parameter::CID_DUMP_M  =  8
   integer,parameter::CID_INI     = 14
-  integer,parameter::CID_DBG     = 15
-  integer,parameter::CID_EXI     = 16
-  integer,parameter::CID_SET_DEG = 17
+  integer,parameter::CID_EXIT    = 16
   integer,parameter::CID_DONE    =999
 
 contains
 
   integer function parse_command(rpnc,a,karg)
+    ! a must not include dup white and must be left adjusted
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(inout)::a
     integer,intent(out)::karg
@@ -32,7 +25,7 @@ contains
 
     parse_command=CID_NOP
 
-    if(len_trim(a)==0) return
+    if(len_trim(a)<=1) return
     if(a(1:1)/=".") return
 
     k=index(a," ")-1
@@ -44,125 +37,40 @@ contains
        karg=k+1
     end if
 
-    cid=CID_NOP
     select case(a(2:ke))
     case("q","quit")
-       parse_command=CID_EXI
-       return
+       parse_command=CID_EXIT
     case("deg")
        rpnc%opt=ior(rpnc%opt,RPNCOPT_DEG)
        parse_command=CID_DONE
-       return
     case("rad")
        rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DEG))
        parse_command=CID_DONE
-       return
+    case("dbg","debug")
+       rpnc%opt=iand(rpnc%opt,RPNCOPT_DEBUG)
+       parse_command=CID_DONE
+    case("nodbg","nodebug")
+       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DEBUG))
+       parse_command=CID_DONE
     case("del","delete")
-       if(karg<=0) return
        cid=CID_DEL
-    case("debug","dbg")
-       parse_command=CID_DBG
-       a(1:ke)=""
-       return
-    case("d")
-       parse_command=CID_SET_DM
-       return
-    case("dump")
-       if(k<=0) return
-       cid=CID_DMP
     case("md")
-       parse_command=CID_DMP_M
-       return       
+       parse_command=CID_DUMP_M
     case("fd")
-       parse_command=CID_DMP_F
-       return       
+       parse_command=CID_DUMP_F
     case("pd")
-       parse_command=CID_DMP_P
-       return
+       parse_command=CID_DUMP_P
     case("dm")
        parse_command=CID_DEL_M
-       return       
     case("df")
        parse_command=CID_DEL_F
-       return       
     case("dp")
        parse_command=CID_DEL_P
-       return
-    case("set","s")
-       if(k<=0) return
-       cid=CID_SET
     case("init")
        parse_command=CID_INI
-       return
     case default
        parse_command=CID_INV
-       return
     end select
-
-    if(cid==CID_NOP) return
-
-    karg=0
-    ko=get_next_str()
-    if(ko==0) return
-
-    k=index(a(ko:)," ")-1
-    if(k<=0) then
-       ke=len_trim(a)
-       karg=0
-    else
-       ke=k+ko-1
-       karg=ke+1
-    end if
-
-    select case(cid)
-    case(CID_DMP)
-       select case(a(ko:ke))
-       case("p","par","parameter")
-          parse_command=CID_DMP_P
-          return
-       case("m","macro","mac")
-          parse_command=CID_DMP_M
-          return
-       case("f","fnc","function")
-          parse_command=CID_DMP_F
-          return
-       end select
-    case(CID_DEL)
-       select case(a(ko:ke))
-       case("p","par","parameter")
-          parse_command=CID_DEL_P
-          return
-       case("m","macro","mac")
-          parse_command=CID_DEL_M
-          return
-       case("f","fnc","function")
-          parse_command=CID_DEL_F
-          return
-       end select
-    case(CID_SET)
-       select case(a(ko:ke))
-       case("d","disp","display")
-          cid=CID_SET_DM
-       case("m","mode")
-          cid=CID_SET_MD
-       end select
-    end select
-
-  contains
-    
-    integer function get_next_str()
-      integer ii
-      get_next_str=0
-      do ii=ke+1,len_trim(a)
-         select case(a(ii:ii))
-         case(" ","\t")
-         case default
-            get_next_str=ii
-            return
-         end select
-      end do
-    end function get_next_str
-
 
   end function parse_command
   

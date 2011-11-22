@@ -129,10 +129,11 @@ contains
     end if
   end subroutine cp_vbuf
 
-  integer function alloc_par(pl,k,pk)
+  integer function alloc_par(pl,k,pk,cle)
     type(t_plist),intent(inout)::pl
     integer,intent(in)::k
     integer,intent(in)::pk
+    logical,intent(in),optional::cle
     if(k>size(pl%v).or.k<=0) then
        alloc_par=PLERR_NOENT
        return
@@ -140,12 +141,16 @@ contains
     select case(pk)
     case(PK_COMP)
        if(.not.allocated(pl%v(k)%z)) allocate(pl%v(k)%z)
+       if(present(cle).and.cle) pl%v(k)%z=czero
     case(PK_REAL)
        if(.not.allocated(pl%v(k)%x)) allocate(pl%v(k)%x)
+       if(present(cle).and.cle) pl%v(k)%x=rzero
     case(PK_DBLE)
        if(.not.allocated(pl%v(k)%r)) allocate(pl%v(k)%r)
+       if(present(cle).and.cle) pl%v(k)%r=0.0_dp
     case(PK_REF)
        if(.not.allocated(pl%v(k)%p)) allocate(pl%v(k)%p)
+       if(present(cle).and.cle) pl%v(k)%p=0
     end select
     alloc_par=add_sc(pl%s,k,SC_NEW)
   end function alloc_par
