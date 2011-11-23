@@ -235,24 +235,6 @@ contains
     is_new=(iand(c,SC_NEW)/=0)
   end function is_new
 
-  integer function change_sc(sl,k,code)
-    type(t_slist),intent(in)::sl
-    integer,intent(in)::k
-    integer*1,intent(in)::code
-    integer*1 b
-    integer istat
-    pointer(p,b)
-    istat=get_str_ptr(sl,k,p)
-    if(istat/=0) then
-       change_sc=istat
-       return
-    end if
-    p=p+1
-    b=code
-    change_sc=0
-  end function change_sc
-
-
   integer function rm_str(sl,s,ent,flg)
     type(t_slist),intent(inout)::sl
     character*(*),intent(in)::s
@@ -312,7 +294,7 @@ contains
              istat=SLERR_RDONL
              write(*,*) "*** Parameter is read-only: "//trim(s)
           else if(c/=code) then
-             istat=change_sc(sl,k,code)
+             istat=set_sc(sl,k,code)
           end if
        end if
     end if

@@ -48,7 +48,7 @@ module plist
   public alloc_par
   public remove_dup
   public realloc_new
-
+  
 contains
 
   function init_plist(sz,nmax)
@@ -116,7 +116,7 @@ contains
        v2%z=v1%z
     end if
     if(allocated(v1%x)) then
-       if(.not.allocated(v2%x)) allocate(v2%z)
+       if(.not.allocated(v2%x)) allocate(v2%x)
        v2%x=v1%x
     end if
     if(allocated(v1%r)) then

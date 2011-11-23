@@ -338,6 +338,15 @@ contains
     init_rpnc=p
   end function init_rpnc
 
+  integer function cp_rpnc(rpnc_in)
+    type(t_rpnc),intent(in)::rpnc_in
+    type(t_rpnc) rpnc
+    pointer(p,rpnc)
+    p=init_rpnc()
+!!$    call cp_par(rpnc%pars)
+!!$    call cp_rpnlist(rpnc%rl)
+  end function cp_rpnc
+
   subroutine uinit_rpnc(rpnc)
     type(t_rpnc),intent(inout)::rpnc
     if(associated(rpnc%que).and.size(rpnc%que)>0) deallocate(rpnc%que)
