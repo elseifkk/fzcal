@@ -2,6 +2,9 @@
 #define FZCAL_H
 
 #define LEN_FZCSTR_MAX 1024
+#define PK_REAL 1
+#define PK_DBLE 2
+#define PK_COMP 0
 
 #ifdef __cplusplus
 extern "C"

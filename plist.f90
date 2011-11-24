@@ -11,9 +11,9 @@ module plist
   integer,parameter::PLERR_RDONL = 4
   integer,parameter::PLERR_NOPAR = 5
   
-  integer,parameter,public::PK_COMP = 1
-  integer,parameter,public::PK_REAL = 2
-  integer,parameter,public::PK_DBLE = 3
+  integer,parameter,public::PK_COMP = 0
+  integer,parameter,public::PK_REAL = 1
+  integer,parameter,public::PK_DBLE = 2
   integer,parameter,public::PK_REF  = 4
 
   type t_vbuf
@@ -381,27 +381,21 @@ contains
     try_add_par=0
   end function try_add_par
 
-  integer function add_par_by_entry(pl,s,ent,ro)
+  integer function add_par_by_entry(pl,s,ent)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     integer,intent(out)::ent
-    logical,intent(in),optional::ro
     integer*1 c
-    if(present(ro).and.ro) then
-       c=SC_RO
-    else
-       c=0
-    end if
+    c=0
     add_par_by_entry=try_add_par(pl,s,c,ent)
   end function add_par_by_entry
 
-  integer function add_par_by_reference(pl,s,ptr,ro,dble,real,ent)
+  integer function add_par_by_reference(pl,s,ptr,ro,pk,ent)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     integer,intent(in)::ptr
     logical,intent(in),optional::ro
-    logical,intent(in),optional::dble
-    logical,intent(in),optional::real
+    integer,intent(in),optional::pk
     integer,intent(out),optional::ent
     integer istat
     integer k
@@ -412,8 +406,14 @@ contains
     else
        c=SC_REF
     end if
-    if(present(dble).and.dble) c=ior(c,ior(SC_DBLE,SC_RO)) ! <<<<
-    if(present(real).and.real) c=ior(c,ior(SC_REAL,SC_RO))
+    if(present(pk)) then
+       select case(pk)
+       case(PK_REAL)
+          c=ior(c,SC_REAL)
+       case(PK_DBLE)
+          c=ior(c,SC_DBLE)
+       end select
+    end if
     istat=try_add_par(pl,s,c,k)
     if(istat/=0) then
        add_par_by_reference=istat

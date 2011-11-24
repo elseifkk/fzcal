@@ -13,8 +13,16 @@ contains
     fzc_init=init_rpnc()
   end function fzc_init
 
+  size_t function fzc_cp(ptr_rpnc)
+    size_t,intent(in),value::ptr_rpnc
+    type(t_rpnc) rpnc
+    pointer(pr,rpnc)
+    pr=ptr_rpnc
+    fzc_cp=cp_rpnc(rpnc)
+  end function fzc_cp
+
   retint function fzc_set_formula(ptr_rpnc,ptr_formula)
-    integer,intent(in),value::ptr_rpnc,ptr_formula
+    size_t,intent(in),value::ptr_rpnc,ptr_formula
     character(LEN_FORMULA_MAX) f
     pointer(pf,f)
     type(t_rpnc) rpnc
@@ -25,7 +33,7 @@ contains
   end function fzc_set_formula
 
   retint function fzc_eval(ptr_rpnc)
-    integer,intent(in),value::ptr_rpnc
+    size_t,intent(in),value::ptr_rpnc
     type(t_rpnc) rpnc
     pointer(p,rpnc)
     p=ptr_rpnc
@@ -33,7 +41,7 @@ contains
   end function fzc_eval
 
   subroutine fzc_get_str_ans(ptr_rpnc,ptr_str)
-    integer,intent(in),value::ptr_rpnc,ptr_str
+    size_t,intent(in),value::ptr_rpnc,ptr_str
     type(t_rpnc) rpnc
     pointer(pr,rpnc)
     character(LEN_STR_ANS_MAX) str
@@ -44,7 +52,7 @@ contains
   end subroutine fzc_get_str_ans
 
   subroutine c2fstr(pstr,s)
-    integer,intent(in)::pstr
+    size_t,intent(in),value::pstr
     character*(*),intent(out)::s
     integer i
     character*1 c
@@ -58,17 +66,16 @@ contains
     end do
   end subroutine c2fstr
 
-  retint function fzc_regist_parameter(ptr_rpnc,ptr_var,ptr_str,dble)
-    integer,intent(in),value::ptr_rpnc,ptr_var,ptr_str,dble
+  retint function fzc_regist_parameter(ptr_rpnc,ptr_var,ptr_str,pk)
+    size_t,intent(in),value::ptr_rpnc,ptr_var,ptr_str
+    int_t,intent(in),value::pk
     character(LEN_STR_MAX) name
-    logical d
     type(t_rpnc) rpnc
     pointer(pr,rpnc)
     pr=ptr_rpnc
     call c2fstr(ptr_str,name)
-    d=(dble/=0)
     fzc_regist_parameter=&
-         int(add_par_by_reference(rpnc%pars,name,ptr_var,ro=.true.,dble=d,real=.true.),kind=C_INT)
+         int(add_par_by_reference(rpnc%pars,name,ptr_var,ro=.true.,pk=pk),kind=C_INT)
   end function fzc_regist_parameter
 
 end module fzc
