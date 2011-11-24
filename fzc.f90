@@ -13,12 +13,20 @@ contains
     fzc_init=init_rpnc()
   end function fzc_init
 
+  subroutine fzc_uinit(pfzc)
+    size_t,intent(in),value::pfzc
+    type(t_rpnc) rpnc
+    pointer(prpnc,rpnc)
+    prpnc=pfzc
+    call uinit_rpnc(rpnc)
+  end subroutine fzc_uinit
+
   size_t function fzc_cp(ptr_rpnc)
     size_t,intent(in),value::ptr_rpnc
-    type(t_rpnc) rpnc
-    pointer(pr,rpnc)
+    type(t_rpnc) rpnc_in
+    pointer(pr,rpnc_in)
     pr=ptr_rpnc
-    fzc_cp=cp_rpnc(rpnc)
+    fzc_cp=cp_rpnc(rpnc_in)
   end function fzc_cp
 
   retint function fzc_set_formula(ptr_rpnc,ptr_formula)

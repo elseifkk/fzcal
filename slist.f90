@@ -27,7 +27,9 @@ module slist
   !                  
   integer*1,parameter,public::SC_MAC  = Z"02"
   integer*1,parameter,public::SC_FNC  = Z"04"
-
+  !
+  integer,parameter,public::SLF_FORCE= Z"01"
+  !
   public get_sc
   public set_sc
   public add_sc
@@ -65,10 +67,10 @@ contains
   subroutine min_cp_slist(sl1,sl2)
     use memio
     type(t_slist),intent(in)::sl1
-    type(t_slist),intent(out)::sl2
+    type(t_slist),intent(inout)::sl2
     integer sz
     sz=sl1%st-sl1%p+1
-    if(sl2%p/=0) call free(sl2%p) !<<<<
+    if(sl2%p/=0) call free(sl2%p)
     if(sl1%n>0.and.sz>0) then
        sl2%p=malloc(sz)
        sl2%sz=sz
@@ -86,7 +88,11 @@ contains
   function init_slist(sz)
     type(t_slist) init_slist
     integer,intent(in)::sz
-    init_slist%p=malloc(sz)
+    if(sz>0) then
+       init_slist%p=malloc(sz)
+    else
+       init_slist%p=0
+    end if
     init_slist%sz=sz
     init_slist%st=init_slist%p-1
     init_slist%n=0
@@ -94,8 +100,7 @@ contains
  
   subroutine uinit_slist(sl)
     type(t_slist),intent(inout)::sl
-    if(sl%p==0) return
-    call free(sl%p)
+    if(sl%p/=0) call free(sl%p)
     sl%p=0
     sl%sz=0
     sl%st=-1
@@ -249,7 +254,8 @@ contains
        rm_str=SLERR_NOENT
        return
     end if
-    if(is_read_only(cd)) then
+    if(is_read_only(cd)&
+         .and..not.(present(flg).and.iand(flg,SLF_FORCE)/=0)) then
        rm_str=SLERR_RDONL
        return
     end if

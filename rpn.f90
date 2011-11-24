@@ -264,38 +264,35 @@ contains
     strip=k
   end function strip
 
-  subroutine init_rpnlist(rl)
-    type(t_rpnlist),intent(inout)::rl
+  function init_rpnlist(sz,nmax)
+    type(t_rpnlist) init_rpnlist
+    integer,intent(in)::sz,nmax
+    init_rpnlist%s=init_slist(sz)
+    if(nmax>0) allocate(init_rpnlist%rpnm(nmax))
+  end function init_rpnlist
+
+  subroutine uinit_rpnms(n,rpnm)
+    integer,intent(in)::n
+    type(t_rpnm),intent(inout)::rpnm(n)
     integer i
-    rl%s=init_slist(LEN_RLIST_MIN)
-    allocate(rl%rpnm(NUM_RPNM_MIN))
-    do i=1,NUM_RPNM_MIN
-       if(allocated(rl%rpnm(i)%que))   deallocate(rl%rpnm(i)%que)     
-       if(allocated(rl%rpnm(i)%vbuf))  deallocate(rl%rpnm(i)%vbuf)    
-       if(allocated(rl%rpnm(i)%p_vbuf))deallocate(rl%rpnm(i)%p_vbuf)
-       if(allocated(rl%rpnm(i)%pnames))deallocate(rl%rpnm(i)%pnames)
-       if(allocated(rl%rpnm(i)%na))    deallocate(rl%rpnm(i)%na)      
+    do i=1,n
+       if(allocated (rpnm(i)%que))    deallocate(rpnm(i)%que)
+       if(allocated (rpnm(i)%vbuf))   deallocate(rpnm(i)%vbuf)
+       if(allocated (rpnm(i)%na))     deallocate(rpnm(i)%na)
+       if(associated(rpnm(i)%pars))   nullify(   rpnm(i)%pars)
+       if(associated(rpnm(i)%tmpans)) nullify(   rpnm(i)%tmpans)
+       if(associated(rpnm(i)%answer)) nullify(   rpnm(i)%answer)
+       if(allocated (rpnm(i)%p_vbuf)) deallocate(rpnm(i)%p_vbuf)
+       if(allocated (rpnm(i)%na))     deallocate(rpnm(i)%na)
+       call uinit_slist(rpnm(i)%pnames)
     end do
-  end subroutine init_rpnlist
+  end subroutine uinit_rpnms
 
   subroutine uinit_rpnlist(rl)
     type(t_rpnlist),intent(inout),target::rl
-    integer i
-    type(t_rpnm),pointer::rpnm
     call uinit_slist(rl%s)
     if(.not.allocated(rl%rpnm)) return
-    do i=1,size(rl%rpnm)
-       rpnm=>rl%rpnm(i)
-       if(allocated(rpnm%que))    deallocate(rpnm%que)
-       if(allocated(rpnm%vbuf))   deallocate(rpnm%vbuf)
-       if(allocated(rpnm%na))     deallocate(rpnm%na)
-       if(associated(rpnm%pars))   nullify(rpnm%pars)
-       if(associated(rpnm%tmpans)) nullify(rpnm%tmpans)
-       if(associated(rpnm%answer)) nullify(rpnm%answer)
-       if(allocated(rpnm%p_vbuf)) deallocate(rpnm%p_vbuf)
-       if(allocated(rpnm%na)) deallocate(rpnm%na)
-       call uinit_slist(rpnm%pnames)
-    end do
+    call uinit_rpnms(size(rl%rpnm),rl%rpnm)
   end subroutine uinit_rpnlist
 
   subroutine inc_vbuf(rpnc,n)
@@ -315,14 +312,41 @@ contains
     end if
   end subroutine inc_vbuf
   
-  integer function init_rpnc()
+   integer function init_rpnc(nvbuf_,szplist_,npbuf_,szrlist_,nrpnm_)
+     ! type(t_rpnc) function init_rpnc causes segmentation fault
     use zmath
     type(t_rpnc) rpnc
     pointer(p,rpnc)
+    integer,intent(in),optional::nvbuf_,szplist_,npbuf_,szrlist_,nrpnm_
+    integer nvbuf,szplist,npbuf,szrlist,nrpnm
     p=malloc(sizeof(rpnc))
-    nullify(rpnc%que)
-    nullify(rpnc%vbuf)
-    allocate(rpnc%vbuf(NUM_VBUF_MIN))
+    nvbuf=NUM_VBUF_MIN
+    if(present(nvbuf_).and.nvbuf>0) then
+       nvbuf=nvbuf_
+    end if
+    if(present(szplist_)) then
+       szplist=szplist_
+    else
+       szplist=LEN_PLIST_MIN
+    end if
+    if(present(npbuf_)) then
+       npbuf=npbuf_
+    else
+       npbuf=NUM_PBUF_MIN
+    end if
+    if(present(szrlist_)) then
+       szrlist=szrlist_
+    else
+       szrlist=LEN_RLIST_MIN
+    end if
+    if(present(nrpnm_)) then
+       nrpnm=nrpnm_
+    else
+       nrpnm=NUM_RPNM_MIN
+    end if
+    nullify (rpnc%que)
+    nullify (rpnc%vbuf)
+    allocate(rpnc%vbuf(nvbuf))
     allocate(rpnc%rl)
     allocate(rpnc%tmpans)
     allocate(rpnc%answer)
@@ -334,36 +358,37 @@ contains
     rpnc%pfs(1)=loc(zm_f1)
     rpnc%pfs(2)=loc(zm_f2)
     rpnc%pfs(3)=loc(zm_f3)
-    call init_par(rpnc)
-    call init_rpnlist(rpnc%rl)
+    rpnc%pars=init_par(rpnc,szplist,npbuf)
+    rpnc%rl=init_rpnlist(szrlist,nrpnm)
     rpnc%opt=RPNCOPT_NOP
     init_rpnc=p
   end function init_rpnc
 
   subroutine cp_rpnm(rpnm1,rpnm2)
     type(t_rpnm),intent(in)::rpnm1
-    type(t_rpnm),intent(out)::rpnm2
-    if(allocated(rpnm1%que)) then
+    type(t_rpnm),intent(inout)::rpnm2
+    if(.not.allocated(rpnm2%que)) then
        allocate(rpnm2%que(size(rpnm1%que)))
        rpnm2%que=rpnm1%que
     end if
-    if(allocated(rpnm1%vbuf)) then
+    if(.not.allocated(rpnm2%vbuf)) then
        allocate(rpnm2%vbuf(size(rpnm1%vbuf)))
        rpnm2%vbuf=rpnm1%vbuf
     end if
-    if(allocated(rpnm1%p_vbuf)) then 
+    if(.not.allocated(rpnm2%p_vbuf)) then 
        allocate(rpnm2%p_vbuf)
        rpnm2%p_vbuf=rpnm1%p_vbuf
     end if
-    if(allocated(rpnm1%pnames)) then
+    if(.not.allocated(rpnm2%pnames)) then
        allocate(rpnm2%pnames)
-       call min_cp_slist(rpnm1%pnames,rpnm2%pnames)
+       rpnm2%pnames=init_slist(0)
+       call min_cp_slist(rpnm1%pnames,rpnm2%pnames) !<<<
     end if
   end subroutine cp_rpnm
 
   subroutine min_cp_rpnlist(rl1,rl2)
     type(t_rpnlist),intent(in)::rl1
-    type(t_rpnlist),intent(out)::rl2
+    type(t_rpnlist),intent(inout)::rl2
     integer i
     call min_cp_slist(rl1%s,rl2%s)
     if(rl2%s%n<=0) return
@@ -377,16 +402,9 @@ contains
     type(t_rpnc),intent(in)::rpnc_in
     type(t_rpnc) rpnc
     pointer(p,rpnc)
-    p=malloc(sizeof(rpnc))
-    allocate(rpnc%vbuf(size(rpnc_in%vbuf)))
-    allocate(rpnc%rl)    ; call min_cp_rpnlist(rpnc_in%rl,rpnc%rl)
-    allocate(rpnc%tmpans); rpnc%tmpans=rpnc_in%tmpans
-    allocate(rpnc%answer); rpnc%answer=rpnc_in%answer
-    allocate(rpnc%pars)  ; call min_cp_plist(rpnc_in%pars,rpnc%pars)
-    allocate(rpnc%p_vbuf); rpnc%p_vbuf=rpnc_in%p_vbuf
-    allocate(rpnc%rc)    ; rpnc%rc=rpnc_in%rc
-    allocate(rpnc%opt)   ; rpnc%opt=rpnc_in%opt
-    allocate(rpnc%pfs(3)); rpnc%pfs=rpnc_in%pfs
+    p=init_rpnc(size(rpnc_in%vbuf),0,0,0,0)
+    call min_cp_rpnlist(rpnc_in%rl,rpnc%rl)
+    call min_cp_plist(rpnc_in%pars,rpnc%pars)
     cp_rpnc=p
   end function cp_rpnc
 
@@ -403,18 +421,20 @@ contains
     if(associated(rpnc%pfs)) deallocate(rpnc%pfs)
   end subroutine uinit_rpnc
 
-  subroutine init_par(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
+  function init_par(rpnc,sz,nmax)
+    type(t_plist) init_par
+    type(t_rpnc),intent(in)::rpnc
+    integer,intent(in)::sz,nmax
     integer istat
-    rpnc%pars=init_plist(LEN_PLIST_MIN,NUM_PBUF_MIN)
-    istat=add_par_by_reference(rpnc%pars,"tmp",loc(rpnc%tmpans),.true.)
-    istat=add_par_by_reference(rpnc%pars,"ans",loc(rpnc%answer),.true.)
-    istat=add_par_by_value(rpnc%pars,"eps",epsilon(0.0_rp),.true.)    
-    istat=add_par_by_value(rpnc%pars,"huge",huge(0.0_rp),.true.)    
-    istat=add_par_by_value(rpnc%pars,"i",complex(0.0_rp,1.0_rp),.true.)
-    istat=add_par_by_value(rpnc%pars,"pi",atan(1.0_rp)*4.0_rp,.true.)
-    istat=add_par_by_value(rpnc%pars,"c",2.99792458e8_rp,.true.)
-  end subroutine init_par
+    init_par=init_plist(sz,nmax)
+    istat=add_par_by_reference(init_par,"tmp",loc(rpnc%tmpans),.true.)
+    istat=add_par_by_reference(init_par,"ans",loc(rpnc%answer),.true.)
+    istat=add_par_by_value(init_par,"eps",epsilon(0.0_rp),.true.)    
+    istat=add_par_by_value(init_par,"huge",huge(0.0_rp),.true.)    
+    istat=add_par_by_value(init_par,"i",complex(0.0_rp,1.0_rp),.true.)
+    istat=add_par_by_value(init_par,"pi",atan(1.0_rp)*4.0_rp,.true.)
+    istat=add_par_by_value(init_par,"c",2.99792458e8_rp,.true.)
+  end function init_par
 
   subroutine uinit_par(rpnc)
     type(t_rpnc),intent(inout)::rpnc
@@ -1383,7 +1403,7 @@ contains
       integer istat
       complex(cp) v
       pointer(pv,v)
-      if(allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
+      if(.not.allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
       rpnm%p_vbuf=0
       do ii=1,size(rpnm%que)
          select case(rpnm%que(ii)%tid)
@@ -1499,7 +1519,7 @@ contains
       integer kp
       complex(cp) v
       pointer(pv,v)
-      if(allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
+      if(.not.allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
       rpnm%p_vbuf=0
       do ii=1,tc
          select case(rpnm%que(ii)%tid)
@@ -1570,7 +1590,6 @@ contains
     type(t_rpnb),intent(in)::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     real(rp) x
-    complex(rp) z
     integer istat
     integer i,k,t
     logical amac,afnc

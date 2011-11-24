@@ -11,6 +11,8 @@ extern "C"
 {
 #endif
   size_t  __fzc_MOD_fzc_init ( void );
+  size_t  __fzc_MOD_fzc_cp ( const size_t );
+  void  __fzc_MOD_fzc_uinit ( const size_t );
   int  __fzc_MOD_fzc_set_formula ( const size_t, const size_t );
   int  __fzc_MOD_fzc_eval ( const size_t );
   void __fzc_MOD_fzc_get_str_ans ( const size_t, const size_t );
@@ -20,6 +22,8 @@ extern "C"
 #endif
 
 #define fzc_init __fzc_MOD_fzc_init
+#define fzc_uinit __fzc_MOD_fzc_uinit
+#define fzc_cp __fzc_MOD_fzc_cp
 #define fzc_set_formula __fzc_MOD_fzc_set_formula
 #define fzc_eval __fzc_MOD_fzc_eval
 #define fzc_regpar __fzc_MOD_fzc_regist_parameter
