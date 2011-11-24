@@ -48,7 +48,8 @@ module plist
   public alloc_par
   public remove_dup
   public realloc_new
-  
+  public min_cp_plist
+
 contains
 
   function init_plist(sz,nmax)
@@ -176,15 +177,15 @@ contains
   subroutine min_cp_plist(pl1,pl2)
     type(t_plist),intent(in)::pl1
     type(t_plist),intent(out)::pl2
+    call min_cp_slist(pl1%s,pl2%s)
     if(allocated(pl2%v)) then
        call uinit_vbufs(size(pl2%v),pl2%v)
        deallocate(pl2%v)
     end if
-    if(allocated(pl1%v).and.size(pl1%v)>0) then
-       allocate(pl2%v(size(pl1%v)))
-       call cp_vbufs(pl1%s%n,pl1%v,pl2%v)
+    if(pl2%s%n>0) then
+       allocate(pl2%v(pl2%s%n))
+       call cp_vbufs(pl2%s%n,pl1%v,pl2%v)
     end if
-    call min_cp_slist(pl1%s,pl2%s)
   end subroutine min_cp_plist
   
   subroutine dump_plist(pl)
