@@ -57,7 +57,7 @@ contains
     integer,intent(in)::sz
     integer,intent(in)::nmax
     init_plist%s=init_slist(sz)
-    allocate(init_plist%v(nmax))
+    if(nmax>0) allocate(init_plist%v(nmax))
   end function init_plist
 
   subroutine uinit_vbuf(vl)
@@ -176,7 +176,8 @@ contains
 
   subroutine min_cp_plist(pl1,pl2)
     type(t_plist),intent(in)::pl1
-    type(t_plist),intent(out)::pl2
+    type(t_plist),intent(inout)::pl2
+    call uinit_plist(pl2)
     call min_cp_slist(pl1%s,pl2%s)
     if(allocated(pl2%v)) then
        call uinit_vbufs(size(pl2%v),pl2%v)
