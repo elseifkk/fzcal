@@ -111,14 +111,14 @@ module rpn
   end type t_rpnb
 
   type t_rpnm
-     type(t_rpnq),pointer::que(:)   ! allocated
-     complex(cp),pointer::vbuf(:)   ! allocated
-     integer,pointer::p_vbuf        ! allocated
-     type(t_plist),pointer::pars    ! => rpnc%pars
-     complex(cp),pointer::answer    ! => rpnc%answer
-     complex(cp),pointer::tmpans    ! => rpnc%tmpans
-     type(t_slist),pointer::pnames  ! allocated
-     integer,pointer::na            ! num arg
+     type(t_rpnq),allocatable::que(:)  ! allocated
+     complex(cp),allocatable::vbuf(:)  ! allocated
+     integer,allocatable::p_vbuf       ! allocated
+     type(t_plist),pointer::pars       ! => rpnc%pars
+     complex(cp),pointer::answer       ! => rpnc%answer
+     complex(cp),pointer::tmpans       ! => rpnc%tmpans
+     type(t_slist),allocatable::pnames ! allocated
+     integer,allocatable::na               ! num arg
   end type t_rpnm
 
   type t_rpnlist
@@ -270,11 +270,11 @@ contains
     rl%s=init_slist(LEN_RLIST_MIN)
     allocate(rl%rpnm(NUM_RPNM_MIN))
     do i=1,NUM_RPNM_MIN
-       nullify(rl%rpnm(i)%que)
-       nullify(rl%rpnm(i)%vbuf)
-       nullify(rl%rpnm(i)%p_vbuf)
-       nullify(rl%rpnm(i)%pnames)
-       nullify(rl%rpnm(i)%na)
+       if(allocated(rl%rpnm(i)%que))   deallocate(rl%rpnm(i)%que)     
+       if(allocated(rl%rpnm(i)%vbuf))  deallocate(rl%rpnm(i)%vbuf)    
+       if(allocated(rl%rpnm(i)%p_vbuf))deallocate(rl%rpnm(i)%p_vbuf)
+       if(allocated(rl%rpnm(i)%pnames))deallocate(rl%rpnm(i)%pnames)
+       if(allocated(rl%rpnm(i)%na))    deallocate(rl%rpnm(i)%na)      
     end do
   end subroutine init_rpnlist
 
@@ -286,13 +286,15 @@ contains
     if(.not.allocated(rl%rpnm)) return
     do i=1,size(rl%rpnm)
        rpnm=>rl%rpnm(i)
-       if(associated(rpnm%que).and.size(rpnm%que)>0) deallocate(rpnm%que)
-       if(associated(rpnm%vbuf).and.size(rpnm%vbuf)>0) deallocate(rpnm%vbuf)
-       if(associated(rpnm%na)) deallocate(rpnm%na)
-       if(associated(rpnm%pars)) nullify(rpnm%pars)
+       if(allocated(rpnm%que))    deallocate(rpnm%que)
+       if(allocated(rpnm%vbuf))   deallocate(rpnm%vbuf)
+       if(allocated(rpnm%na))     deallocate(rpnm%na)
+       if(associated(rpnm%pars))   nullify(rpnm%pars)
        if(associated(rpnm%tmpans)) nullify(rpnm%tmpans)
        if(associated(rpnm%answer)) nullify(rpnm%answer)
-       if(associated(rpnm%p_vbuf)) deallocate(rpnm%p_vbuf)
+       if(allocated(rpnm%p_vbuf)) deallocate(rpnm%p_vbuf)
+       if(allocated(rpnm%na)) deallocate(rpnm%na)
+       call uinit_slist(rpnm%pnames)
     end do
   end subroutine uinit_rpnlist
 
@@ -338,13 +340,54 @@ contains
     init_rpnc=p
   end function init_rpnc
 
+  subroutine cp_rpnm(rpnm1,rpnm2)
+    type(t_rpnm),intent(in)::rpnm1
+    type(t_rpnm),intent(out)::rpnm2
+    if(allocated(rpnm1%que)) then
+       allocate(rpnm2%que(size(rpnm1%que)))
+       rpnm2%que=rpnm1%que
+    end if
+    if(allocated(rpnm1%vbuf)) then
+       allocate(rpnm2%vbuf(size(rpnm1%vbuf)))
+       rpnm2%vbuf=rpnm1%vbuf
+    end if
+    if(allocated(rpnm1%p_vbuf)) then 
+       allocate(rpnm2%p_vbuf)
+       rpnm2%p_vbuf=rpnm1%p_vbuf
+    end if
+    if(allocated(rpnm1%pnames)) then
+       allocate(rpnm2%pnames)
+       call min_cp_slist(rpnm1%pnames,rpnm2%pnames)
+    end if
+  end subroutine cp_rpnm
+
+  subroutine min_cp_rpnlist(rl1,rl2)
+    type(t_rpnlist),intent(in)::rl1
+    type(t_rpnlist),intent(out)::rl2
+    integer i
+    call min_cp_slist(rl1%s,rl2%s)
+    if(rl2%s%n<=0) return
+    allocate(rl2%rpnm(rl2%s%n))
+    do i=1,rl2%s%n
+       call cp_rpnm(rl1%rpnm(i),rl2%rpnm(i))
+    end do
+  end subroutine min_cp_rpnlist
+
   integer function cp_rpnc(rpnc_in)
     type(t_rpnc),intent(in)::rpnc_in
     type(t_rpnc) rpnc
     pointer(p,rpnc)
-    p=init_rpnc()
-!!$    call cp_par(rpnc%pars)
-!!$    call cp_rpnlist(rpnc%rl)
+    p=malloc(sizeof(rpnc))
+    allocate(rpnc%vbuf(size(rpnc_in%vbuf)))
+    allocate(rpnc%rl)    ; call min_cp_rpnlist(rpnc_in%rl,rpnc%rl)
+    allocate(rpnc%tmpans); rpnc%tmpans=rpnc_in%tmpans
+    allocate(rpnc%answer); rpnc%answer=rpnc_in%answer
+    allocate(rpnc%pars)  ; call min_cp_plist(rpnc_in%pars,rpnc%pars)
+    allocate(rpnc%p_vbuf); rpnc%p_vbuf=rpnc_in%p_vbuf
+    allocate(rpnc%rc)    ; rpnc%rc=rpnc_in%rc
+    allocate(rpnc%opt)   ; rpnc%opt=rpnc_in%opt
+    allocate(rpnc%pfs(3)); rpnc%pfs=rpnc_in%pfs
+    cp_rpnc=p
   end function cp_rpnc
 
   subroutine uinit_rpnc(rpnc)
@@ -1129,7 +1172,7 @@ contains
        end if
        write(*,*) "name: "//trim(cpstr(ptr,len))
 
-       if(associated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
+       if(allocated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
           write(*,*) "definition: "//trim(cpstr(ptr,len))
           tmprpnc%que=>rpnm%que
           tmprpnc%vbuf=>rpnm%vbuf
@@ -1140,7 +1183,7 @@ contains
           tmprpnc%rl=>rpnc%rl
           tmprpnc%rc=>rpnc%rc
           tmprpnc%pfs=>rpnc%pfs
-          if(associated(rpnm%na)) write(*,*) "number of arguments = ",rpnm%na
+          if(allocated(rpnm%na)) write(*,*) "number of arguments = ",rpnm%na
           call dump_rpnc(tmprpnc,i)
           call dump_slist(rpnm%pnames)
        else
@@ -1263,9 +1306,9 @@ contains
        end if
        rpnc%que(i)%cid=kf
        rpnm=>rpnc%rl%rpnm(kf)
-       if(associated(rpnm%que).and.size(rpnm%que)>0) deallocate(rpnm%que)
-       if(associated(rpnm%vbuf).and.size(rpnm%vbuf)>0) deallocate(rpnm%vbuf)       
-       if(.not.associated(rpnm%na)) allocate(rpnm%na)
+       if(allocated(rpnm%que)) deallocate(rpnm%que)
+       if(allocated(rpnm%vbuf)) deallocate(rpnm%vbuf)       
+       if(.not.allocated(rpnm%na)) allocate(rpnm%na)
        if(i==k1) then
           ! | k1=i |   |   | ... | km |       | ke |
           ! | f    | x | y | arg | *  | codes | =  |
@@ -1312,7 +1355,7 @@ contains
 
     subroutine init_pnames()
       integer istat
-      if(associated(rpnm%pnames)) deallocate(rpnm%pnames)
+      if(allocated(rpnm%pnames)) deallocate(rpnm%pnames)
       allocate(rpnm%pnames)
       plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1&
            +get_up32(rpnb%que(ka)%p2)-get_up32(rpnb%que(ka)%p1)+1
@@ -1340,7 +1383,7 @@ contains
       integer istat
       complex(cp) v
       pointer(pv,v)
-      if(.not.associated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
+      if(allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
       rpnm%p_vbuf=0
       do ii=1,size(rpnm%que)
          select case(rpnm%que(ii)%tid)
@@ -1407,8 +1450,8 @@ contains
        end if
        rpnc%que(i)%cid=km
        rpnm=>rpnc%rl%rpnm(km)
-       if(associated(rpnm%que).and.size(rpnm%que)>0) deallocate(rpnm%que)
-       if(associated(rpnm%vbuf).and.size(rpnm%vbuf)>0) deallocate(rpnm%vbuf)
+       if(allocated(rpnm%que)) deallocate(rpnm%que)
+       if(allocated(rpnm%vbuf)) deallocate(rpnm%vbuf)
        tc=(k-1)-(i+1)+1
        if(tc==0) exit ! empty macro
        rpnm%pars=>rpnc%pars
@@ -1440,7 +1483,7 @@ contains
     end function find_end
 
     subroutine init_pnames()
-      if(associated(rpnm%pnames)) deallocate(rpnm%pnames)
+      if(allocated(rpnm%pnames)) deallocate(rpnm%pnames)
       allocate(rpnm%pnames)
       plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1
       rpnm%pnames=init_slist(plen+(pc+1)*LEN_SLIST_HDR)
@@ -1456,7 +1499,7 @@ contains
       integer kp
       complex(cp) v
       pointer(pv,v)
-      if(.not.associated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
+      if(allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
       rpnm%p_vbuf=0
       do ii=1,tc
          select case(rpnm%que(ii)%tid)
