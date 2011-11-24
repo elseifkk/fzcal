@@ -14,8 +14,7 @@ program fzcal
 
   p=init_rpnc()
 
-  do
-     rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DBG))
+  main: do
      write(*,10) "> "
 10   format(x,a,$)
      read(*,"(a)") str
@@ -23,19 +22,17 @@ program fzcal
      str=adjustl(str)
      cid=parse_command(rpnc,str,ka)
      select case(cid)
-     case(CID_EXI)
-        exit
-     case(CID_DMP_P)
+     case(CID_EXIT)
+        exit main
+     case(CID_DUMP_P)
         call dump_plist(rpnc%pars)
-        cycle
-     case(CID_DMP_F)
+        cycle main
+     case(CID_DUMP_F)
         call dump_rpnm(rpnc,atoi(trim(adjustl(str(ka:)))))
         cycle
-     case(CID_DMP_M)
+     case(CID_DUMP_M)
         call dump_rpnm(rpnc,atoi(trim(adjustl(str(ka:)))))
         cycle
-     case(CID_DBG)
-        rpnc%opt=ior(rpnc%opt,RPNCOPT_DBG)
      case(CID_DEL_P)
         call delete_par(rpnc,trim(adjustl(str(ka:))))
         cycle
@@ -51,7 +48,7 @@ program fzcal
         write(*,*)  "*** parse_formula failed: code = ",istat
         call dump_rpnc(rpnc)
      else if(istat==0) then
-        if(iand(rpnc%opt,RPNCOPT_DBG)/=0) then
+        if(iand(rpnc%opt,RPNCOPT_DEBUG)/=0) then
            write(*,*) "=== Before eval ==="
            call dump_rpnc(rpnc)
         end if
@@ -62,13 +59,13 @@ program fzcal
            write(*,*) "*** rpn_eval failed: code = ",istat
            call dump_rpnc(rpnc)
         else
-           if(iand(rpnc%opt,RPNCOPT_DBG)/=0) then
+           if(iand(rpnc%opt,RPNCOPT_DEBUG)/=0) then
               write(*,*) "=== After eval ==="
               call dump_rpnc(rpnc)
            end if
            write(*,*) trim(ztoa(rpn_ans(rpnc)))
         end if
      end if
-  end do
+  end do main
   
 end program fzcal
