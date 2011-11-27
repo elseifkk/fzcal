@@ -59,6 +59,24 @@ contains
     str=trim(ztoa(rpn_ans(rpnc)))//achar(0)
   end subroutine fzc_get_str_ans
 
+  subroutine fzc_set_opt(ptr_rpnc,opt)
+    size_t,intent(in),value::ptr_rpnc
+    int_t,intent(in),value::opt
+    type(t_rpnc) rpnc
+    pointer(p,rpnc)
+    p=ptr_rpnc
+    rpnc%opt=ior(rpnc%opt,opt)
+  end subroutine fzc_set_opt
+
+  subroutine fzc_cle_opt(ptr_rpnc,opt)
+    size_t,intent(in),value::ptr_rpnc
+    int_t,intent(in),value::opt
+    type(t_rpnc) rpnc
+    pointer(p,rpnc)
+    p=ptr_rpnc
+    rpnc%opt=iand(rpnc%opt,not(opt))
+  end subroutine fzc_cle_opt
+
   subroutine c2fstr(pstr,s)
     size_t,intent(in),value::pstr
     character*(*),intent(out)::s
