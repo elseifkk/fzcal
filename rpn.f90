@@ -139,11 +139,12 @@ module rpn
      integer,pointer::pfs(:) 
   end type t_rpnc
 
-  integer,parameter::RPNCOPT_NOP    =  0
-  integer,parameter::RPNCOPT_DEBUG  =  Z"08000000"
-  integer,parameter::RPNCOPT_READY  =  Z"00000001"
-  integer,parameter::RPNCOPT_DEG    =  Z"00000002"
-  integer,parameter::RPNCOPT_NEW    =  Z"00000004"
+  integer,parameter::RPNCOPT_NOP             =  0
+  integer,parameter::RPNCOPT_DEBUG           =  Z"08000000"
+  integer,parameter::RPNCOPT_READY           =  Z"00000001"
+  integer,parameter::RPNCOPT_DEG             =  Z"00000002"
+  integer,parameter::RPNCOPT_NEW             =  Z"00000004"
+  integer,parameter::RPNCOPT_NO_AUTO_ADD_PAR =  Z"00000008"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
@@ -1681,7 +1682,7 @@ contains
           end if
           c=0
           istat=find_par(rpnc%pars,_EXPR_(i),ent=k,code=c)          
-          if(amac.and.istat/=0) then
+          if(amac.and.istat/=0.and.iand(rpnc%opt,RPNCOPT_NO_AUTO_ADD_PAR)==0) then
              ! par may not already exist
              istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
              if(istat/=0) then
