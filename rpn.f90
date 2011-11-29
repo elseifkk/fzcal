@@ -168,6 +168,7 @@ module rpn
        achar(3)//"log"//&
        achar(2)//"ln"//&
        achar(4)//"sqrt"//&
+       achar(4)//"cbrt"//&
        achar(3)//"abs"//&
        achar(3)//"int"//&
        achar(4)//"frac"//&
@@ -206,30 +207,31 @@ module rpn
   integer,parameter::FID_LOG       = 14
   integer,parameter::FID_LN        = 15
   integer,parameter::FID_SQRT      = 16
-  integer,parameter::FID_ABS       = 17
-  integer,parameter::FID_INT       = 18
-  integer,parameter::FID_FRAC      = 19
-  integer,parameter::FID_CONJG     = 20
-  integer,parameter::FID_NINT      = 21
-  integer,parameter::FID_REAL      = 22
-  integer,parameter::FID_IMAG      = 23
-  integer,parameter::FID_MAG       = 24
-  integer,parameter::FID_ARG       = 25
-  integer,parameter::FID_GAMMA     = 26
-  integer,parameter::FID_LGAMMA    = 27
-  integer,parameter::FID_PSY       = 28
-  integer,parameter::FID_ARG1_END  = 28 !<<<<<<<<
-  integer,parameter::FID_MIN       = 29
-  integer,parameter::FID_MAX       = 30
-  integer,parameter::FID_GAMI      = 31
-  integer,parameter::FID_ARG2_END  = 31 !<<<<<<<<
-  integer,parameter::FID_DEINT     = 32
-  integer,parameter::FID_ARG3_END  = 32 !<<<<<<<<
-  integer,parameter::FID_SUM       = 33
-  integer,parameter::FID_AVE       = 34
-  integer,parameter::FID_VAR       = 35
-  integer,parameter::FID_UVAR      = 36
-  integer,parameter::FID_SUM2      = 37
+  integer,parameter::FID_CBRT      = 17
+  integer,parameter::FID_ABS       = 18
+  integer,parameter::FID_INT       = 19
+  integer,parameter::FID_FRAC      = 20
+  integer,parameter::FID_CONJG     = 21
+  integer,parameter::FID_NINT      = 22
+  integer,parameter::FID_REAL      = 23
+  integer,parameter::FID_IMAG      = 24
+  integer,parameter::FID_MAG       = 25
+  integer,parameter::FID_ARG       = 26
+  integer,parameter::FID_GAMMA     = 27
+  integer,parameter::FID_LGAMMA    = 28
+  integer,parameter::FID_PSY       = 29
+  integer,parameter::FID_ARG1_END  = 29 !<<<<<<<<
+  integer,parameter::FID_MIN       = 30
+  integer,parameter::FID_MAX       = 31
+  integer,parameter::FID_GAMI      = 32
+  integer,parameter::FID_ARG2_END  = 32 !<<<<<<<<
+  integer,parameter::FID_DEINT     = 33
+  integer,parameter::FID_ARG3_END  = 33 !<<<<<<<<
+  integer,parameter::FID_SUM       = 34
+  integer,parameter::FID_AVE       = 35
+  integer,parameter::FID_VAR       = 36
+  integer,parameter::FID_UVAR      = 37
+  integer,parameter::FID_SUM2      = 38
 
   interface put_vbuf
      module procedure put_vbuf_r
@@ -1832,6 +1834,8 @@ contains
          get_fid=loc(zm_exp)
       case(FID_SQRT)
          get_fid=loc(zm_sqrt)
+      case(FID_CBRT)
+         get_fid=loc(zm_cbrt)
       case(FID_LN)
          get_fid=loc(zm_log)
       case(FID_LOG)

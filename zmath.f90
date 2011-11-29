@@ -52,6 +52,7 @@ module zmath
   public zm_log
   public zm_log10
   public zm_sqrt
+  public zm_cbrt
   public zm_abs
   public zm_int
   public zm_frac
@@ -346,6 +347,11 @@ contains
     complex(cp),intent(in)::z1
     zm_sqrt=sqrt(z1)
   end function zm_sqrt
+
+  complex(cp) function zm_cbrt(z1)
+    complex(cp),intent(in)::z1
+    zm_cbrt=(z1)**(1.0_rp/3.0_rp)
+  end function zm_cbrt
 
   complex(cp) function zm_abs(z1)
     complex(cp),intent(in)::z1
