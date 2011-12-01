@@ -25,6 +25,9 @@ module rpn
   integer,parameter::RPNERR_RECOV  = 12
   integer,parameter::RPNERR_NARG   = 13
   integer,parameter::RPNERR_GETPAR = 14
+  integer,parameter::RPNERR_TOO_MANY_ARG = 14
+  integer,parameter::RPNERR_TOO_FEW_ARG  = 15
+  integer,parameter::RPNERR_NO_ARG       = 16
 
   integer,parameter::RPN_REC_MAX   =  256
   integer,parameter::NUM_VBUF_MIN  =   32
@@ -152,6 +155,7 @@ module rpn
 
   integer,parameter::int_fnc_max_len=5
   character*(*),parameter::int_fnc=&
+       achar(3)//"ran"//&
        achar(3)//"sin"//&
        achar(3)//"cos"//&
        achar(3)//"tan"//&
@@ -191,47 +195,49 @@ module rpn
        achar(4)//"uvar"//&
        achar(4)//"sum2"//&
        achar(0)
-  integer,parameter::FID_SIN       =  1
-  integer,parameter::FID_COS       =  2 
-  integer,parameter::FID_TAN       =  3
-  integer,parameter::FID_SINH      =  4
-  integer,parameter::FID_COSH      =  5
-  integer,parameter::FID_TANH      =  6
-  integer,parameter::FID_ASIN      =  7
-  integer,parameter::FID_ACOS      =  8
-  integer,parameter::FID_ATAN      =  9
-  integer,parameter::FID_ASINH     = 10
-  integer,parameter::FID_ACOSH     = 11
-  integer,parameter::FID_ATANH     = 12
-  integer,parameter::FID_EXP       = 13
-  integer,parameter::FID_LOG       = 14
-  integer,parameter::FID_LN        = 15
-  integer,parameter::FID_SQRT      = 16
-  integer,parameter::FID_CBRT      = 17
-  integer,parameter::FID_ABS       = 18
-  integer,parameter::FID_INT       = 19
-  integer,parameter::FID_FRAC      = 20
-  integer,parameter::FID_CONJG     = 21
-  integer,parameter::FID_NINT      = 22
-  integer,parameter::FID_REAL      = 23
-  integer,parameter::FID_IMAG      = 24
-  integer,parameter::FID_MAG       = 25
-  integer,parameter::FID_ARG       = 26
-  integer,parameter::FID_GAMMA     = 27
-  integer,parameter::FID_LGAMMA    = 28
-  integer,parameter::FID_PSY       = 29
-  integer,parameter::FID_ARG1_END  = 29 !<<<<<<<<
-  integer,parameter::FID_MIN       = 30
-  integer,parameter::FID_MAX       = 31
-  integer,parameter::FID_GAMI      = 32
-  integer,parameter::FID_ARG2_END  = 32 !<<<<<<<<
-  integer,parameter::FID_DEINT     = 33
-  integer,parameter::FID_ARG3_END  = 33 !<<<<<<<<
-  integer,parameter::FID_SUM       = 34
-  integer,parameter::FID_AVE       = 35
-  integer,parameter::FID_VAR       = 36
-  integer,parameter::FID_UVAR      = 37
-  integer,parameter::FID_SUM2      = 38
+  integer,parameter::FID_RAN       =  1
+  integer,parameter::FID_ARG0_END  =  1 !<<<<<<<<
+  integer,parameter::FID_SIN       =  2
+  integer,parameter::FID_COS       =  3
+  integer,parameter::FID_TAN       =  4
+  integer,parameter::FID_SINH      =  5
+  integer,parameter::FID_COSH      =  6
+  integer,parameter::FID_TANH      =  7
+  integer,parameter::FID_ASIN      =  8
+  integer,parameter::FID_ACOS      =  9
+  integer,parameter::FID_ATAN      = 10
+  integer,parameter::FID_ASINH     = 11
+  integer,parameter::FID_ACOSH     = 12
+  integer,parameter::FID_ATANH     = 13
+  integer,parameter::FID_EXP       = 14
+  integer,parameter::FID_LOG       = 15
+  integer,parameter::FID_LN        = 16
+  integer,parameter::FID_SQRT      = 17
+  integer,parameter::FID_CBRT      = 18
+  integer,parameter::FID_ABS       = 19
+  integer,parameter::FID_INT       = 20
+  integer,parameter::FID_FRAC      = 21
+  integer,parameter::FID_CONJG     = 22
+  integer,parameter::FID_NINT      = 23
+  integer,parameter::FID_REAL      = 24
+  integer,parameter::FID_IMAG      = 25
+  integer,parameter::FID_MAG       = 26
+  integer,parameter::FID_ARG       = 27
+  integer,parameter::FID_GAMMA     = 28
+  integer,parameter::FID_LGAMMA    = 29
+  integer,parameter::FID_PSY       = 30
+  integer,parameter::FID_ARG1_END  = 30 !<<<<<<<<
+  integer,parameter::FID_MIN       = 31
+  integer,parameter::FID_MAX       = 32
+  integer,parameter::FID_GAMI      = 33
+  integer,parameter::FID_ARG2_END  = 33 !<<<<<<<<
+  integer,parameter::FID_DEINT     = 34
+  integer,parameter::FID_ARG3_END  = 34 !<<<<<<<<
+  integer,parameter::FID_SUM       = 35
+  integer,parameter::FID_AVE       = 36
+  integer,parameter::FID_VAR       = 37
+  integer,parameter::FID_UVAR      = 38
+  integer,parameter::FID_SUM2      = 39
 
   interface put_vbuf
      module procedure put_vbuf_r
@@ -562,25 +568,28 @@ contains
     
   end function eval_c
 
-  subroutine set_result(rpnc,i,n,ks,v)
+  subroutine set_result(rpnc,i,v,n,ks)
     type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i,n
-    integer,intent(in)::ks(n)
+    integer,intent(in)::i
     complex(cp),intent(in)::v
+    integer,intent(in)::n
+    integer,intent(in),optional::ks(n)
     integer j
     logical set
     complex(cp) z
     pointer(pz,z)
     set=.false.
-    do j=n,1,-1
-       if(rpnc%que(ks(j))%tid==TID_VAR.and..not.set) then
-          pz=rpnc%que(ks(j))%cid
-          z=v
-          set=.true.
-       else
-          rpnc%que(ks(j))%tid=TID_NOP
-       end if
-    end do
+    if(present(ks)) then
+       do j=n,1,-1
+          if(rpnc%que(ks(j))%tid==TID_VAR.and..not.set) then
+             pz=rpnc%que(ks(j))%cid
+             z=v
+             set=.true.
+          else
+             rpnc%que(ks(j))%tid=TID_NOP
+          end if
+       end do
+    end if
     if(.not.set) then
        call put_vbuf(rpnc,i,v)
     else
@@ -609,6 +618,24 @@ contains
     get_operands=0
   end function get_operands
 
+  recursive function eval_0(rpnc,i) result(istat)
+    type(t_rpnc),intent(inout)::rpnc
+    integer,intent(in)::i
+    interface
+       function f0()
+         use fpio, only: cp
+         complex(cp) f0
+       end function f0
+    end interface
+    integer istat
+    pointer(pf0,f0)
+    complex(cp) v
+    pf0=rpnc%que(i)%cid
+    v=f0()
+    call set_result(rpnc,i,v,0)
+    istat=0
+  end function eval_0
+
   recursive function eval_n(rpnc,i) result(istat)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
@@ -629,6 +656,11 @@ contains
     integer tid
 
     na=get_up32(rpnc%que(i)%tid)
+    if(na==0) then
+       istat=eval_0(rpnc,i)
+       return
+    end if
+
     tid=get_lo32(rpnc%que(i)%tid)
 
     if(i-1<na) then
@@ -648,7 +680,7 @@ contains
     v=fn(na,pvs)
     if(tid==TID_AOP) call set_assign()
 
-    call set_result(rpnc,i,na,ods,v)
+    call set_result(rpnc,i,v,na,ods)
     
   contains
     
@@ -722,7 +754,7 @@ contains
     if(istat==0) istat=eval(fnc)
     
     if(istat==0)&
-       call set_result(rpnc,i,rpnm%na,ods,fnc%answer)
+       call set_result(rpnc,i,fnc%answer,rpnm%na,ods)
 
     deallocate(ods)
     deallocate(fnc%que)
@@ -1636,6 +1668,10 @@ contains
        case(TID_IFNC)
           q%cid=get_fid(get_up32(rpnb%que(i)%tid))
           select case(get_up32(rpnb%que(i)%p2))
+          case(0)
+             q%tid=TID_OP
+             if(get_up32(rpnb%que(i)%p1)/=0) istat=RPNERR_NARG
+             cycle
           case(1) 
              q%tid=get_i32(TID_OP,1)
           case(2)
@@ -1643,14 +1679,14 @@ contains
           case(3)
              q%tid=get_i32(TID_OP,3)
           case(narg_max)
-             q%tid=get_i32(TID_OPN,narg_max-get_up32(rpnb%que(i)%p1)+1)
+             q%tid=get_i32(TID_OPN,narg_max-get_up32(rpnb%que(i)%p1))
              cycle
           end select
-          if(get_up32(rpnb%que(i)%p1)/=1) istat=RPNERR_NARG ! <<<<<<<<<
+          if(get_up32(rpnb%que(i)%p1)/=0) istat=RPNERR_NARG ! <<<<<<<<<
        case(TID_UFNC)
           q%tid=TID_UFNC
           q%cid=get_up32(rpnb%que(i)%tid)
-          if(get_up32(rpnb%que(i)%p1)/=1) istat=RPNERR_NARG ! <<<<<<<<<
+          if(get_up32(rpnb%que(i)%p1)/=0) istat=RPNERR_NARG ! <<<<<<<<<
        case(TID_APAR) ! asign a parameter.
           q%tid=TID_PAR
           istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
@@ -1794,6 +1830,8 @@ contains
       use zmath
       integer,intent(in)::fid
       select case(fid)
+      case(FID_RAN)
+         get_fid=loc(zm_ran)
       case(FID_SIN)
          if(isdeg) then
             get_fid=loc(zm_sind)
@@ -1969,34 +2007,48 @@ contains
   end function build_rpnc
 
   subroutine dump_rpnb(rpnb)
-    type(t_rpnb),intent(in)::rpnb
-    integer i,p1lo,p2lo,p1up,p2up,tid
-    write(*,*) "rpnb dump:\n# tid p1 p2 expr"
-    if(.not.allocated(rpnb%que).or.rpnb%p_que<1) then
+    type(t_rpnb),intent(in),target::rpnb
+    type(t_rrpnq),pointer::q(:)
+    write(*,*) "rpnb que:\n# tid p1 p2 expr"
+    if(.not.allocated(rpnb%que).or.rpnb%p_que<1)  then
        write(*,*) "(empty)"
-       return
+    else
+       q => rpnb%que
+       call dump_q(rpnb%p_que)
     end if
-    do i=1,rpnb%p_que
-       p1lo=get_lo32(rpnb%que(i)%p1)
-       p2lo=get_lo32(rpnb%que(i)%p2)
-       tid=rpnb%que(i)%tid
-       if(tid>0) tid=get_lo32(tid)
-       write(*,10) i,tid,p1lo,p2lo
-10     format(4(x,i4),x,$)
-       if(rpnb%que(i)%tid==TID_VAR) then
-          write(*,*) rpnb%expr(p1lo:p2lo)
-       else if(rpnb%que(i)%tid==TID_AMAC) then
-          p1up=get_up32(rpnb%que(i)%p1)
-          p2up=get_up32(rpnb%que(i)%p2)
-          write(*,*) rpnb%expr(p1lo:p2lo)//" "//rpnb%expr(p1up:p2up)
-       else if(p1lo==0) then
-          write(*,*) "(no ref)"
-       else if(rpnb%que(i)%tid/=TID_NOP) then
-          write(*,*) rpnb%expr(p1lo:p2lo)
-       else
-          write(*,*)
-       end if
-    end do
+    write(*,*) "rpnb buf:\n# tid p1 p2 expr"
+    if(.not.allocated(rpnb%buf).or.rpnb%p_buf<1)  then
+       write(*,*) "(empty)"
+    else
+       q => rpnb%buf
+       call dump_q(rpnb%p_buf)
+    end if
+  contains
+    subroutine dump_q(n)
+      integer,intent(in)::n
+      integer i,p1lo,p2lo,p1up,p2up,tid
+      do i=1,n
+         p1lo=get_lo32(q(i)%p1)
+         p2lo=get_lo32(q(i)%p2)
+         tid=q(i)%tid
+         if(tid>0) tid=get_lo32(tid)
+         write(*,10) i,tid,p1lo,p2lo
+10       format(4(x,i4),x,$)
+         if(q(i)%tid==TID_VAR) then
+            write(*,*) rpnb%expr(p1lo:p2lo)
+         else if(q(i)%tid==TID_AMAC) then
+            p1up=get_up32(q(i)%p1)
+            p2up=get_up32(q(i)%p2)
+            write(*,*) rpnb%expr(p1lo:p2lo)//" "//rpnb%expr(p1up:p2up)
+         else if(p1lo==0) then
+            write(*,*) "(no ref)"
+         else if(q(i)%tid/=TID_NOP) then
+            write(*,*) rpnb%expr(p1lo:p2lo)
+         else
+            write(*,*)
+         end if
+      end do
+    end subroutine dump_q
   end subroutine dump_rpnb
 
    subroutine rpn_put(rpnb,tid,p1,p2)
@@ -2154,6 +2206,7 @@ contains
     logical amac
     integer pfasn
     integer p_q1
+    integer pfnc_opened
 
     call init_rpnb(formula)
 
@@ -2172,6 +2225,7 @@ contains
              istat=RPNERR_PARSER
              exit
           else
+             if(.not.check_narg_all()) exit
              if(iand(qc,1)==1) then
                 ! close "
                 call rpn_try_pop(rpnb,TID_QSTA)
@@ -2191,6 +2245,7 @@ contains
           istat=RPNERR_PARSER
        case(TID_PAR)
           pc=pc+1
+          call set_arg_read()
           select case(told)
           case(TID_FIG,TID_KET,TID_PAR,TID_UOP2,TID_UOP3)
              call push_implicit_mul()
@@ -2198,6 +2253,7 @@ contains
           call rpn_put(rpnb,t,p1,p2)
        case(TID_FIG)
           fc=fc+1
+          call set_arg_read()
           select case(told)
           case(TID_KET,TID_PAR,TID_FIG,TID_UOP2,TID_UOP3) 
              call push_implicit_mul()
@@ -2246,6 +2302,7 @@ contains
           if(.not.was_operand()) then
              istat=RPNERR_PARSER
           else
+             if(.not.check_narg_all()) exit ! not checked 
              call rpn_pop_all_bra(rpnb)
           end if
           kc=bc
@@ -2254,6 +2311,7 @@ contains
              istat=RPNERR_PARSER
           else
              call rpn_try_pop(rpnb,TID_BRA,bc-kc,p1)
+             if(.not.check_narg(0,.true.)) exit
           end if
           kc=kc+1
        case(TID_AOP)
@@ -2293,6 +2351,7 @@ contains
              if(.not.was_operand()) then
                 istat=RPNERR_PARSER
              else
+                if(.not.check_narg_all(TID_QSTA)) exit
                 call rpn_try_pop(rpnb,TID_QSTA)
                 call rpn_put(rpnb,TID_QEND,p1,p2)
              end if
@@ -2303,7 +2362,7 @@ contains
              istat=RPNERR_PARSER
           else
              call rpn_pop_until(rpnb,TID_BRA,.true.)
-             if(.not.check_narg()) exit
+             if(.not.check_narg(1,.false.)) exit
           end if
        case(TID_COL)
           clc=clc+1
@@ -2313,12 +2372,14 @@ contains
           select case(get_lo32(t))
           case(TID_IFNC,TID_UFNC)
              fnc=fnc+1
+             call set_arg_read()
              select case(told)
              case(TID_KET,TID_FIG,TID_PAR,TID_UOP2,TID_UOP3)
                 call push_implicit_mul()
              end select
              call set_narg
              call rpn_try_push(rpnb,t,p1,p2)
+             pfnc_opened=rpnb%p_buf
           case default
              stop "*** UNEXPECTED ERROR in parse_formula"
           end select
@@ -2345,38 +2406,89 @@ contains
       btold=TID_UNDEF
       told=TID_UNDEF
       amac=.false.
+      pfnc_opened=0
       pfasn=0
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
       apc=0; amc=0; clc=0; tc=0
       p_q1=rpnb%p_que+1
     end subroutine init_stat
 
-    logical function check_narg()
-      integer na
+    logical function check_narg_all(tend)
+      integer,intent(in),optional::tend
+      integer i
+      do i=0,rpnb%p_buf-1
+         if(present(tend).and.rpnb%buf(rpnb%p_buf-i)%tid==tend) exit
+         check_narg_all=check_narg(i,.true.)
+         if(.not.check_narg_all) return
+      end do
+    end function check_narg_all
+
+    logical function check_narg(pfnc_off,close)
+      integer,intent(in)::pfnc_off
+      logical close
+      integer na,namax
+      integer*2 w1,w2
       type(t_rrpnq),pointer::b
       check_narg=.false.
       istat=RPNERR_PARSER
-      if(rpnb%p_buf<=1) return
-      b=>rpnb%buf(rpnb%p_buf-1)
-      na=get_up32(b%p1)
+      if(rpnb%p_buf<=pfnc_off) return
+      b=>rpnb%buf(rpnb%p_buf-pfnc_off)
+      w1=int(get_up32(b%p1),kind=2) ! negative if none read
+      w2=int(get_up32(b%p2),kind=2) ! positive if closed
+      na=abs(w1)
+      namax=abs(w2)
       select case(get_lo32(b%tid))
       case(TID_UFNC,TID_IFNC)
-         b%p1=get_i32(get_lo32(b%p1),na-1)
+         if(w2<=0) then
+            if(w1>=0) then
+               if(w1>0) then
+                  b%p1=get_i32(get_lo32(b%p1),na-1)
+                  if(close) then
+                     if(na/=1.and.namax/=narg_max) then
+                        istat=RPNERR_TOO_FEW_ARG
+                        return
+                     end if
+                     b%p2=get_i32(get_lo32(b%p2),namax)
+                  else if(na==1) then
+                     istat=RPNERR_TOO_MANY_ARG
+                     return
+                  end if
+               else if(namax/=0) then
+                  istat=RPNERR_TOO_MANY_ARG
+                  return
+               end if
+            else
+               istat=RPNERR_NO_ARG
+               return
+            end if
+         end if
       case(TID_BOP4) 
          ! comma in function definition
          ! simply ignore this case
       case default
-         return
+         ! return <<<<<<<
       end select
       istat=0
       check_narg=.true.
     end function check_narg
 
+    subroutine set_arg_read()
+      integer*2 w
+      integer na
+      if(pfnc_opened==0) return
+      w=int(get_up32(rpnb%buf(pfnc_opened)%p1),kind=2)
+      na=abs(w)
+      rpnb%buf(pfnc_opened)%p1=get_i32(get_lo32(rpnb%buf(pfnc_opened)%p1),na)
+      pfnc_opened=0
+    end subroutine set_arg_read
+
     subroutine set_narg()
       integer na
       select case(get_lo32(t))
       case(TID_IFNC)
-         if(get_up32(t)<=FID_ARG1_END) then
+         if(get_up32(t)<=FID_ARG0_END) then
+            na=0
+         else if(get_up32(t)<=FID_ARG1_END) then
             na=1
          else if(get_up32(t)<=FID_ARG2_END) then
             na=2
@@ -2386,8 +2498,8 @@ contains
       case(TID_UFNC)
          na=rpnc%rl%rpnm(get_up32(t))%na
       end select
-      p1=get_i32(p1,na)
-      p2=get_i32(p2,na)
+      p1=get_i32(p1,-na) ! negative for no arg read
+      p2=get_i32(p2,-na)
     end subroutine set_narg
 
     logical function check_end()
@@ -2503,8 +2615,15 @@ contains
     logical function was_operand()
       select case(told)
       case(TID_BOP1,TID_BOP2,TID_BOP3,TID_UOP1,TID_AOP,&
-           TID_ASN,TID_BRA,TID_COMA,TID_TOP1,TID_COL,TID_SCL)
+           TID_ASN,TID_COMA,TID_TOP1,TID_COL,TID_SCL)
          was_operand=.false.
+      case(TID_BRA)
+         select case(btold)
+         case(TID_UFNC,TID_IFNC)
+            was_operand=.true.
+         case default
+            was_operand=.false.
+         end select
       case default
          was_operand=.true.
       end select
