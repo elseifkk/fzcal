@@ -4,6 +4,8 @@ module zmath
 
   private
 
+  public zm_ran
+
   public zm_f1
   public zm_f2
   public zm_f3
@@ -75,8 +77,22 @@ module zmath
   real(rp),parameter::pi =4.0_rp*atan(1.0_rp)
   real(rp),parameter::pi2=2.0_rp*pi
 
+  logical::random_seed_init=.false.
+
 contains
 
+  subroutine init_random_seed()
+    integer::i,n,clock
+    integer,allocatable::seed(:)
+    call random_seed(size = n)
+    allocate(seed(n))
+    call system_clock(count=clock)
+    seed = clock + 37 * (/ (i - 1, i = 1, n) /)
+    call random_seed(put = seed)
+    deallocate(seed)
+    random_seed_init=.true.
+  end subroutine init_random_seed
+     
   logical function is_integer(z,n)
     complex(cp),intent(in)::z
     integer,intent(out),optional::n
@@ -92,6 +108,13 @@ contains
        if(present(n)) n=m
     end if
   end function is_integer
+
+  complex(cp) function zm_ran()
+    real(rp) x
+    if(.not.random_seed_init) call init_random_seed()
+    call random_number(x)
+    zm_ran=complex(x,rzero)
+  end function zm_ran
 
   complex(cp) function zm_f1(n,pzs)
     integer,intent(in)::n,pzs(0:n)
