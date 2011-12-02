@@ -2416,8 +2416,9 @@ contains
     logical function check_narg_all(tend)
       integer,intent(in),optional::tend
       integer i
+      check_narg_all=.true.
       do i=0,rpnb%p_buf-1
-         if(present(tend).and.rpnb%buf(rpnb%p_buf-i)%tid==tend) exit
+         if(present(tend).and.rpnb%buf(rpnb%p_buf-i)%tid==tend) return
          check_narg_all=check_narg(i,.true.)
          if(.not.check_narg_all) return
       end do
