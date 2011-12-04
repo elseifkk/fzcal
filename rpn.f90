@@ -147,6 +147,7 @@ module rpn
   integer,parameter::RPNCOPT_READY           =  Z"00000001"
   integer,parameter::RPNCOPT_DEG             =  Z"00000002"
   integer,parameter::RPNCOPT_NEW             =  Z"00000004"
+  integer,parameter::RPNCOPT_RATIO           =  Z"00000010"
   integer,parameter::RPNCOPT_NO_AUTO_ADD_PAR =  Z"00000008"
 
   integer,parameter::AID_NOP = 0
@@ -780,7 +781,13 @@ contains
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(inout)::i
     real(rp),intent(in)::v
-    call put_vbuf_z(rpnc,i,complex(v,rzero))
+    real(rp) im
+    if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+       im=rzero
+    else
+       im=1.0_rp
+    end if
+    call put_vbuf_z(rpnc,i,complex(v,im))
   end subroutine put_vbuf_r
 
   subroutine put_vbuf_z(rpnc,i,v)
@@ -1971,9 +1978,17 @@ contains
       case("!!")
          get_oid1=loc(zm_dfac)
       case("++")
-         get_oid1=loc(zm_inc)
+         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+            get_oid1=loc(zm_inc)
+         else
+            get_oid1=loc(zm_inc_f)
+         end if
       case("--")
-         get_oid1=loc(zm_dec)
+         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+            get_oid1=loc(zm_dec)
+         else
+            get_oid1=loc(zm_dec_f)
+         end if
       case default
          STOP "*** UNEXPECTED ERROR in get_oid1"
       end select
@@ -1988,13 +2003,29 @@ contains
       get_oid2=OID_NOP
       select case(_EXPR_(i))
       case("+")
-         get_oid2=loc(zm_add)   
+         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+            get_oid2=loc(zm_add)   
+         else
+            get_oid2=loc(zm_add_f)
+         end if
       case("-")
-         get_oid2=loc(zm_sub)   
+         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then         
+            get_oid2=loc(zm_sub)   
+         else
+            get_oid2=loc(zm_sub_f)   
+         end if
       case("*")
-         get_oid2=loc(zm_mul)   
+         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+            get_oid2=loc(zm_mul)
+         else
+            get_oid2=loc(zm_mul_f)
+         end if
       case("/")
-         get_oid2=loc(zm_div)
+         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+            get_oid2=loc(zm_div)
+         else
+            get_oid2=loc(zm_div_f)
+         end if
       case("**","^")
          get_oid2=loc(zm_pow)   
       case("e")
@@ -2430,9 +2461,10 @@ contains
       integer na,namax
       integer*2 w1,w2
       type(t_rrpnq),pointer::b
+      check_narg=.true.
+      if(rpnb%p_buf<=pfnc_off) return
       check_narg=.false.
       istat=RPNERR_PARSER
-      if(rpnb%p_buf<=pfnc_off) return
       b=>rpnb%buf(rpnb%p_buf-pfnc_off)
       w1=int(get_up32(b%p1),kind=2) ! negative if none read
       w2=int(get_up32(b%p2),kind=2) ! positive if closed

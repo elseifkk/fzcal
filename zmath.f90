@@ -10,6 +10,11 @@ module zmath
   public zm_f2
   public zm_f3
 
+  public zm_add_f
+  public zm_sub_f
+  public zm_mul_f
+  public zm_div_f
+
   public zm_mov
   public zm_add
   public zm_sub
@@ -19,6 +24,8 @@ module zmath
   public zm_exp10
 
   public zm_nop
+  public zm_inc_f
+  public zm_dec_f
   public zm_neg
   public zm_fac
   public zm_dfac
@@ -174,6 +181,28 @@ contains
     complex(cp),intent(in)::z1,z2
     zm_mov=z2
   end function zm_mov
+
+  complex(cp) function zm_add_f(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    zm_add_f=complex(realpart(z1)*imagpart(z2)+imagpart(z1)*realpart(z2),&
+         imagpart(z1)*imagpart(z2))
+  end function zm_add_f
+  
+  complex(cp) function zm_sub_f(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    zm_sub_f=complex(realpart(z1)*imagpart(z2)-imagpart(z1)*realpart(z2),&
+         imagpart(z1)*imagpart(z2))
+  end function zm_sub_f
+  
+  complex(cp) function zm_mul_f(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    zm_mul_f=complex(realpart(z1)*realpart(z2),imagpart(z1)*imagpart(z2))
+  end function zm_mul_f
+  
+  complex(cp) function zm_div_f(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    zm_div_f=complex(realpart(z1)*imagpart(z2),imagpart(z1)*realpart(z2))
+  end function zm_div_f
 
   complex(cp) function zm_add(z1,z2)
     complex(cp),intent(in)::z1,z2
@@ -463,6 +492,16 @@ contains
        end if
     end if
   end function zm_max
+
+  complex(cp) function zm_inc_f(z)
+    complex(cp),intent(in)::z
+    zm_inc_f=complex(realpart(z)+imagpart(z),imagpart(z))
+  end function zm_inc_f
+
+  complex(cp) function zm_dec_f(z)
+    complex(cp),intent(in)::z
+    zm_dec_f=complex(realpart(z)-imagpart(z),imagpart(z))
+  end function zm_dec_f
 
   complex(cp) function zm_inc(z)
     complex(cp),intent(in)::z
