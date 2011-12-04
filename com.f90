@@ -54,6 +54,12 @@ contains
        parse_command=CID_DONE
     case("del","delete")
        cid=CID_DEL
+    case("r","ratio")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_RATIO)
+       parse_command=CID_DONE
+    case("f","frac")
+       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_RATIO))
+       parse_command=CID_DONE
     case("md")
        parse_command=CID_DUMP_M
     case("fd")
@@ -73,7 +79,5 @@ contains
     end select
 
   end function parse_command
-  
-  
 
 end module com
