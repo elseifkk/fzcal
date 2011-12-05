@@ -48,6 +48,13 @@ contains
     fzc_eval=int(eval(rpnc),kind=C_INT)
   end function fzc_eval
 
+  real(dp) function fzc_get_ans(ptr_rpnc)
+    size_t,intent(in),value::ptr_rpnc
+    type(t_rpnc) rpnc
+    pointer(p,rpnc)
+    fzc_get_ans=rpn_rans(rpnc)
+  end function fzc_get_ans
+
   subroutine fzc_get_str_ans(ptr_rpnc,ptr_str)
     size_t,intent(in),value::ptr_rpnc,ptr_str
     type(t_rpnc) rpnc
@@ -56,7 +63,7 @@ contains
     pointer(ps,str)
     pr=ptr_rpnc
     ps=ptr_str
-    str=trim(ztoa(rpn_ans(rpnc)))//achar(0)
+    str=trim(rpn_sans(rpnc))//achar(0)
   end subroutine fzc_get_str_ans
 
   subroutine fzc_set_opt(ptr_rpnc,opt)
