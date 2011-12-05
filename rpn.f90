@@ -186,6 +186,7 @@ module rpn
        achar(5)//"gamma"//&
        achar(6)//"lgamma"//&
        achar(3)//"psy"//&
+       achar(3)//"mod"//&
        achar(3)//"min"//&
        achar(3)//"max"//&
        achar(4)//"gami"//&
@@ -228,17 +229,18 @@ module rpn
   integer,parameter::FID_LGAMMA    = 29
   integer,parameter::FID_PSY       = 30
   integer,parameter::FID_ARG1_END  = 30 !<<<<<<<<
-  integer,parameter::FID_MIN       = 31
-  integer,parameter::FID_MAX       = 32
-  integer,parameter::FID_GAMI      = 33
-  integer,parameter::FID_ARG2_END  = 33 !<<<<<<<<
-  integer,parameter::FID_DEINT     = 34
-  integer,parameter::FID_ARG3_END  = 34 !<<<<<<<<
-  integer,parameter::FID_SUM       = 35
-  integer,parameter::FID_AVE       = 36
-  integer,parameter::FID_VAR       = 37
-  integer,parameter::FID_UVAR      = 38
-  integer,parameter::FID_SUM2      = 39
+  integer,parameter::FID_MOD       = 31
+  integer,parameter::FID_MIN       = 32
+  integer,parameter::FID_MAX       = 33
+  integer,parameter::FID_GAMI      = 34
+  integer,parameter::FID_ARG2_END  = 34 !<<<<<<<<
+  integer,parameter::FID_DEINT     = 35
+  integer,parameter::FID_ARG3_END  = 35 !<<<<<<<<
+  integer,parameter::FID_SUM       = 36
+  integer,parameter::FID_AVE       = 37
+  integer,parameter::FID_VAR       = 38
+  integer,parameter::FID_UVAR      = 39
+  integer,parameter::FID_SUM2      = 40
 
   interface put_vbuf
      module procedure put_vbuf_r
@@ -247,10 +249,32 @@ module rpn
 
 contains
 
+  character(LEN_STR_ANS_MAX) function rpn_sans(rpnc)
+    type(t_rpnc),intent(in)::rpnc
+    if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+       rpn_sans=trim(ztoa(rpnc%answer))
+    else
+       rpn_sans=trim(rtoa(realpart(rpnc%answer)))
+       if(int(imagpart(rpnc%answer))>1) then
+          rpn_sans=trim(rpn_sans)//"/"//trim(rtoa(imagpart(rpnc%answer)))
+       end if
+    end if
+  end function rpn_sans
+
   complex(cp) function rpn_ans(rpnc)
     type(t_rpnc),intent(in)::rpnc
     rpn_ans=rpnc%answer
   end function rpn_ans
+
+  real(rp) function rpn_rans(rpnc)
+    type(t_rpnc),intent(in)::rpnc
+    rpn_rans=realpart(rpnc%answer)
+  end function rpn_rans
+
+  real(dp) function rpn_dans(rpnc)
+    type(t_rpnc),intent(in)::rpnc
+    rpn_dans=real(realpart(rpnc%answer),kind=dp)
+  end function rpn_dans
   
   integer function strip(s)
     character*(*),intent(inout)::s
@@ -1919,6 +1943,8 @@ contains
          get_fid=loc(zm_gamma)
       case(FID_LGAMMA)
          get_fid=loc(zm_lgamma)
+      case(FID_MOD)
+         get_fid=loc(zm_mod)
       case(FID_MIN)
          get_fid=loc(zm_min)
       case(FID_MAX)
@@ -1972,7 +1998,11 @@ contains
       case("+")
          get_oid1=loc(zm_nop) 
       case("-")
-         get_oid1=loc(zm_neg) 
+         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+            get_oid1=loc(zm_neg) 
+         else
+            get_oid1=loc(zm_neg_f)
+         end if
       case("!")
          get_oid1=loc(zm_fac) 
       case("!!")

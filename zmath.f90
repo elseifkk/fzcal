@@ -26,6 +26,7 @@ module zmath
   public zm_nop
   public zm_inc_f
   public zm_dec_f
+  public zm_neg_f
   public zm_neg
   public zm_fac
   public zm_dfac
@@ -76,6 +77,7 @@ module zmath
   public zm_gami
   public zm_psy
 
+  public zm_mod
   public zm_min
   public zm_max
 
@@ -115,6 +117,40 @@ contains
        if(present(n)) n=m
     end if
   end function is_integer
+
+  integer function get_gcd(a,b)
+    integer,intent(in)::a,b
+    integer i1,i2,r ! i1>i2
+    if(a>b) then
+       i1=a
+       i2=b
+    else
+       i1=b
+       i2=a
+    end if
+    if(i2==0) then
+       get_gcd=i1
+       return
+    end if
+    do
+       r=mod(i1,i2)
+       i1=i2
+       if(r==0) exit
+       i2=r
+    end do
+    get_gcd=i1
+  end function get_gcd
+
+  complex(cp) function reduce_f(z)
+    complex(cp),intent(in)::z
+    integer gcd
+    reduce_f=z
+    if(realpart(z)/=0.and.imagpart(z)>1) then
+       gcd=get_gcd(int(realpart(z)),int(imagpart(z)))
+       if(gcd>1) &
+            reduce_f=complex(int(realpart(z))/gcd,int(imagpart(z)/gcd))
+    end if
+  end function reduce_f
 
   complex(cp) function zm_ran()
     real(rp) x
@@ -184,24 +220,24 @@ contains
 
   complex(cp) function zm_add_f(z1,z2)
     complex(cp),intent(in)::z1,z2
-    zm_add_f=complex(realpart(z1)*imagpart(z2)+imagpart(z1)*realpart(z2),&
-         imagpart(z1)*imagpart(z2))
+    zm_add_f=reduce_f(complex(realpart(z1)*imagpart(z2)+imagpart(z1)*realpart(z2),&
+         imagpart(z1)*imagpart(z2)))
   end function zm_add_f
   
   complex(cp) function zm_sub_f(z1,z2)
     complex(cp),intent(in)::z1,z2
-    zm_sub_f=complex(realpart(z1)*imagpart(z2)-imagpart(z1)*realpart(z2),&
-         imagpart(z1)*imagpart(z2))
+    zm_sub_f=reduce_f(complex(realpart(z1)*imagpart(z2)-imagpart(z1)*realpart(z2),&
+         imagpart(z1)*imagpart(z2)))
   end function zm_sub_f
   
   complex(cp) function zm_mul_f(z1,z2)
     complex(cp),intent(in)::z1,z2
-    zm_mul_f=complex(realpart(z1)*realpart(z2),imagpart(z1)*imagpart(z2))
+    zm_mul_f=reduce_f(complex(realpart(z1)*realpart(z2),imagpart(z1)*imagpart(z2)))
   end function zm_mul_f
   
   complex(cp) function zm_div_f(z1,z2)
     complex(cp),intent(in)::z1,z2
-    zm_div_f=complex(realpart(z1)*imagpart(z2),imagpart(z1)*realpart(z2))
+    zm_div_f=reduce_f(complex(realpart(z1)*imagpart(z2),imagpart(z1)*realpart(z2)))
   end function zm_div_f
 
   complex(cp) function zm_add(z1,z2)
@@ -260,6 +296,13 @@ contains
   complex(cp) function zm_neg(z1)
     complex(cp),intent(in)::z1
     zm_neg=-z1
+    ! gfortran returns -0 for 0
+    if(abs(realpart(z1))==rzero) then
+       zm_neg=complex(rzero,imagpart(zm_neg))
+    end if
+    if(abs(imagpart(z1))==rzero) then
+       zm_neg=complex(realpart(zm_neg),rzero)
+    end if
   end function zm_neg
 
   complex(cp) function zm_fac(z1)
@@ -453,6 +496,11 @@ contains
     zm_arg=atan(imagpart(z1),realpart(z1))
   end function zm_arg
 
+  complex(cp) function zm_mod(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    zm_mod=mod(int(z1),int(z2))
+  end function zm_mod
+
   complex(cp) function zm_min(z1,z2)
     complex(cp),intent(in)::z1,z2
     real(rp) r1,r2,i1,i2
@@ -502,6 +550,11 @@ contains
     complex(cp),intent(in)::z
     zm_dec_f=complex(realpart(z)-imagpart(z),imagpart(z))
   end function zm_dec_f
+
+  complex(cp) function zm_neg_f(z)
+    complex(cp),intent(in)::z
+    zm_neg_f=complex(-realpart(z),imagpart(z))
+  end function zm_neg_f
 
   complex(cp) function zm_inc(z)
     complex(cp),intent(in)::z

@@ -63,7 +63,7 @@ program fzcal
               write(*,*) "=== After eval ==="
               call dump_rpnc(rpnc)
            end if
-           write(*,*) trim(ztoa(rpn_ans(rpnc)))
+           write(*,*) trim(rpn_sans(rpnc))
         end if
      end if
   end do main
