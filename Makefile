@@ -26,8 +26,8 @@ ARFLAGS = rv
 LDFLAGS = -L/usr/local/lib -L/usr/local/lib/gcc46
 SOFLAGS = -shared -Wl,-soname,$(SONAME)
 
-LD_RUN_PATH     = /usr/local/lib /usr/local/lib/gcc46
-LD_LIBRARY_PATH = /usr/local/lib /usr/local/lib/gcc46
+LD_RUN_PATH     = /usr/local/lib:/usr/local/lib/gcc46
+LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
 
 #
 .ifdef _NETWALKER_
