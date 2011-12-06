@@ -14,6 +14,11 @@ module memio
        integer,intent(in),value::dst,src,len
      end subroutine mcp
   end interface
+  interface
+     subroutine mcle(dst,len)
+       integer,intent(in),value::dst,len
+     end subroutine mcle
+  end interface
 #endif
 
 #ifndef _NO_ASM_
@@ -76,6 +81,18 @@ contains
        si=si+1
        di=di+1
        d=s
+    end do
+  end subroutine mcp
+
+  subroutine mcle(dst,len)
+    integer,intent(in)::dst,len
+    integer*1 d
+    integer i
+    pointer(di,d)
+    di=dst-1
+    do i=1,len
+       di=di+1
+       d=int(0,kind=1)
     end do
   end subroutine mcp
 #endif

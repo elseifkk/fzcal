@@ -242,6 +242,10 @@ module rpn
   integer,parameter::FID_UVAR      = 39
   integer,parameter::FID_SUM2      = 40
 
+  integer,parameter::SC_RO  = 1
+  integer,parameter::SC_MAC = 2
+  integer,parameter::SC_FNC = 4
+
   interface put_vbuf
      module procedure put_vbuf_r
      module procedure put_vbuf_z
@@ -932,9 +936,9 @@ contains
        rpnc%answer=rpnc%tmpans
     end if
 
-    if(iand(rpnc%opt,RPNCOPT_NEW)/=0) then
-       istat=realloc_new(rpnc%pars)
-    end if
+!!$    if(iand(rpnc%opt,RPNCOPT_NEW)/=0) then
+!!$       istat=realloc_new(rpnc%pars)
+!!$    end if
     istat=remove_dup(rpnc%pars)
 
     rpnc%rc=rpnc%rc-1
@@ -1229,7 +1233,7 @@ contains
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) tmprpnc
     integer ptr,len
-    integer*1 code
+    integer code
     integer i1,i2,i
 
     if(ent==0) then
@@ -1354,7 +1358,7 @@ contains
     type(t_rpnc),intent(inout)::rpnc
     type(t_rpnb),intent(in)::rpnb
     integer i
-    integer*1,intent(in)::code
+    integer,intent(in)::code
     integer,intent(out)::k
     integer istat
     istat=try_add_str(rpnc%rl%s,_EXPR_(i),code,k)
@@ -1660,7 +1664,6 @@ contains
     integer i,k,t
     logical amac,afnc
     integer p_q1
-    integer*1 c
     type(t_rpnq),pointer::q
 
     p_q1=1
@@ -1749,8 +1752,7 @@ contains
                 cycle
              end if
           end if
-          c=0
-          istat=find_par(rpnc%pars,_EXPR_(i),ent=k,code=c)          
+          istat=find_par(rpnc%pars,_EXPR_(i),ent=k)
           if(amac.and.istat/=0.and.iand(rpnc%opt,RPNCOPT_NO_AUTO_ADD_PAR)==0) then
              ! par may not already exist
              istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
@@ -1758,7 +1760,7 @@ contains
                 write(*,*) "*** add_par_by_entry failed: code = ",istat
                 istat=RPNERR_ADDPAR
              else
-                istat=alloc_par(rpnc%pars,k,PK_COMP,.true.)
+                istat=alloc_par(rpnc%pars,k,PK_COMP)
              end if
           end if
           if(istat==0) then

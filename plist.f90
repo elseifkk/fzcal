@@ -11,16 +11,22 @@ module plist
   integer,parameter::PLERR_RDONL = 4
   integer,parameter::PLERR_NOPAR = 5
   
-  integer,parameter,public::PK_COMP = 0
-  integer,parameter,public::PK_REAL = 1
-  integer,parameter,public::PK_DBLE = 2
-  integer,parameter,public::PK_REF  = 4
+  integer,parameter,public::PK_UNDEF = 0
+  integer,parameter,public::PK_COMP  = 1
+  integer,parameter,public::PK_REAL  = 2
+  integer,parameter,public::PK_DBLE  = 3
+  integer,parameter,public::PK_INT   = 4
+
+  integer,parameter,public::PS_NOP   = 0
+  integer,parameter,public::PS_REF   = Z"00010000"
+  integer,parameter,public::PS_NEW   = Z"00020000"
+  integer,parameter,public::PS_RO    = Z"00040000"
+  integer,parameter,public::PS_DUP   = Z"00080000"
 
   type t_vbuf
-     complex(cp),allocatable::z
-     real(rp),allocatable::x
-     real(dp),allocatable::r
-     integer,allocatable::p
+     integer p     ! pointer
+     integer sta   ! parameter kind and flg
+     integer pz    ! pointer to complex
   end type t_vbuf
 
   type,public::t_plist
@@ -43,37 +49,85 @@ module plist
   public dump_plist
   public uinit_plist
   public get_par_loc
-  public is_double
   public get_par
   public alloc_par
   public remove_dup
-  public realloc_new
   public min_cp_plist
 
 contains
+
+  integer function get_pkind(sta)
+    integer,intent(in)::sta
+    get_pkind=iand(sta,Z"FFFF")
+  end function get_pkind
+
+  integer function get_pflg(sta)
+    integer,intent(in)::sta
+    get_pflg=iand(ishft(sta,-16),Z"FFFF")
+  end function get_pflg
+
+  subroutine set_pflg(sta,flg)
+    integer,intent(inout)::sta
+    integer,intent(in)::flg
+    sta=ior(sta,ishft(flg,16))
+  end subroutine set_pflg
+
+  subroutine uset_pflg(sta,flg)
+    integer,intent(inout)::sta
+    integer,intent(in)::flg
+    sta=iand(sta,not(ishft(flg,16)))
+  end subroutine uset_pflg
+
+  subroutine set_pkind(sta,pk)
+    integer,intent(inout)::sta
+    integer,intent(in)::pk
+    sta=ior(iand(sta,Z"FFFF0000"),pk)
+  end subroutine set_pkind
+
+  logical function is_reference(sta)
+    integer,intent(in)::sta
+    is_reference=(iand(get_pflg(sta),PS_REF)/=0)
+  end function is_reference
+
+  logical function is_duplicated(sta)
+    integer,intent(in)::sta
+    is_duplicated=(iand(get_pflg(sta),PS_DUP)/=0)
+  end function is_duplicated
+
+  logical function is_read_only(sta)
+    integer,intent(in)::sta
+    is_read_only=(iand(get_pflg(sta),PS_RO)/=0)
+  end function is_read_only
 
   function init_plist(sz,nmax)
     type(t_plist) init_plist
     integer,intent(in)::sz
     integer,intent(in)::nmax
     init_plist%s=init_slist(sz)
-    if(nmax>0) allocate(init_plist%v(nmax))
+    if(nmax>0) then
+       allocate(init_plist%v(nmax))
+       init_plist%v(:)%p=0
+       init_plist%v(:)%pz=0
+       init_plist%v(:)%sta=PK_UNDEF
+    end if
   end function init_plist
 
-  subroutine uinit_vbuf(vl)
-    type(t_vbuf),intent(inout)::vl
-    if(allocated(vl%z)) deallocate(vl%z)
-    if(allocated(vl%x)) deallocate(vl%x)
-    if(allocated(vl%r)) deallocate(vl%r)
-    if(allocated(vl%p)) deallocate(vl%p)
+  subroutine uinit_vbuf(v)
+    type(t_vbuf),intent(inout)::v
+    if(get_pkind(v%sta)/=PK_UNDEF) then
+       if(.not.is_reference(v%sta)) call free(v%p)
+       v%sta=PK_UNDEF
+       v%p=0
+       v%pz=0
+    end if
   end subroutine uinit_vbuf
 
-  subroutine uinit_vbufs(n,vl)
+  subroutine uinit_vbufs(n,v)
     integer,intent(in)::n
-    type(t_vbuf),intent(inout)::vl(n)
+    type(t_vbuf),intent(inout)::v(n)
     integer i
     do i=1,n
-       call uinit_vbuf(vl(i))
+       call uinit_vbuf(v(i))
     end do
   end subroutine uinit_vbufs
 
@@ -109,51 +163,61 @@ contains
   end subroutine cp_vbufs
 
   subroutine cp_vbuf(v1,v2)
+    use memio
     type(t_vbuf),intent(in)::v1
     type(t_vbuf),intent(inout)::v2
+    integer sz
     call uinit_vbuf(v2)
-    if(allocated(v1%z)) then
-       if(.not.allocated(v2%z)) allocate(v2%z)
-       v2%z=v1%z
-    end if
-    if(allocated(v1%x)) then
-       if(.not.allocated(v2%x)) allocate(v2%x)
-       v2%x=v1%x
-    end if
-    if(allocated(v1%r)) then
-       if(.not.allocated(v2%r)) allocate(v2%r)
-       v2%r=v1%r
-    end if
-    if(allocated(v1%p)) then
-       if(.not.allocated(v2%p)) allocate(v2%p)
+    v2%sta=v1%sta
+    if(is_reference(v1%sta)) then
        v2%p=v1%p
+    else
+       v2%p=palloc(get_pkind(v1%sta),sz)
+       call mcp(v2%p,v1%p,sz)
     end if
   end subroutine cp_vbuf
 
-  integer function alloc_par(pl,k,pk,cle)
-    type(t_plist),intent(inout)::pl
+  integer function palloc(pk,sz)
+    use memio
+    integer,intent(in)::pk
+    integer,intent(out),optional::sz
+    integer sz_
+    complex(cp) z
+    real(rp) x
+    real(dp) r
+    integer n
+    select case(pk)
+    case(PK_COMP)
+       sz_=sizeof(z)
+    case(PK_REAL)
+       sz_=sizeof(x)
+    case(PK_DBLE)
+       sz_=sizeof(r)
+    case(PK_INT)
+       sz_=sizeof(n)
+    end select
+    palloc=malloc(sz_)
+    if(present(sz)) sz=sz_
+    call mcle(palloc,sz_)
+  end function palloc
+
+  integer function alloc_par(pl,k,pk)
+    type(t_plist),intent(inout),target::pl
     integer,intent(in)::k
     integer,intent(in)::pk
-    logical,intent(in),optional::cle
+    type(t_vbuf),pointer::v
+    integer pk_now
     if(k>size(pl%v).or.k<=0) then
        alloc_par=PLERR_NOENT
        return
     end if
-    select case(pk)
-    case(PK_COMP)
-       if(.not.allocated(pl%v(k)%z)) allocate(pl%v(k)%z)
-       if(present(cle).and.cle) pl%v(k)%z=czero
-    case(PK_REAL)
-       if(.not.allocated(pl%v(k)%x)) allocate(pl%v(k)%x)
-       if(present(cle).and.cle) pl%v(k)%x=rzero
-    case(PK_DBLE)
-       if(.not.allocated(pl%v(k)%r)) allocate(pl%v(k)%r)
-       if(present(cle).and.cle) pl%v(k)%r=0.0_dp
-    case(PK_REF)
-       if(.not.allocated(pl%v(k)%p)) allocate(pl%v(k)%p)
-       if(present(cle).and.cle) pl%v(k)%p=0
-    end select
-    alloc_par=add_sc(pl%s,k,SC_NEW)
+    v => pl%v(k)
+    pk_now=get_pkind(v%sta)
+    if(pk_now==PK_UNDEF) then
+       v%p=palloc(pk)
+       call set_pkind(v%sta,pk)
+    end if
+    alloc_par=0
   end function alloc_par
 
   integer function rm_par(pl,s)
@@ -193,57 +257,37 @@ contains
     type(t_plist),intent(in),target::pl
     integer i,len,istat,ptr
     type(t_vbuf),pointer::v
-    integer*1 c
+    integer c
     real(dp) r
     real(rp) x
     complex(cp) z
+    integer n
     pointer(pr,r)
     pointer(pz,z)
     pointer(px,x)
+    pointer(pn,n)
     do i=1,pl%s%n
        v => pl%v(i)
        istat=get_str_ptr(pl%s,i,ptr,len,code=c)
        write(*,10) i,c,trim(cpstr(ptr,len))
-       if(is_reference(c)) then
-          if(.not.allocated(v%p)) then
-             write(*,30) "(no entry)"
-             cycle
-          else
-             write(*,20) v%p
-          end if
-          if(is_complex(c)) then
-             pz=v%p
-             write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
-          else if(is_real(c)) then
-             px=v%p
-             write(*,*) trim(rtoa(x,fmt=DISP_FMT_RAW))                
-          else if(is_double(c)) then
-             pr=v%p
-             write(*,*) trim(rtoa(real(r,kind=rp),fmt=DISP_FMT_RAW))
-          end if
-       else if(is_complex(c)) then
-          if(.not.allocated(v%z)) then
-             write(*,30) "(no entry)"
-             cycle
-          end if
-          write(*,*) trim(ztoa(v%z,fmt=DISP_FMT_RAW))
-       else if(is_real(c)) then
-          if(.not.allocated(v%x)) then
-             write(*,30) "(no entry)"
-             cycle
-          end if
-          write(*,*) trim(rtoa(v%x,fmt=DISP_FMT_RAW))
-       else if(is_double(c)) then
-          if(.not.allocated(v%r)) then
-             write(*,30) "(no entry)"
-             cycle
-          end if
-          write(*,*) trim(rtoa(real(v%r,kind=rp),fmt=DISP_FMT_RAW))
-       end if
+       if(is_reference(v%sta)) write(*,20) v%p
+       select case(get_pkind(v%sta))
+       case(PK_COMP)
+          pz=v%p
+          write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
+       case(PK_REAL)
+          px=v%p
+          write(*,*) trim(rtoa(x,fmt=DISP_FMT_RAW))                
+       case(PK_DBLE)
+          pr=v%p
+          write(*,*) trim(rtoa(real(r,kind=rp),fmt=DISP_FMT_RAW))
+       case(PK_INT)
+          pn=v%p
+          write(*,*) trim(rtoa(real(n,kind=rp),fmt=DISP_FMT_RAW))
+       end select
     end do
 10  format(x,i4,x,b8.8,x,a,$)
 20  format(x,z16,$)
-30  format(x,a)
   end subroutine dump_plist
 
   subroutine trim_plist(pl)
@@ -266,89 +310,114 @@ contains
   end subroutine trim_plist
  
   integer function find_par(pl,s,val,ent,code)
-    type(t_plist),intent(in)::pl
+    type(t_plist),intent(in),target::pl
     character*(*),intent(in)::s
     complex(cp),intent(out),optional::val
     integer,intent(out),optional::ent
-    integer*1,intent(out),optional::code
+    integer,intent(out),optional::code
+    type(t_vbuf),pointer::v
     integer k
-    integer*1 c
     complex(cp) z
     real(rp) x
-    real(dp) r8
+    real(dp) r
+    integer n
     pointer(pz,z)
-    pointer(pr8,r8)
+    pointer(pr,r)
     pointer(px,x)
+    pointer(pn,n)
     if(present(ent)) ent=0
-    k=find_str(pl%s,s,found_code=c)
+    k=find_str(pl%s,s,found_code=code)
     if(k==0) then
        find_par=PLERR_NOENT
        return
     end if
-    if(present(code)) code=c
+    v => pl%v(k)
     if(present(val)) then
        find_par=PLERR_NOENT
-       if(is_reference(c)) then
-          if(.not.allocated(pl%v(k)%p)) return
-          if(.not.is_double(c)) then
-             if(.not.is_real(c)) then
-                pz=pl%v(k)%p
-                val=z
-             else
-                px=pl%v(k)%p
-                val=x
-             end if
-          else
-             pr8=pl%v(k)%p
-             val=r8
-          end if
-       else 
-          if(.not.allocated(pl%v(k)%z)) return
-          val=pl%v(k)%z
-       end if
+       select case(get_pkind(v%sta))
+       case(PK_COMP)
+          pz=v%p
+          val=z
+       case(PK_REAL)
+          px=v%p
+          val=complex(x,rzero)
+       case(PK_DBLE)
+          pr=v%p
+          val=complex(real(r,kind=rp),rzero)
+       case(PK_INT)
+          pn=v%p
+          val=complex(real(n,kind=rp),rzero)
+       case(PK_UNDEF)
+          return
+       end select
     end if
     if(present(ent)) ent=k
     find_par=0
   end function find_par
 
-  integer function put_par(pl,k,v)
-    type(t_plist),intent(inout)::pl
+  subroutine put_par_z(v,z)
+    use memio
+    type(t_vbuf),intent(inout)::v
+    complex(cp),intent(in)::z
+    call mcp(v%p,loc(z),sizeof(z))
+  end subroutine put_par_z
+
+  subroutine put_par_x(v,x)
+    use  memio
+    type(t_vbuf),intent(inout)::v
+    real(rp),intent(in)::x
+    call mcp(v%p,loc(x),sizeof(x))
+  end subroutine put_par_x
+
+  subroutine put_par_r(v,r)
+    use memio
+    type(t_vbuf),intent(inout)::v
+    real(dp),intent(in)::r
+    call mcp(v%p,loc(r),sizeof(r))
+  end subroutine put_par_r
+
+  subroutine put_par_n(v,n)
+    use memio
+    type(t_vbuf),intent(inout)::v
+    integer,intent(in)::n
+    call mcp(v%p,loc(n),sizeof(n))
+  end subroutine put_par_n
+
+  integer function put_par(pl,k,z)
+    type(t_plist),intent(inout),target::pl
     integer,intent(in)::k
-    complex(cp),intent(in)::v
+    complex(cp),intent(in)::z
+    type(t_vbuf),pointer::v
     integer istat
-    integer*1 c
+    integer c
     integer p,l
     istat=get_sc(pl%s,k,c)
     if(istat/=0) then
        put_par=istat
        return
     end if
-    if(is_read_only(c)) then
+    v => pl%v(k)
+    if(is_read_only(v%sta)) then
        istat=get_str_ptr(pl%s,k,p,l)
        write(*,*) "*** Parameter is read-only: "//trim(cpstr(p,l))
        put_par=PLERR_RDONL
        return
     end if
-    put_par=PLERR_NOENT
-    if(.not.is_reference(c)) then
-       if(.not.allocated(pl%v(k)%z)) return
-       pl%v(k)%z=v
-    else
-       if(.not.allocated(pl%v(k)%p)) return
-       call put_par_by_reference(pl,k,v)
-    end if
+    select case(get_pkind(v%sta))
+    case(PK_COMP)
+       call put_par_z(v,z)
+    case(PK_REAL)
+       call put_par_x(v,realpart(z))
+    case(PK_DBLE)
+       call put_par_r(v,real(realpart(z),kind=dp))
+    case(PK_INT)
+       call put_par_n(v,int(realpart(z)))
+    case(PK_UNDEF)
+       put_par=PLERR_NOENT
+       return
+    end select
     put_par=0
   end function put_par
-
-  subroutine put_par_by_reference(pl,k,v)
-    type(t_plist),intent(in)::pl
-    integer,intent(in)::k
-    complex(cp),intent(in)::v
-    complex(cp) z
-    pointer(pz,z)
-    pz=pl%v(k)%p
-    z=v
-  end subroutine put_par_by_reference
 
   subroutine inc_par_buf(pl,inc_n)
     type(t_plist),intent(inout)::pl
@@ -370,7 +439,7 @@ contains
   integer function try_add_par(pl,s,code,ent)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
-    integer*1,intent(in)::code
+    integer,intent(in)::code
     integer,intent(out),optional::ent
     integer istat
     istat=try_add_str(pl%s,s,code,ent)
@@ -378,7 +447,7 @@ contains
        try_add_par=istat
        return
     end if
-    if(pl%s%n>size(pl%v).or..not.allocated(pl%v)) call inc_par_buf(pl,4)
+    if(pl%s%n>size(pl%v).or..not.allocated(pl%v)) call inc_par_buf(pl,4) !<<<
     try_add_par=0
   end function try_add_par
 
@@ -386,111 +455,135 @@ contains
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     integer,intent(out)::ent
-    integer*1 c
+    integer c
     c=0
     add_par_by_entry=try_add_par(pl,s,c,ent)
   end function add_par_by_entry
 
   integer function add_par_by_reference(pl,s,ptr,ro,pk,ent)
-    type(t_plist),intent(inout)::pl
+    type(t_plist),intent(inout),target::pl
     character*(*),intent(in)::s
     integer,intent(in)::ptr
     logical,intent(in),optional::ro
     integer,intent(in),optional::pk
     integer,intent(out),optional::ent
-    integer istat
-    integer k
-    integer*1 c
+    type(t_vbuf),pointer::v
+    integer istat,k,flg
+    integer pk_set
     if(present(ent)) ent=0
     if(present(ro).and.ro) then
-       c=ior(SC_REF,SC_RO)
+       flg=ior(PS_REF,PS_RO)
     else
-       c=SC_REF
+       flg=PS_REF
     end if
     if(present(pk)) then
-       select case(pk)
-       case(PK_REAL)
-          c=ior(c,SC_REAL)
-       case(PK_DBLE)
-          c=ior(c,SC_DBLE)
-       end select
+       pk_set=pk
+    else
+       pk_set=PK_COMP
     end if
-    istat=try_add_par(pl,s,c,k)
+    istat=try_add_par(pl,s,0,k)
     if(istat/=0) then
        add_par_by_reference=istat
        return
     end if
-    if(.not.allocated(pl%v(k)%p)) allocate(pl%v(k)%p)
-    pl%v(k)%p=ptr
+    v => pl%v(k)
+    if(.not.is_reference(v%sta).and.get_pkind(v%sta)/=PK_UNDEF) call free(v%p)
+    v%p=ptr
+    call set_pkind(v%sta,pk_set)
+    call set_pflg(v%sta,flg)
     if(present(ent)) ent=k
     add_par_by_reference=0
   end function add_par_by_reference
 
-  integer function add_par_by_value_x(pl,s,v,ro,ent)
-    type(t_plist),intent(inout)::pl
+  integer function add_par_by_value_x(pl,s,x,ro,ent)
+    use memio
+    type(t_plist),intent(inout),target::pl
     character*(*),intent(in)::s
-    real(rp),intent(in)::v
+    real(rp),intent(in)::x
     logical,intent(in),optional::ro
     integer,intent(out),optional::ent
-    integer istat,k
-    integer*1 c
+    type(t_vbuf),pointer::v
+    integer istat,k,flg,pk
     if(present(ent)) ent=0
-    c=SC_REAL
-    if(present(ro).and.ro) c=ior(c,SC_RO)
-    istat=try_add_par(pl,s,c,k)
+    flg=PK_REAL
+    if(present(ro).and.ro) flg=ior(flg,PS_RO)
+    istat=try_add_par(pl,s,0,k)
     if(istat/=0) then
        add_par_by_value_x=istat
        return
     end if
-    if(.not.allocated(pl%v(k)%x)) allocate(pl%v(k)%x)
-    pl%v(k)%x=v
+    v => pl%v(k)
+    pk=get_pkind(v%sta)
+    if(pk/=PK_REAL) then
+       if(pk/=PK_UNDEF) call free(v%p)
+       v%p=palloc(PK_REAL)
+       call set_pkind(v%sta,PK_REAL)
+    end if
+    call set_pflg(v%sta,flg)
+    call mcp(v%p,loc(x),sizeof(x))
     if(present(ent)) ent=k
     add_par_by_value_x=0
   end function add_par_by_value_x
 
-  integer function add_par_by_value_r(pl,s,v,ro,ent)
-    type(t_plist),intent(inout)::pl
+  integer function add_par_by_value_r(pl,s,r,ro,ent)
+    use memio
+    type(t_plist),intent(inout),target::pl
     character*(*),intent(in)::s
-    real(dp),intent(in)::v
+    real(dp),intent(in)::r
     logical,intent(in),optional::ro
     integer,intent(out),optional::ent
-    integer istat,k
-    integer*1 c
+    type(t_vbuf),pointer::v
+    integer istat,k,flg,pk
     if(present(ent)) ent=0
-    c=SC_DBLE
-    if(present(ro).and.ro) c=ior(c,SC_RO)
-    istat=try_add_par(pl,s,c,k)
+    flg=PK_DBLE
+    if(present(ro).and.ro) flg=ior(flg,PS_RO)
+    istat=try_add_par(pl,s,0,k) ! <<<<<<<
     if(istat/=0) then
        add_par_by_value_r=istat
        return
     end if
-    if(.not.allocated(pl%v(k)%r)) allocate(pl%v(k)%r)
-    pl%v(k)%r=v
+    v => pl%v(k)
+    pk=get_pkind(v%sta)
+    if(pk/=PK_DBLE) then
+       if(pk/=PK_UNDEF) call free(v%p)
+       v%p=palloc(PK_DBLE)
+       call set_pkind(v%sta,PK_DBLE)
+    end if
+    call set_pflg(v%sta,flg)
+    call mcp(v%p,loc(r),sizeof(r))
     if(present(ent)) ent=k
     add_par_by_value_r=0
   end function add_par_by_value_r
 
-  integer function add_par_by_value_z(pl,s,v,ro,ent)
-    type(t_plist),intent(inout)::pl
+  integer function add_par_by_value_z(pl,s,z,ro,ent)
+    use memio
+    type(t_plist),intent(inout),target::pl
     character*(*),intent(in)::s
-    complex(cp),intent(in)::v
+    complex(cp),intent(in)::z
     logical,intent(in),optional::ro
     integer,intent(out),optional::ent
-    integer istat,k
-    integer*1 c
+    type(t_vbuf),pointer::v
+    integer istat,k,flg,pk
     if(present(ent)) ent=0
     if(present(ro).and.ro) then
-       c=SC_RO
+       flg=PS_RO
     else
-       c=SC_NOP
+       flg=PS_NOP
     end if
-    istat=try_add_par(pl,s,c,k)
+    istat=try_add_par(pl,s,0,k) ! <<<
     if(istat/=0) then
        add_par_by_value_z=istat
        return
     end if
-    if(.not.allocated(pl%v(k)%z)) allocate(pl%v(k)%z)
-    pl%v(k)%z=v
+    v => pl%v(k)
+    pk=get_pkind(v%sta)
+    if(pk/=PK_COMP) then
+       if(pk/=PK_UNDEF) call free(v%p)
+       v%p=palloc(PK_COMP)
+       v%sta=PK_COMP
+    end if
+    call set_pflg(v%sta,flg)
+    call mcp(v%p,loc(z),sizeof(z))
     if(present(ent)) ent=k
     add_par_by_value_z=0
   end function add_par_by_value_z
@@ -499,47 +592,43 @@ contains
     type(t_plist),intent(inout),target::pl
     integer,intent(in)::k
     type(t_vbuf),pointer::v
-    integer istat
-    integer*1 c
+    integer istat,pk
+    integer c
     real(rp) x
     real(dp) r
+    complex(cp) z
+    integer n
     pointer(px,x)
     pointer(pr,r)
+    pointer(pz,z)
+    pointer(pn,n)
     get_par_loc=0
     if(k>pl%s%n.or.k<=0) return
     istat=get_sc(pl%s,k,c)
     if(istat/=0) return
     v => pl%v(k)
-    if(is_value(c)) then
-       if(is_complex(c)) then
-          if(.not.allocated(v%z)) return
-          get_par_loc=loc(v%z)
-          return
-       else if(is_real(c)) then
-          if(.not.allocated(v%x)) return
-          if(.not.allocated(v%z)) allocate(v%z)
-          v%z=complex(v%x,rzero)
-       else if(is_double(c)) then
-          if(.not.allocated(v%r)) return
-          if(.not.allocated(v%z)) allocate(v%z)
-          v%z=complex(real(v%r,kind=rp),rzero)
-       end if
-    else if(.not.allocated(v%p)) then
-       return
-    else if(is_complex(c)) then
+    pk=get_pkind(v%sta)
+    if(pk==PK_COMP) then
        get_par_loc=v%p
        return
-    else if(is_real(c)) then
-       if(.not.allocated(v%z)) allocate(v%z)
-       px=v%p
-       v%z=complex(x,rzero)
-    else if(is_double(c)) then
-       if(.not.allocated(v%z)) allocate(v%z)
-       pr=v%p
-       v%z=complex(real(r,kind=rp),rzero)
     end if
-    get_par_loc=loc(v%z)
-    istat=set_sc(pl%s,k,ior(c,SC_DUP))
+    if(v%pz==0) v%pz=palloc(PK_COMP)
+    pz=v%pz
+    select case(pk)
+    case(PK_REAL)
+       px=v%p
+       z=complex(x,rzero)
+    case(PK_DBLE)
+       pr=v%p
+       z=complex(real(r,kind=rp),rzero)
+    case(PK_INT)
+       pn=v%p
+       z=complex(real(n,kind=rp),rzero)
+    case(PK_UNDEF)
+       return
+    end select
+    get_par_loc=v%pz
+    call set_pflg(v%sta,PS_DUP)
   end function get_par_loc
 
   integer function get_par(pl,k,zout)
@@ -547,120 +636,76 @@ contains
     integer,intent(in)::k
     complex(cp),intent(out)::zout
     type(t_vbuf),pointer::v
-    integer*1 c
+    integer c
     integer istat
     real(dp) r
     real(rp) x
     complex(cp) z
+    integer n
     pointer(pr,r)
     pointer(pz,z)
     pointer(px,x)
+    pointer(pn,n)
     istat=get_sc(pl%s,k,c)
     if(istat/=0) then
        get_par=PLERR_NOPAR
        return
     end if
-    get_par=PLERR_NOENT
     v => pl%v(k)
-    if(is_value(c)) then
-       if(is_complex(c)) then
-          if(.not.allocated(v%z)) return
-          zout=v%z
-       else if(is_real(c)) then
-          if(.not.allocated(v%x)) return
-          zout=complex(v%x,rzero)
-       else if(is_double(c)) then
-          if(.not.allocated(v%r)) return
-          zout=complex(real(v%r,kind=rp),rzero)
-       end if
-    else 
-       if(.not.allocated(v%p)) return
-       if(is_complex(c)) then
-          pz=v%p
-          zout=z
-       else if(is_real(c)) then
-          px=v%p
-          zout=complex(x,rzero)
-       else if(is_double(c)) then
-          pr=v%p
-          zout=complex(real(r,kind=rp),rzero)
-       end if
-    end if
+    select case(get_pkind(v%sta))
+    case(PK_COMP)
+       pz=v%p
+       zout=z
+    case(PK_REAL)
+       px=v%p
+       zout=complex(x,rzero)
+    case(PK_DBLE)
+       pr=v%p
+       zout=complex(real(r,kind=rp),rzero)
+    case(PK_INT)
+       pn=v%p
+       zout=complex(real(n,kind=rp),rzero)
+    case(PK_UNDEF)
+       get_par=PLERR_NOENT
+       return
+    end select
     get_par=0
   end function get_par
 
   integer function remove_dup(pl)
     type(t_plist),intent(inout),target::pl
     type(t_vbuf),pointer::v
-    integer i,istat
-    integer*1 c
+    integer i
     real(rp) x
     real(dp) r
+    complex(cp) z
+    integer n
     pointer(px,x)
     pointer(pr,r)
+    pointer(pz,z)
+    pointer(pn,n)
     remove_dup=PLERR_NOENT
     do i=1,pl%s%n
-       istat=get_sc(pl%s,i,c)
-       if(istat/=0) then
-          remove_dup=istat
-          return
-       end if
-       if(.not.is_duplicated(c)) cycle
        v => pl%v(i)
-       if(.not.allocated(v%z)) return
-       if(is_reference(c)) then
-          if(.not.allocated(v%p)) return
-          if(is_real(c)) then
-             px=v%p
-             x=realpart(v%z)
-          else if(is_double(c)) then
-             pr=v%p
-             r=real(realpart(v%z),kind=dp)
-          else
-             ! unexpected error
-          end if
-       else if(is_real(c)) then
-          if(.not.allocated(v%x)) return
-          v%x=realpart(v%z)
-       else if(is_double(c)) then
-          if(.not.allocated(v%r)) return
-          v%r=real(realpart(v%z),kind=dp)
-       else
-          ! unexpected error
-       end if
-       deallocate(v%z)
-       istat=set_sc(pl%s,i,iand(c,not(SC_DUP)))
+       if(.not.is_duplicated(v%sta)) cycle
+       pz=v%pz
+       select case(get_pkind(v%sta)) 
+       case(PK_REAL)
+          px=v%p
+          x=realpart(z)
+       case(PK_DBLE)
+          pr=v%p
+          r=real(realpart(z),kind=dp)
+       case(PK_INT)
+          pn=v%p
+          n=int(realpart(z))
+       case(PK_COMP)
+       case(PK_UNDEF)
+       end select
+       call free(pz)
+       call uset_pflg(v%sta,PS_DUP)
     end do
     remove_dup=0
   end function remove_dup
-
-  integer function realloc_new(pl)
-    type(t_plist),intent(inout),target::pl
-    type(t_vbuf),pointer::v
-    integer i,istat
-    integer*1 c
-    realloc_new=PLERR_NOENT
-    do i=1,pl%s%n
-       istat=get_sc(pl%s,i,c)
-       if(istat/=0) then
-          realloc_new=istat
-          return
-       end if
-       if(.not.is_new(c)) cycle
-       if(is_complex(c)) then
-          v => pl%v(i)
-          if(.not.allocated(v%z)) return
-          if(imagpart(v%z)==rzero) then
-             if(.not.allocated(v%x)) allocate(v%x)
-             v%x=realpart(v%z)
-             deallocate(v%z)
-             c=ior(c,SC_REAL)
-          end if
-       end if
-       c=iand(c,not(SC_NEW))
-       istat=set_sc(pl%s,i,c)
-    end do
-    realloc_new=0
-  end function realloc_new
 
 end module plist
