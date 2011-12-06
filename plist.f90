@@ -18,10 +18,10 @@ module plist
   integer,parameter,public::PK_INT   = 4
 
   integer,parameter,public::PS_NOP   = 0
-  integer,parameter,public::PS_REF   = Z"00010000"
-  integer,parameter,public::PS_NEW   = Z"00020000"
-  integer,parameter,public::PS_RO    = Z"00040000"
-  integer,parameter,public::PS_DUP   = Z"00080000"
+  integer,parameter,public::PS_REF   = Z"0001"
+  integer,parameter,public::PS_NEW   = Z"0002"
+  integer,parameter,public::PS_RO    = Z"0004"
+  integer,parameter,public::PS_DUP   = Z"0008"
 
   type t_vbuf
      integer p     ! pointer
@@ -104,12 +104,7 @@ contains
     integer,intent(in)::sz
     integer,intent(in)::nmax
     init_plist%s=init_slist(sz)
-    if(nmax>0) then
-       allocate(init_plist%v(nmax))
-       init_plist%v(:)%p=0
-       init_plist%v(:)%pz=0
-       init_plist%v(:)%sta=PK_UNDEF
-    end if
+    if(nmax>0) call alloc_vbuf(nmax,init_plist%v)
   end function init_plist
 
   subroutine uinit_vbuf(v)
@@ -173,7 +168,7 @@ contains
        v2%p=v1%p
     else
        v2%p=palloc(get_pkind(v1%sta),sz)
-       call mcp(v2%p,v1%p,sz)
+       if(sz/=0) call mcp(v2%p,v1%p,sz)
     end if
   end subroutine cp_vbuf
 
@@ -195,10 +190,14 @@ contains
        sz_=sizeof(r)
     case(PK_INT)
        sz_=sizeof(n)
+    case default
+       sz_=0
     end select
-    palloc=malloc(sz_)
+    if(sz_/=0) then
+       palloc=malloc(sz_)
+       call mcle(palloc,sz_)
+    end if
     if(present(sz)) sz=sz_
-    call mcle(palloc,sz_)
   end function palloc
 
   integer function alloc_par(pl,k,pk)
@@ -248,8 +247,7 @@ contains
        deallocate(pl2%v)
     end if
     if(pl2%s%n>0) then
-       allocate(pl2%v(pl2%s%n))
-       call cp_vbufs(pl2%s%n,pl1%v,pl2%v)
+       call alloc_vbuf(pl2%s%n,pl2%v)
     end if
   end subroutine min_cp_plist
   
@@ -290,16 +288,25 @@ contains
 20  format(x,z16,$)
   end subroutine dump_plist
 
+  subroutine alloc_vbuf(n,v)
+    integer,intent(in)::n
+    type(t_vbuf),intent(out),allocatable::v(:)
+    allocate(v(n))
+    v%p=0
+    v%pz=0
+    v%sta=PK_UNDEF
+  end subroutine alloc_vbuf
+
   subroutine trim_plist(pl)
     use memio
     type(t_plist),intent(inout)::pl
     type(t_vbuf),allocatable::tmpv(:)
     if(allocated(pl%v)) then
        if(pl%s%n>=1) then
-          allocate(tmpv(pl%s%n))
+          call alloc_vbuf(pl%s%n,tmpv)
           call mv_vbufs(pl%s%n,pl%v,tmpv)
           deallocate(pl%v)
-          allocate(pl%v(pl%s%n))
+          call alloc_vbuf(pl%s%n,pl%v)
           call mv_vbufs(pl%s%n,tmpv,pl%v)
           deallocate(tmpv)
        else
@@ -425,14 +432,14 @@ contains
     type(t_vbuf),allocatable::v(:)
     if(inc_n<=0) return
     if(allocated(pl%v)) then
-       allocate(v(size(pl%v)+inc_n))
+       call alloc_vbuf(size(pl%v)+inc_n,v)
        call mv_vbufs(size(pl%v),pl%v,v)
        deallocate(pl%v)
-       allocate(pl%v(size(v)))
+       call alloc_vbuf(size(v),pl%v)
        call mv_vbufs(size(pl%v),v,pl%v)
        deallocate(v)
     else
-       allocate(pl%v(inc_n))
+       call alloc_vbuf(inc_n,pl%v)
     end if
   end subroutine inc_par_buf
 
@@ -702,7 +709,8 @@ contains
        case(PK_COMP)
        case(PK_UNDEF)
        end select
-       call free(pz)
+       call free(v%pz)
+       v%pz=0
        call uset_pflg(v%sta,PS_DUP)
     end do
     remove_dup=0

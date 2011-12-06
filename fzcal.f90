@@ -11,8 +11,12 @@ program fzcal
   integer istat
   integer ka
   integer cid
+  real(rp):: test=123.0
+
   
   p=init_rpnc()
+
+  istat=add_par_by_reference(rpnc%pars,"test",loc(test),.true.,PK_REAL)
 
   main: do
      write(*,10) "> "

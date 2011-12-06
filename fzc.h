@@ -2,9 +2,12 @@
 #define FZCAL_H
 
 #define LEN_FZCSTR_MAX 1024
-#define PK_REAL 1
-#define PK_DBLE 2
-#define PK_COMP 0
+#define PK_UNDEF 0
+#define PK_COMP  1
+#define PK_REAL  2
+#define PK_DBLE  3
+#define PK_INT   4
+
 
 #define FZCOPT_NOAUTO_ADDPAR 8
 
