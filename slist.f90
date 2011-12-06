@@ -13,43 +13,22 @@ module slist
   integer,parameter::SLERR_NOMEM = 1
   integer,parameter::SLERR_MEMOV = 2
   integer,parameter::SLERR_NOENT = 3
-  integer,parameter::SLERR_RDONL = 4
-  
+
   integer,parameter,public::LEN_SLIST_HDR=2 ! len+code
   
-  integer*1,parameter,public::SC_NOP  = 0
-  integer*1,parameter,public::SC_RO   = Z"01"
-  integer*1,parameter,public::SC_REF  = Z"02"
-  integer*1,parameter,public::SC_DBLE = Z"04"
-  integer*1,parameter,public::SC_REAL = Z"08"
-  integer*1,parameter,public::SC_DUP  = Z"10"
-  integer*1,parameter,public::SC_NEW  = Z"20"
-  !                  
-  integer*1,parameter,public::SC_MAC  = Z"02"
-  integer*1,parameter,public::SC_FNC  = Z"04"
-  !
-  integer,parameter,public::SLF_FORCE= Z"01"
   !
   public get_sc
   public set_sc
   public add_sc
   public get_str_ptr
   public try_add_str
-  public is_read_only
-  public is_duplicated
-  public is_new
   public cpstr
-  public is_reference
-  public is_value
   public find_str
   public rm_str
   public init_slist
   public add_str
   public min_cp_slist
   public uinit_slist
-  public is_double
-  public is_real
-  public is_complex
   public dump_slist
   public trim_slist
 
@@ -126,7 +105,7 @@ contains
     integer,intent(in)::k
     integer,intent(out)::ptr
     integer,intent(out),optional::len
-    integer*1,intent(out),optional::code
+    integer,intent(out),optional::code
     integer*1 b
     integer l,i
     pointer(p,b)
@@ -152,7 +131,7 @@ contains
   integer function get_sc(sl,k,code)
     type(t_slist),intent(in)::sl
     integer,intent(in)::k
-    integer*1,intent(out)::code
+    integer,intent(out)::code
     integer istat
     integer*1 b
     pointer(p,b)
@@ -169,7 +148,7 @@ contains
   integer function set_sc(sl,k,code)
     type(t_slist),intent(inout)::sl
     integer,intent(in)::k
-    integer*1,intent(in)::code
+    integer,intent(in)::code
     integer istat
     integer*1 b
     pointer(p,b)
@@ -179,14 +158,14 @@ contains
        return
     end if
     p=p+1
-    b=code
+    b=int(code,kind=1)
     set_sc=0
   end function set_sc
 
   integer function add_sc(sl,k,code)
     type(t_slist),intent(inout)::sl
     integer,intent(in)::k
-    integer*1,intent(in)::code
+    integer,intent(in)::code
     integer istat
     integer*1 b
     pointer(p,b)
@@ -196,67 +175,20 @@ contains
        return
     end if
     p=p+1
-    b=ior(b,code)
+    b=ior(b,int(code,kind=1))
     add_sc=0
   end function add_sc
   
-  logical function is_read_only(c)
-    integer*1,intent(in)::c
-    is_read_only=(iand(c,SC_RO)/=0)
-  end function is_read_only
-
-  logical function is_reference(c)
-    integer*1,intent(in)::c
-    is_reference=(iand(c,SC_REF)/=0)
-  end function is_reference
-
-  logical function is_value(c)
-    integer*1,intent(in)::c
-    is_value=(iand(c,SC_REF)==0)
-  end function is_value
-
-  logical function is_double(c)
-    integer*1,intent(in)::c
-    is_double=(iand(c,SC_DBLE)/=0)
-  end function is_double
-
-  logical function is_real(c)
-    integer*1,intent(in)::c
-    is_real=(iand(c,SC_REAL)/=0)
-  end function is_real
-  
-  logical function is_complex(c)
-    integer*1,intent(in)::c
-    is_complex=(iand(c,ior(SC_DBLE,SC_REAL))==0)
-  end function is_complex
-
-  logical function is_duplicated(c)
-    integer*1,intent(in)::c
-    is_duplicated=(iand(c,SC_DUP)/=0)
-  end function is_duplicated
-
-  logical function is_new(c)
-    integer*1,intent(in)::c
-    is_new=(iand(c,SC_NEW)/=0)
-  end function is_new
-
-  integer function rm_str(sl,s,ent,flg)
+  integer function rm_str(sl,s,ent)
     type(t_slist),intent(inout)::sl
     character*(*),intent(in)::s
     integer,intent(out),optional::ent
-    integer,intent(in),optional::flg
     integer k
-    integer*1 cd
     integer ptr
-    k=find_str(sl,s,found_code=cd,ptr=ptr)
+    k=find_str(sl,s,ptr=ptr)
     if(present(ent)) ent=k
     if(k==0) then
        rm_str=SLERR_NOENT
-       return
-    end if
-    if(is_read_only(cd)&
-         .and..not.(present(flg).and.iand(flg,SLF_FORCE)/=0)) then
-       rm_str=SLERR_RDONL
        return
     end if
     call shift_slist()
@@ -286,20 +218,17 @@ contains
   integer function try_add_str(sl,s,code,ent)
     type(t_slist),intent(inout)::sl
     character*(*),intent(in)::s
-    integer*1,intent(in)::code
+    integer,intent(in)::code
     integer,intent(out),optional::ent
     integer k,istat
-    integer*1 c
+    integer c
     k=0
     istat=0
     if(sl%n>0) then
        k=find_str(sl,s,found_code=c)
        if(k/=0) then
           if(present(ent)) ent=k
-          if(is_read_only(c).and.c/=code) then ! <<<
-             istat=SLERR_RDONL
-             write(*,*) "*** Parameter is read-only: "//trim(s)
-          else if(c/=code) then
+          if(c/=code) then
              istat=set_sc(sl,k,code)
           end if
        end if
@@ -329,7 +258,7 @@ contains
   integer function add_str(sl,s,code,ent)
     type(t_slist),intent(inout)::sl
     character*(*),intent(in)::s
-    integer*1,intent(in)::code
+    integer,intent(in)::code
     integer,intent(out),optional::ent
     integer i
     integer*1 b
@@ -352,7 +281,7 @@ contains
     p=sl%st+1
     b=int(len,kind=1)
     p=p+1
-    b=code
+    b=int(code,kind=1)
     q=loc(s)-1
     do i=1,len
        p=p+1
@@ -368,8 +297,8 @@ contains
   integer function find_str(sl,s,target_code,found_code,ptr)
     type(t_slist),intent(in)::sl
     character*(*),intent(in)::s
-    integer*1,intent(in),optional::target_code
-    integer*1,intent(out),optional::found_code
+    integer,intent(in),optional::target_code
+    integer,intent(out),optional::found_code
     integer,intent(out),optional::ptr
     integer i
     integer len
@@ -382,7 +311,7 @@ contains
     p=sl%p
     len=len_trim(s)
     if(present(target_code)) then
-       tc=target_code
+       tc=int(target_code,kind=1)
     else
        tc=-1
     end if

@@ -11,7 +11,7 @@ program fzcal
   integer istat
   integer ka
   integer cid
-
+  
   p=init_rpnc()
 
   main: do
