@@ -443,10 +443,13 @@ contains
   integer function cp_rpnc(rpnc_in)
     type(t_rpnc),intent(in)::rpnc_in
     type(t_rpnc) rpnc
+    integer istat
     pointer(p,rpnc)
     p=init_rpnc(size(rpnc_in%vbuf),0,0,0,0)
     call min_cp_rpnlist(rpnc_in%rl,rpnc%rl)
     call min_cp_plist(rpnc_in%pars,rpnc%pars)
+    istat=add_par_by_reference(rpnc%pars,"tmp",loc(rpnc%tmpans),.true.)
+    istat=add_par_by_reference(rpnc%pars,"ans",loc(rpnc%answer),.true.)
     cp_rpnc=p
   end function cp_rpnc
 
@@ -469,6 +472,7 @@ contains
     integer,intent(in)::sz,nmax
     integer istat
     init_par=init_plist(sz,nmax)
+    if(sz==0.or.nmax==0) return
     istat=add_par_by_reference(init_par,"tmp",loc(rpnc%tmpans),.true.)
     istat=add_par_by_reference(init_par,"ans",loc(rpnc%answer),.true.)
     istat=add_par_by_value(init_par,"eps",epsilon(0.0_rp),.true.)    

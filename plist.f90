@@ -257,13 +257,21 @@ contains
   end function rm_par
 
   subroutine min_cp_plist(pl1,pl2)
-    type(t_plist),intent(in)::pl1
-    type(t_plist),intent(inout)::pl2
+    type(t_plist),intent(in),target::pl1
+    type(t_plist),intent(inout),target::pl2
+    type(t_vbuf),pointer::v1,v2
+    integer i
     call uinit_plist(pl2)
     call min_cp_slist(pl1%s,pl2%s)
     if(pl2%s%n>0) then
        call alloc_vbuf(pl2%s%n,pl2%v)
-       pl2%v(1:pl2%s%n)=pl1%v(1:pl2%s%n)
+       do i=1,pl2%s%n
+          v1 => pl1%v(i)
+          v2 => pl2%v(i)
+          v2=v1
+          if(is_value(v1%sta)) &
+               call set_pflg(v2%sta,PS_REF)
+       end do
     end if
   end subroutine min_cp_plist
   
@@ -451,21 +459,30 @@ contains
     end if
   end subroutine inc_par_buf
 
-  integer function try_add_par(pl,s,ent)
+  integer function try_add_par(pl,s,ent,force)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     integer,intent(out),optional::ent
+    logical,intent(in),optional::force
     integer k
     integer istat
+    logical f
     if(present(ent)) ent=0
     istat=try_add_str(pl%s,s,0,k)
     if(istat/=0) then
        try_add_par=istat
        return
     end if
-    if(k<size(pl%v).and.is_read_only(pl%v(k)%sta)) then
-       try_add_par=PLERR_RDONL
-       return
+    if(present(force)) then
+       f=force
+    else
+       f=.false.
+    end if
+    if(k<size(pl%v)) then
+       if(is_read_only(pl%v(k)%sta).and..not.f) then
+          try_add_par=PLERR_RDONL
+          return
+       end if
     end if
     if(present(ent)) ent=k
     if(pl%s%n>size(pl%v).or..not.allocated(pl%v)) &
@@ -515,7 +532,7 @@ contains
     integer istat,k,flg
     integer pk_set
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,k)
+    istat=try_add_par(pl,s,k,force=.true.)
     if(istat/=0) then
        add_par_by_reference=istat
        return

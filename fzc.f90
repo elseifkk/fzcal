@@ -52,7 +52,8 @@ contains
     size_t,intent(in),value::ptr_rpnc
     type(t_rpnc) rpnc
     pointer(p,rpnc)
-    fzc_get_ans=rpn_rans(rpnc)
+    p=ptr_rpnc
+    fzc_get_ans=real(rpn_rans(rpnc),kind=dp)
   end function fzc_get_ans
 
   subroutine fzc_get_str_ans(ptr_rpnc,ptr_str)
