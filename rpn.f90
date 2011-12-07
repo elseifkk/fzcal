@@ -4,6 +4,9 @@ module rpn
   use fpio
   implicit none
 
+#define is_set(x) (iand(rpnc%opt,(x))/=0)
+#define is_uset(x) (iand(rpnc%opt,(x))==0)
+
   integer,parameter::narg_max=32
 
 !  private
@@ -254,13 +257,14 @@ module rpn
 contains
 
   character(LEN_STR_ANS_MAX) function rpn_sans(rpnc)
+    use memio
     type(t_rpnc),intent(in)::rpnc
-    if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+    if(is_uset(RPNCOPT_RATIO)) then
        rpn_sans=trim(ztoa(rpnc%answer))
     else
-       rpn_sans=trim(rtoa(realpart(rpnc%answer)))
+       rpn_sans=trim(itoa(int(realpart(rpnc%answer))))
        if(int(imagpart(rpnc%answer))>1) then
-          rpn_sans=trim(rpn_sans)//"/"//trim(rtoa(imagpart(rpnc%answer)))
+          rpn_sans=trim(rpn_sans)//"/"//trim(itoa(int(imagpart(rpnc%answer))))
        end if
     end if
   end function rpn_sans
@@ -939,7 +943,7 @@ contains
 !!$    if(iand(rpnc%opt,RPNCOPT_NEW)/=0) then
 !!$       istat=realloc_new(rpnc%pars)
 !!$    end if
-    istat=remove_dup(rpnc%pars)
+    call remove_dup(rpnc%pars)
 
     rpnc%rc=rpnc%rc-1
 
@@ -1725,10 +1729,13 @@ contains
           q%tid=TID_PAR
           istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
           if(istat==0) then
-             istat=alloc_par(rpnc%pars,k,PK_COMP)
              q%cid=get_par_loc(rpnc%pars,k)
           else
-             write(*,*) "*** add_par_by_entry failed: code = ",istat
+             if(istat==PLERR_RDONL) then
+                write(*,*) "*** Parameter is read-only: "//_EXPR_(i)
+             else
+                write(*,*) "*** add_par_by_entry failed: code = ",istat
+             end if
              istat=RPNERR_ADDPAR
           end if
           !
@@ -1759,8 +1766,6 @@ contains
              if(istat/=0) then
                 write(*,*) "*** add_par_by_entry failed: code = ",istat
                 istat=RPNERR_ADDPAR
-             else
-                istat=alloc_par(rpnc%pars,k,PK_COMP)
              end if
           end if
           if(istat==0) then
@@ -2265,7 +2270,7 @@ contains
     type(t_rpnb),target::rpnb
     integer t,told,btold,istat
     integer p1,p2
-    integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,apc,amc,clc,tc
+    integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc
     logical amac
     integer pfasn
     integer p_q1
@@ -2379,7 +2384,7 @@ contains
           kc=kc+1
        case(TID_AOP)
           if(check_assignable()) then
-             call revert_tid(rpnb,TID_PAR)
+             call revert_tid(rpnb,TID_APAR)
              call rpn_try_push(rpnb,t,p1,p2)
           else
              istat=RPNERR_PARSER
@@ -2388,7 +2393,6 @@ contains
           ac=ac+1
           if(.not.is_fnc_asn()) then
              if(check_assignable()) then
-                apc=apc+1
                 call revert_tid(rpnb,TID_APAR)
              else
                 istat=RPNERR_PARSER
@@ -2472,7 +2476,7 @@ contains
       pfnc_opened=0
       pfasn=0
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
-      apc=0; amc=0; clc=0; tc=0
+      amc=0; clc=0; tc=0
       p_q1=rpnb%p_que+1
     end subroutine init_stat
 

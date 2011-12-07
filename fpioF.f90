@@ -27,7 +27,7 @@ module fpio
   real(rp),parameter::eps=epsilon(0.0_rp)
   real(rp),parameter::pre=precision(0.0_rp)
   real(rp),parameter::rzero=0.0_rp
-  complex(cp),parameter::czero=0.0_cp
+  complex(cp),parameter::czero=complex(rzero,rzero)
 
   integer,parameter::LEN_STR_ANS_MAX=128
   
@@ -128,7 +128,6 @@ contains
        if(present(ok)) ok=(istat==0)
        return
     end if
-
     xx=real(x,kind=dispp)
     rtoa=""
 #ifdef _NO_ASM_

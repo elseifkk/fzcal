@@ -13,6 +13,7 @@ module slist
   integer,parameter::SLERR_NOMEM = 1
   integer,parameter::SLERR_MEMOV = 2
   integer,parameter::SLERR_NOENT = 3
+  integer,parameter,public::SLERR_END   = 3
 
   integer,parameter,public::LEN_SLIST_HDR=2 ! len+code
   
