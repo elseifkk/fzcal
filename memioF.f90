@@ -61,7 +61,7 @@ contains
 #else
   character*32 function itoa(i)
     integer,intent(in)::i
-    integer len,istat
+    integer istat
     itoa=""
     write(itoa,*,iostat=istat) i
     if(istat==0) itoa=adjustl(itoa)
@@ -94,7 +94,7 @@ contains
        di=di+1
        d=int(0,kind=1)
     end do
-  end subroutine mcp
+  end subroutine mcle
 #endif
   
 end module memio
