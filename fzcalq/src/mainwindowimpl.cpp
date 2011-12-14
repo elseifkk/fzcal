@@ -28,9 +28,9 @@ void MainWindowImpl::returnSlot()
   char cstr[LEN_FZCSTR_MAX];
   size_t pcstr= ( size_t ) &cstr[0];
   
-  if ( formulaBox->currentText().isEmpty() ) return;
+  if ( formulaBox->lineEdit()->text().isEmpty() ) return;
 
-  strcpy ( cstr,formulaBox->currentText().toAscii() );
+  strcpy ( cstr,formulaBox->lineEdit()->text().toAscii() );
   rc=fzc_set_formula ( pfzc, pcstr );
   if ( rc>0 ){
     mess ( "Syntacs Error","red" );
@@ -42,7 +42,7 @@ void MainWindowImpl::returnSlot()
       mess ( "Eval Error","red" );
       return;
     }
-    formulaBox->addToHistory ( formulaBox->currentText() );
+    formulaBox->addToHistory ( formulaBox->lineEdit()->text() );
     fzc_get_strans ( pfzc, pcstr );
     str=cstr;
     mess ( str );
@@ -100,7 +100,7 @@ void MainWindowImpl::f9Slot()
 
 void MainWindowImpl::ACSlot()
 {
-  formulaBox->clear();
+  formulaBox->lineEdit()->clear();
 }
 void MainWindowImpl::delSlot()
 {
@@ -133,14 +133,14 @@ void MainWindowImpl::EXESlot()
 
 void MainWindowImpl::delText(int i)
 {
-  if(formulaBox->currentText().isEmpty()) return;
-  QString text=formulaBox->currentText().remove(formulaBox->currentText().length()-1,i);
+  if(formulaBox->lineEdit()->text().isEmpty()) return;
+  QString text=formulaBox->lineEdit()->text().remove(formulaBox->lineEdit()->text().length()-1,i);
   formulaBox->lineEdit()->setText(text);
 }
 
 void MainWindowImpl::appendText(QString s)
 {
-  QString text=formulaBox->currentText().append(s);
+  QString text=formulaBox->lineEdit()->text().append(s);
   formulaBox->lineEdit()->setText(text);
 }
 
