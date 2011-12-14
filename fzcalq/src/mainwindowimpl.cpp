@@ -1,3 +1,5 @@
+#include <stdio.h> // for debug
+
 #include "mainwindowimpl.h"
 #include <fzc.h>
 //
@@ -13,7 +15,6 @@ MainWindowImpl::MainWindowImpl( QWidget * parent, Qt::WFlags f)
   setupUi(this);
   pfzc=fzc_init();
 }
-
 
 void MainWindowImpl::mess(QString s, QColor c)
 {
@@ -131,6 +132,109 @@ void MainWindowImpl::EXESlot()
 {
   returnSlot();
 }
+void MainWindowImpl::shiftSlot()
+{
+  if(shiftBut->isChecked()){
+    sqrtBut->setText("x^2");
+    logBut->setText("10^x");
+    lnBut->setText("e^x");
+    powBut->setText("xrty");
+    minusBut->setText("cbrt");
+  }else{
+    sqrtBut->setText("sqrt");
+    logBut->setText("log");
+    lnBut->setText("ln");
+    powBut->setText("pow");
+    minusBut->setText("-");
+  }
+  setTriFncBut();
+}
+void MainWindowImpl::engSlot()
+{
+}
+void MainWindowImpl::ratioSlot()
+{
+}
+void MainWindowImpl::sqrtSlot()
+{
+  if(!shiftBut->isChecked()){
+    appendText("sqrt(");
+  }else{
+    appendText("^2");
+  }
+}
+void MainWindowImpl::logSlot()
+{
+  if(!shiftBut->isChecked()){
+    appendText("log(");
+  }else{
+    appendText("10^");
+  }
+}
+void MainWindowImpl::lnSlot()
+{
+  if(!shiftBut->isChecked()){
+    appendText("ln(");
+  }else{
+    appendText("exp(");
+  }
+}
+void MainWindowImpl::powSlot()
+{
+  if(!shiftBut->isChecked()){
+    appendText("^");
+  }else{
+    appendText("//");
+  }
+}
+void MainWindowImpl::minusSlot()
+{
+  if(!shiftBut->isChecked()){
+    appendText("-");
+  }else{
+    appendText("cbrt(");
+  }
+}
+void MainWindowImpl::setTriFncBut()
+{
+  if(!hypBut->isChecked()){
+    if(!shiftBut->isChecked()){
+      sinBut->setText("sin");
+      cosBut->setText("cos");
+      tanBut->setText("tan");
+    }else{
+      sinBut->setText("asin");
+      cosBut->setText("acos");
+      tanBut->setText("atan");
+    }
+  }else{
+    if(!shiftBut->isChecked()){
+      sinBut->setText("sinh");
+      cosBut->setText("cosh");
+      tanBut->setText("tanh");
+    }else{
+      sinBut->setText("asinh");
+      cosBut->setText("acosh");
+      tanBut->setText("atanh");
+    }
+  }
+}
+void MainWindowImpl::hypSlot()
+{
+  setTriFncBut();
+}
+void MainWindowImpl::sinSlot()
+{
+  appendText(sinBut->text()+"(");
+}
+void MainWindowImpl::cosSlot()
+{
+  appendText(cosBut->text()+"(");
+}
+void MainWindowImpl::tanSlot()
+{
+  appendText(tanBut->text()+"(");
+}
 
 void MainWindowImpl::delText(int n)
 {
@@ -203,7 +307,7 @@ void MainWindowImpl::keyPressEvent(QKeyEvent *e)
       dotSlot();
       break;
     case Qt::Key_Return:
-      returnSlot();
+      if(!formulaBox->hasFocus()) returnSlot();
       break;
     case Qt::Key_E:
       expSlot();

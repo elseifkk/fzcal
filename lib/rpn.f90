@@ -392,6 +392,7 @@ contains
     allocate(rpnc%rl)
     allocate(rpnc%tmpans)
     allocate(rpnc%answer)
+    rpnc%answer=czero
     allocate(rpnc%pars)
     allocate(rpnc%p_vbuf)
     allocate(rpnc%rc)
@@ -1172,6 +1173,11 @@ contains
              p2=k+1
           case("*")
              if(rpnb%expr(k:k)=="*") then
+                t=TID_BOP3
+                p2=k+1
+             end if
+          case("/")
+             if(rpnb%expr(k:k)=="/") then
                 t=TID_BOP3
                 p2=k+1
              end if
@@ -2068,7 +2074,9 @@ contains
             get_oid2=loc(zm_div_f)
          end if
       case("**","^")
-         get_oid2=loc(zm_pow)   
+         get_oid2=loc(zm_pow)
+      case("//")
+         get_oid2=loc(zm_invpow)
       case("e")
          get_oid2=loc(zm_exp10) 
       case default

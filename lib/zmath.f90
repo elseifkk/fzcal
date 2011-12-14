@@ -21,6 +21,7 @@ module zmath
   public zm_mul
   public zm_div
   public zm_pow
+  public zm_invpow
   public zm_exp10
 
   public zm_nop
@@ -273,6 +274,20 @@ contains
        zm_pow=z1**z2
     end if
   end function zm_pow
+
+  complex(cp) function zm_invpow(z2,z1)
+    complex(cp),intent(in)::z2,z1
+    integer n1,n2
+    if(is_integer(z2,n2)) then
+       if(is_integer(z1,n1)) then
+          zm_invpow=real(n1,kind=rp)**(1.0_rp/real(n2,kind=rp))
+       else
+          zm_invpow=z1**(1.0_rp/real(n2,kind=rp))
+       end if
+    else
+       zm_invpow=z1**(1.0_rp/z2)
+    end if
+  end function zm_invpow
 
   complex(cp) function zm_exp10(z1,z2)
     complex(cp),intent(in)::z1,z2

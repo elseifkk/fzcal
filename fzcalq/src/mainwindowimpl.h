@@ -17,6 +17,7 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   void appendText(QString);
   void mess(QString,QColor="black");
   void delText(int i=1);
+  void setTriFncBut();
 
  private:
   size_t pfzc;
@@ -43,6 +44,18 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   void addSlot();
   void ansSlot();
   void EXESlot();
+  void shiftSlot();
+  void engSlot();
+  void ratioSlot();
+  void sqrtSlot();
+  void logSlot();
+  void lnSlot();
+  void powSlot();
+  void minusSlot();
+  void hypSlot();
+  void sinSlot();
+  void cosSlot();
+  void tanSlot();
 
  protected:
   void keyPressEvent(QKeyEvent*);
