@@ -131,16 +131,19 @@ void MainWindowImpl::EXESlot()
   returnSlot();
 }
 
-void MainWindowImpl::delText(int i)
+void MainWindowImpl::delText(int n)
 {
   if(formulaBox->lineEdit()->text().isEmpty()) return;
-  QString text=formulaBox->lineEdit()->text().remove(formulaBox->lineEdit()->text().length()-1,i);
+  int j=formulaBox->cursorPosition();
+  if(j>=formulaBox->lineEdit()->text().length()) j--;
+  QString text=formulaBox->lineEdit()->text().remove(j,n);
   formulaBox->lineEdit()->setText(text);
 }
 
 void MainWindowImpl::appendText(QString s)
 {
-  QString text=formulaBox->lineEdit()->text().append(s);
+  int j=formulaBox->cursorPosition();
+  QString text=formulaBox->lineEdit()->text().insert(j,s);
   formulaBox->lineEdit()->setText(text);
 }
 
