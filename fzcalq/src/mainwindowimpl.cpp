@@ -101,6 +101,7 @@ void MainWindowImpl::f9Slot()
 void MainWindowImpl::ACSlot()
 {
   formulaBox->lineEdit()->clear();
+  resultBox->clear();
 }
 void MainWindowImpl::delSlot()
 {
@@ -134,8 +135,8 @@ void MainWindowImpl::EXESlot()
 void MainWindowImpl::delText(int n)
 {
   if(formulaBox->lineEdit()->text().isEmpty()) return;
-  int j=formulaBox->cursorPosition();
-  if(j>=formulaBox->lineEdit()->text().length()) j--;
+  int j=formulaBox->cursorPosition()-1;
+  if(j<0) j=0;
   QString text=formulaBox->lineEdit()->text().remove(j,n);
   formulaBox->lineEdit()->setText(text);
 }
