@@ -2466,7 +2466,7 @@ contains
     if(istat==0) then
        istat=build_rpnc(rpnb,rpnc)       
     else
-       call print_error(rpnb%expr,get_lo32(p1),get_lo32(p2))
+       call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if
 
     parse_formula=istat
