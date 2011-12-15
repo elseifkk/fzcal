@@ -23,7 +23,7 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   size_t pfzc;
 
   private slots:
-  void returnSlot();
+  void returnSlot(bool quiet=false);
   void f0Slot();
   void f1Slot();
   void f2Slot();
@@ -56,6 +56,7 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   void sinSlot();
   void cosSlot();
   void tanSlot();
+  void textChangeSlot();
 
  protected:
   void keyPressEvent(QKeyEvent*);
