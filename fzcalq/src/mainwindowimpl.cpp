@@ -22,7 +22,7 @@ void MainWindowImpl::mess(QString s, QColor c)
   resultBox->setText(s);
 }
 
-void MainWindowImpl::returnSlot()
+void MainWindowImpl::returnSlot(bool quiet)
 {
   int rc;
   QString str;
@@ -30,17 +30,18 @@ void MainWindowImpl::returnSlot()
   size_t pcstr= ( size_t ) &cstr[0];
   
   if ( formulaBox->lineEdit()->text().isEmpty() ) return;
+  if(quiet) resultBox->clear();
 
   strcpy ( cstr,formulaBox->lineEdit()->text().toAscii() );
   rc=fzc_set_formula ( pfzc, pcstr );
   if ( rc>0 ){
-    mess ( "Syntacs Error","red" );
+    if(!quiet) mess ( "Syntacs Error","red" );
   }else if ( rc<0 ) {
-    mess ( "ok","blue" );
+    if(!quiet) mess ( "ok","blue" );
   }else {
     rc=fzc_eval ( pfzc );
     if ( rc!=0 ) {
-      mess ( "Eval Error","red" );
+      if(!quiet) mess ( "Eval Error","red" );
       return;
     }
     formulaBox->addToHistory ( formulaBox->lineEdit()->text() );
@@ -48,6 +49,11 @@ void MainWindowImpl::returnSlot()
     str=cstr;
     mess ( str );
   }
+}
+
+void MainWindowImpl::textChangeSlot()
+{
+  returnSlot(true);
 }
 
 void MainWindowImpl::dotSlot()
@@ -142,6 +148,8 @@ void MainWindowImpl::shiftSlot()
     minusBut->setText("cbrt");
   }else{
     sqrtBut->setText("sqrt");
+    //    sqrtBut->setIcon(QIcon(":/sqrt53.xpm"));
+    //    sqrtBut->setIconSize(QSize(20,20));
     logBut->setText("log");
     lnBut->setText("ln");
     powBut->setText("pow");
