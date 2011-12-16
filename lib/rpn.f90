@@ -150,8 +150,9 @@ module rpn
   integer,parameter::RPNCOPT_READY           =  Z"00000001"
   integer,parameter::RPNCOPT_DEG             =  Z"00000002"
   integer,parameter::RPNCOPT_NEW             =  Z"00000004"
-  integer,parameter::RPNCOPT_RATIO           =  Z"00000010"
   integer,parameter::RPNCOPT_NO_AUTO_ADD_PAR =  Z"00000008"
+  integer,parameter::RPNCOPT_RATIO           =  Z"00000010"
+  integer,parameter::RPNCOPT_NO_WARN         =  Z"00000020"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
@@ -1838,7 +1839,7 @@ contains
           WRITE(*,*) "que=",i,"tid=",rpnb%que(i)%tid
           STOP "*** UNEXPECTED ERROR in build_rpnc"
        end select
-       if(istat/=0) then
+       if(istat/=0.and.iand(rpnc%opt,RPNCOPT_NO_WARN)/=0) then
           call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(rpnb%que(i)%p1),get_lo32(rpnb%que(i)%p2)) 
           exit
        end if
@@ -2473,8 +2474,8 @@ contains
 
     if(istat==0) then
        istat=build_rpnc(rpnb,rpnc)       
-    else
-       call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
+    else if(iand(rpnc%opt,RPNCOPT_NO_WARN)/=0) then
+         call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if
 
     parse_formula=istat

@@ -10,6 +10,7 @@
 
 
 #define FZCOPT_NOAUTO_ADDPAR 8
+#define FZCOPT_NOWARN        0x20
 
 #ifdef __cplusplus
 extern "C"
