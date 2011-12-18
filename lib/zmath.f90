@@ -69,8 +69,8 @@ module zmath
   public zm_frac
   public zm_nint
   public zm_conjg
-  public zm_real
-  public zm_imag
+  public zm_re
+  public zm_im
   public zm_mag
   public zm_arg
   public zm_gamma
@@ -491,15 +491,15 @@ contains
     end if
   end function zm_conjg
 
-  complex(cp) function zm_real(z1)
+  complex(cp) function zm_re(z1)
     complex(cp),intent(in)::z1
-    zm_real=realpart(z1)
-  end function zm_real
+    zm_re=realpart(z1)
+  end function zm_re
 
-  complex(cp) function zm_imag(z1)
+  complex(cp) function zm_im(z1)
     complex(cp),intent(in)::z1
-    zm_imag=imagpart(z1)
-  end function zm_imag
+    zm_im=imagpart(z1)
+  end function zm_im
 
   complex(cp) function zm_mag(z1)
     complex(cp),intent(in)::z1

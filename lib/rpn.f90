@@ -183,8 +183,8 @@ module rpn
        achar(4)//"frac"//&
        achar(5)//"conjg"//&
        achar(4)//"nint"//&
-       achar(4)//"real"//&
-       achar(4)//"imag"//&
+       achar(2)//"re"//&
+       achar(2)//"im"//&
        achar(3)//"mag"//&
        achar(3)//"arg"//&
        achar(5)//"gamma"//&
@@ -225,8 +225,8 @@ module rpn
   integer,parameter::FID_FRAC      = 21
   integer,parameter::FID_CONJG     = 22
   integer,parameter::FID_NINT      = 23
-  integer,parameter::FID_REAL      = 24
-  integer,parameter::FID_IMAG      = 25
+  integer,parameter::FID_RE        = 24
+  integer,parameter::FID_IM        = 25
   integer,parameter::FID_MAG       = 26
   integer,parameter::FID_ARG       = 27
   integer,parameter::FID_GAMMA     = 28
@@ -1949,10 +1949,10 @@ contains
          get_fid=loc(zm_conjg)
       case(FID_NINT)
          get_fid=loc(zm_nint)
-      case(FID_REAL)
-         get_fid=loc(zm_real)
-      case(FID_IMAG)
-         get_fid=loc(zm_imag)
+      case(FID_RE)
+         get_fid=loc(zm_re)
+      case(FID_IM)
+         get_fid=loc(zm_im)
       case(FID_MAG)
          get_fid=loc(zm_mag)
       case(FID_ARG)
