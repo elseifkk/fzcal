@@ -10,6 +10,18 @@ module zmath
   public zm_f2
   public zm_f3
 
+  public zmr_eq
+  public zmr_neq
+  public zmr_gt
+  public zmr_lt
+  public zmr_ge
+  public zmr_le
+  public zml_and
+  public zml_not
+  public zml_or
+  public zml_eq
+  public zml_neq
+
   public zm_add_f
   public zm_sub_f
   public zm_mul_f
@@ -86,6 +98,8 @@ module zmath
 
   real(rp),parameter::pi =4.0_rp*atan(1.0_rp)
   real(rp),parameter::pi2=2.0_rp*pi
+  complex,parameter::ztrue=complex(1.0_rp,rzero)
+  complex,parameter::zfalse=czero
 
   logical::random_seed_init=.false.
 
@@ -213,6 +227,157 @@ contains
     p3=pzs(3)
     zm_f3=f3(z1,z2,z3)
   end function zm_f3
+
+  complex(cp) function zmr_eq(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(z1==z2) then
+       zmr_eq=ztrue
+    else
+       zmr_eq=zfalse
+    end if
+  end function zmr_eq
+
+  complex(cp) function zmr_neq(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(z1/=z2) then
+       zmr_neq=ztrue
+    else
+       zmr_neq=zfalse
+    end if
+  end function zmr_neq
+
+  complex(cp) function zmr_gt(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(realpart(z1)>realpart(z2)) then
+       zmr_gt=ztrue
+    else
+       zmr_gt=zfalse
+    end if
+  end function zmr_gt
+
+  complex(cp) function zmr_lt(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(realpart(z1)<realpart(z2)) then
+       zmr_lt=ztrue
+    else
+       zmr_lt=zfalse
+    end if
+  end function zmr_lt
+
+  complex(cp) function zmr_ge(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(realpart(z1)>=realpart(z2)) then
+       zmr_ge=ztrue
+    else
+       zmr_ge=zfalse
+    end if
+  end function zmr_ge
+
+  complex(cp) function zmr_le(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(realpart(z1)<=realpart(z2)) then
+       zmr_le=ztrue
+    else
+       zmr_le=zfalse
+    end if
+  end function zmr_le
+  
+  complex(cp) function zml_and(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(z1==zfalse.or.z2==zfalse) then
+       zml_and=zfalse
+    else
+       zml_and=ztrue
+    end if
+  end function zml_and
+
+  complex(cp) function zml_or(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(z1/=zfalse.or.z2/=zfalse) then
+       zml_or=ztrue
+    else
+       zml_or=zfalse
+    end if
+  end function zml_or
+
+  complex(cp) function zml_eq(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(z1==z2) then
+       zml_eq=ztrue
+    else
+       zml_eq=zfalse
+    end if
+  end function zml_eq
+
+  complex(cp) function zml_neq(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    if(z1==z2) then
+       zml_neq=ztrue
+    else
+       zml_neq=zfalse
+    end if
+  end function zml_neq
+
+  complex(cp) function zml_not(z)
+    complex(cp),intent(in)::z
+    if(z==zfalse) then
+       zml_not=ztrue
+    else
+       zml_not=zfalse
+    end if
+  end function zml_not
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   complex(cp) function zm_mov(z1,z2)
     complex(cp),intent(in)::z1,z2

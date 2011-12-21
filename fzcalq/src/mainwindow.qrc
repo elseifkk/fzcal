@@ -1,6 +1,11 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-      <file>../pix/sqrt53.xpm</file>
-      <file>../pix/xrty.png</file>
+  <file>../pix/10x.png</file>
+  <file>../pix/cbrt.png</file>
+  <file>../pix/exp.png</file>
+  <file>../pix/sqrt.png</file>
+  <file>../pix/x2.png</file>
+  <file>../pix/xrt.png</file>
+  <file>../pix/xy.png</file>
 </qresource>
 </RCC>

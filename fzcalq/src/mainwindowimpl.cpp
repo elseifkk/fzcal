@@ -14,6 +14,7 @@ MainWindowImpl::MainWindowImpl( QWidget * parent, Qt::WFlags f)
 {
   setupUi(this);
   pfzc=fzc_init();
+  shiftSlot();//<<< to set icons
 }
 
 void MainWindowImpl::mess(QString s, QColor c)
@@ -48,6 +49,7 @@ void MainWindowImpl::returnSlot(bool quiet)
     fzc_get_strans ( pfzc, pcstr );
     str=cstr;
     mess ( str );
+    //    lcdBox->display(str);
   }
 }
 
@@ -138,21 +140,46 @@ void MainWindowImpl::EXESlot()
 {
   returnSlot();
 }
+
+void MainWindowImpl::setButIcon(QPushButton *b, QString r)
+{
+  QIcon ic;
+  ic.addPixmap(QPixmap(r));
+  b->setIcon(ic);
+  b->setIconSize(QSize(24,24));
+}
+
 void MainWindowImpl::shiftSlot()
 {
+  QIcon ic;
   if(shiftBut->isChecked()){
-    sqrtBut->setText("x^2");
-    logBut->setText("10^x");
-    lnBut->setText("e^x");
-    powBut->setText("xrty");
-    minusBut->setText("cbrt");
+    sqrtBut->setText("");
+    setButIcon(sqrtBut,":/pix/x2.png");
+
+    logBut->setText("");
+    setButIcon(logBut,":/pix/10x.png");
+
+    lnBut->setText("");
+    setButIcon(lnBut,":/pix/exp.png");
+
+    setButIcon(powBut,":/pix/xrt.png");
+
+    minusBut->setText("");
+    setButIcon(minusBut,":/pix/cbrt.png");
   }else{
-    sqrtBut->setText("sqrt");
-    //    sqrtBut->setIcon(QIcon(":/sqrt53.xpm"));
-    //    sqrtBut->setIconSize(QSize(20,20));
+    sqrtBut->setText("");
+    setButIcon(sqrtBut,":/pix/sqrt.png");
+
+    logBut->setIconSize(QSize(0,0));
     logBut->setText("log");
+
+    lnBut->setIconSize(QSize(0,0));
     lnBut->setText("ln");
-    powBut->setText("pow");
+
+    powBut->setText("");
+    setButIcon(powBut,":/pix/xy.png");
+
+    minusBut->setIconSize(QSize(0,0));
     minusBut->setText("-");
   }
   setTriFncBut();

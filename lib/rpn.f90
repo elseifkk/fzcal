@@ -44,24 +44,37 @@ module rpn
   integer,parameter::TID_UNDEF =  -1000
   integer,parameter::TID_INV   =   -666
   integer,parameter::TID_NOP   =      0
-  ! operators
+
+  !! priority table begin
+  ! asign and conditional
   integer,parameter::TID_ASN   =   1  ! =
+  integer,parameter::TID_ASNU  =  -1
   integer,parameter::TID_AOP   =   2 
   integer,parameter::TID_TOP1  =   3  ! ?
-  integer,parameter::TID_BOP1  =   4  ! +,-
-  integer,parameter::TID_BOP1U =  -4  !
-  integer,parameter::TID_BOP2  =   5  ! *,/
-  integer,parameter::TID_BOP2U =  -5  !
-  integer,parameter::TID_BOP4  =   6  ! implicit * <<<<<<<<<<< 
-  integer,parameter::TID_BOP3  =   7  ! ^,**,e
-  integer,parameter::TID_BOP3U =  -7  !
-  integer,parameter::TID_UOP3  =   8  ! a++
-  integer,parameter::TID_UOP1  =   9  ! +a,-a,++a
-  integer,parameter::TID_UOP2  =  10  ! !,!!
-  integer,parameter::TID_UOP2U = -10  ! !,!!
-  integer,parameter::TID_IFNC  =  11  ! sin, cos,...
-  integer,parameter::TID_UFNC  =  12  !
-  ! braket
+  ! logical
+  integer,parameter::TID_LOP4  =  4  ! eq,neq
+  integer,parameter::TID_LOP3  =  5  ! or
+  integer,parameter::TID_LOP2  =  6  ! and
+  integer,parameter::TID_LOP1  =  7  ! not, ~
+  integer,parameter::TID_LOP1U = -7  ! ~
+  integer,parameter::TID_ROP   =  8  ! ==, ~=, <=, >=,...
+  ! unary, binary and functions
+  integer,parameter::TID_BOP1  =   9  ! +,-
+  integer,parameter::TID_BOP1U =  -9  !
+  integer,parameter::TID_BOP2  =  10  ! *,/
+  integer,parameter::TID_BOP2U = -10  !
+  integer,parameter::TID_BOP4  =  11  ! implicit * <<<<<<<<<<< 
+  integer,parameter::TID_BOP3  =  12  ! ^,**,e
+  integer,parameter::TID_BOP3U = -12  !
+  integer,parameter::TID_UOP3  =  13  ! a++
+  integer,parameter::TID_UOP1  =  14  ! +a,-a,++a
+  integer,parameter::TID_UOP2  =  15  ! !,!!
+  integer,parameter::TID_UOP2U = -16  ! 
+  integer,parameter::TID_IFNC  =  17  ! sin, cos,...
+  integer,parameter::TID_UFNC  =  18  !
+  !! priority tabel end
+
+  ! braket and delimiters
   integer,parameter::TID_SCL   = -64  ! ;
   integer,parameter::TID_COL   = -65  ! :
   integer,parameter::TID_IBRA  = -66   ! implicit (
@@ -81,9 +94,10 @@ module rpn
   integer,parameter::TID_PARU  = -32  ! a,b,c,...
   integer,parameter::TID_FIG   =  33  ! 1,2,3,...
   integer,parameter::TID_VAR   =  34  ! fig in rbuf
-  integer,parameter::TID_MAC   =  35
-  integer,parameter::TID_OP    =  36  ! operators
-  integer,parameter::TID_COP   =  37
+  integer,parameter::TID_LVAR  =  35  ! results of logical operation
+  integer,parameter::TID_MAC   =  36
+  integer,parameter::TID_OP    =  37  ! operators
+  integer,parameter::TID_COP   =  38
   integer,parameter::TID_OPN   =  39
   integer,parameter::TID_APAR  =  40  ! par assign
   integer,parameter::TID_AMAC  =  41
@@ -497,14 +511,25 @@ contains
     if(istat/=0) write(*,*) "*** Error delete_par: "//trim(s)//": code = ",istat
   end subroutine delete_par
 
-  integer function get_operand(rpnc,i)
+  integer function get_operand(rpnc,i,logical)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i
+    logical,intent(in),optional::logical
+    logical var
     integer j
     get_operand=0
+    var=.true.
+    if(present(logical)) then
+       if(logical) var=.false.
+    end if
     do j=i,1,-1
        select case(rpnc%que(j)%tid)
        case(TID_VAR,TID_PAR,TID_ROVAR)
+          if(.not.var) cycle
+          get_operand=j
+          return
+       case(TID_LVAR)
+          if(var) cycle
           get_operand=j
           return
        end select
@@ -607,20 +632,38 @@ contains
     
   end function eval_c
 
-  subroutine set_result(rpnc,i,v,n,ks)
+  subroutine set_result(rpnc,i,v,n,ks,logical)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     complex(cp),intent(in)::v
     integer,intent(in)::n
     integer,intent(in),optional::ks(n)
+    logical,intent(in),optional::logical
     integer j
-    logical set
+    logical set,var,vskip
     complex(cp) z
     pointer(pz,z)
     set=.false.
+    var=.true.
+    vskip=.false.
+    if(present(logical)) then
+       if(logical) var=.false.
+    end if
+    ! if logical the first used operands left unchanged
+    ! and LVAR goes to que(i)
     if(present(ks)) then
        do j=n,1,-1
-          if(rpnc%que(ks(j))%tid==TID_VAR.and..not.set) then
+          if(.not.set) then
+             select case(rpnc%que(ks(j))%tid)
+             case(TID_VAR)
+                if(.not.var.and..not.vskip) then
+                   vskip=.true. ! var found
+                   cycle
+                end if
+             case(TID_LVAR)
+             case default
+                cycle
+             end select
              pz=rpnc%que(ks(j))%cid
              z=v
              set=.true.
@@ -637,15 +680,16 @@ contains
     rpnc%tmpans=v
   end subroutine set_result
   
-  integer function get_operands(rpnc,i,n,ps,ks)
+  integer function get_operands(rpnc,i,n,ps,ks,logical)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i,n
     integer,intent(out),optional::ps(0:n) 
     integer,intent(out),optional::ks(n)
+    logical,intent(in),optional::logical
     integer k,j
     k=i-1
     do j=n,1,-1
-       k=get_operand(rpnc,k)
+       k=get_operand(rpnc,k,logical)
        if(k<=j-1) then
           get_operands=RPNERR_NOOP
           return
@@ -674,6 +718,36 @@ contains
     call set_result(rpnc,i,v,0)
     istat=0
   end function eval_0
+
+  recursive function eval_r(rpnc,i) result(istat)
+    type(t_rpnc),intent(inout)::rpnc
+    integer,intent(in)::i
+    interface
+       function f2(z1,z2)
+         use fpio, only: cp
+         complex(cp) f2
+         complex(cp),intent(in)::z1,z2
+       end function f2
+    end interface
+    pointer(pfn,f2)
+    integer istat
+    integer pvs(0:narg_max)
+    integer ods(1:narg_max)
+    complex(cp) v,z1,z2
+    pointer(pz1,z1)
+    pointer(pz2,z2)
+    
+    istat=get_operands(rpnc,i,2,ks=ods,ps=pvs,logical=.false.)
+    if(istat/=0) return
+
+    pfn=rpnc%que(i)%cid
+    pz1=pvs(1)
+    pz2=pvs(2)
+    v=f2(z1,z2)
+
+    call set_result(rpnc,i,v,2,ods,logical=.true.)
+
+  end function eval_r
 
   recursive function eval_n(rpnc,i) result(istat)
     type(t_rpnc),intent(inout)::rpnc
@@ -922,6 +996,8 @@ contains
        select case(get_lo32(rpnc%que(i)%tid))
        case(TID_OP,TID_OPN,TID_AOP)
           istat=eval_n(rpnc,i)
+       case(TID_ROP)
+          istat=eval_r(rpnc,i)
        case(TID_COP)
           istat=eval_c(rpnc,i)
        case(TID_MAC)
@@ -1026,6 +1102,27 @@ contains
     end do
   end function get_end_of_par
   
+  logical function is_lop(s,t)
+    character*(*),intent(in)::s
+    integer,intent(inout)::t
+    select case(s)
+    case("not")
+       t=TID_LOP1
+       is_lop=.true.
+    case("and")
+       t=TID_LOP2
+       is_lop=.true.
+    case("or")
+       t=TID_LOP3
+       is_lop=.true.
+    case("eq","neq")
+       t=TID_LOP4
+       is_lop=.true.
+    case default
+       is_lop=.false.
+    end select
+  end function is_lop
+
   logical function is_alpha(a)
     integer,intent(in)::a
     integer b
@@ -1085,7 +1182,7 @@ contains
     case(")")
        get_tid=TID_KET
     case("=")
-       get_tid=TID_ASN
+       get_tid=TID_ASNU
     case("""")
        get_tid=TID_QTN
     case(",")
@@ -1100,6 +1197,10 @@ contains
        get_tid=TID_BLK
     case("}")
        get_tid=TID_HKET
+    case("~")
+       get_tid=TID_LOP1U
+    case("<",">")
+       get_tid=TID_ROP
     case default
        get_tid=TID_UNDEF
     end select
@@ -1208,12 +1309,14 @@ contains
        if(t==TID_PARU) then
           p2=get_end_of_par(rpnb,p1)
           if(p2<rpnb%len_expr) then
-             k=p2+1
-             if(rpnb%expr(k:k)=="(") then
-                if(is_usr_fnc(sl,rpnb%expr(p1:p2),kf)) then
-                   t=get_i32(TID_UFNC,kf)
-                else if(is_int_fnc(rpnb%expr(p1:p2),kf)) then
-                   t=get_i32(TID_IFNC,kf)
+             if(.not.is_lop(rpnb%expr(p1:p2),t)) then
+                k=p2+1
+                if(rpnb%expr(k:k)=="(") then
+                   if(is_usr_fnc(sl,rpnb%expr(p1:p2),kf)) then
+                      t=get_i32(TID_UFNC,kf)
+                   else if(is_int_fnc(rpnb%expr(p1:p2),kf)) then
+                      t=get_i32(TID_IFNC,kf)
+                   end if
                 end if
              end if
           end if
@@ -1224,6 +1327,24 @@ contains
        if(p2<0) then
           t=TID_INV
           p2=-p2
+       end if
+    case(TID_ROP)
+       if(k<rpnb%len_expr-1.and.next_char(1)=="=") then
+          p2=k+1 ! <=, >=
+       end if
+    case(TID_LOP1U)
+       if(k<rpnb%len_expr-1.and.next_char(1)=="=") then
+          p2=k+1
+          t=TID_ROP ! ~=
+       else
+          t=TID_LOP1
+       end if
+    case(TID_ASNU)
+       if(k<rpnb%len_expr-1.and.next_char(1)=="=") then
+          p2=k+1
+          t=TID_ROP ! ==
+       else
+          t=TID_ASN
        end if
     end select
     
@@ -1701,12 +1822,16 @@ contains
           !
           ! operators 
           !
-       case(TID_UOP1,TID_UOP2,TID_UOP3)
+       case(TID_UOP1,TID_UOP2,TID_UOP3,TID_LOP1)
           q%tid=get_i32(TID_OP,1)
           q%cid=get_oid1()
-       case(TID_BOP1,TID_BOP2,TID_BOP3,TID_BOP4)
+       case(TID_BOP1,TID_BOP2,TID_BOP3,TID_BOP4,&
+            TID_LOP2,TID_LOP3,TID_LOP4)
           q%tid=get_i32(TID_OP,2)
           q%cid=get_oid2()
+       case(TID_ROP)
+          q%tid=get_i32(TID_ROP,2)
+          q%cid=get_oid2()          
        case(TID_TOP1)
           q%tid=TID_COP
           q%cid=OID_CND ! <<<<<<<<<<<<<<<<<<<<<,
@@ -1839,8 +1964,9 @@ contains
           WRITE(*,*) "que=",i,"tid=",rpnb%que(i)%tid
           STOP "*** UNEXPECTED ERROR in build_rpnc"
        end select
-       if(istat/=0.and.iand(rpnc%opt,RPNCOPT_NO_WARN)/=0) then
-          call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(rpnb%que(i)%p1),get_lo32(rpnb%que(i)%p2)) 
+       if(istat/=0) then
+          if(iand(rpnc%opt,RPNCOPT_NO_WARN)/=0) &
+               call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(rpnb%que(i)%p1),get_lo32(rpnb%que(i)%p2)) 
           exit
        end if
     end do
@@ -2037,6 +2163,8 @@ contains
          else
             get_oid1=loc(zm_dec_f)
          end if
+      case("~")
+         get_oid1=loc(zml_not)
       case default
          STOP "*** UNEXPECTED ERROR in get_oid1"
       end select
@@ -2079,7 +2207,27 @@ contains
       case("//")
          get_oid2=loc(zm_invpow)
       case("e")
-         get_oid2=loc(zm_exp10) 
+         get_oid2=loc(zm_exp10)
+      case("==")
+         get_oid2=loc(zmr_eq)
+      case("~=")
+         get_oid2=loc(zmr_neq)
+      case(">")
+         get_oid2=loc(zmr_gt)
+      case("<")
+         get_oid2=loc(zmr_lt)
+      case("<=")
+         get_oid2=loc(zmr_le)
+      case(">=")
+         get_oid2=loc(zmr_ge)
+      case("and")
+         get_oid2=loc(zml_and)
+      case("or")
+         get_oid2=loc(zml_or)
+      case("eq")
+         get_oid2=loc(zml_eq)
+      case("neq")
+         get_oid2=loc(zml_neq)
       case default
          STOP "*** UNEXPECTED ERROR in get_oid2"
       end select
@@ -2340,7 +2488,9 @@ contains
              call push_implicit_mul()
           end select
           call rpn_put(rpnb,t,p1,p2)
-       case(TID_BOP1,TID_BOP2,TID_BOP3,TID_TOP1) !<<<< TOP1
+       case(TID_BOP1,TID_BOP2,TID_BOP3,TID_TOP1,& !<<<< TOP1
+            TID_LOP2,TID_LOP3,TID_LOP4,&
+            TID_ROP) 
           oc=oc+1
           if(.not.was_operand()) then
              istat=RPNERR_PARSER        
@@ -2359,7 +2509,7 @@ contains
           case default
              istat=RPNERR_PARSER
           end select
-       case(TID_UOP1)
+       case(TID_UOP1,TID_LOP1)
           oc=oc+1
           call rpn_try_push(rpnb,t,p1,p2)
        case(TID_UOP3)
