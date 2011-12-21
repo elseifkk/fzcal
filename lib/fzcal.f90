@@ -11,7 +11,7 @@ program fzcal
   integer istat
   integer ka
   integer cid
-  
+
   p=init_rpnc()
 
   main: do
@@ -43,7 +43,7 @@ program fzcal
      end select
      
      istat=parse_formula(rpnc,str)
-
+WRITE(*,*) ISTAT
      if(istat>0) then
         write(*,*)  "*** parse_formula failed: code = ",istat
         call dump_rpnc(rpnc)

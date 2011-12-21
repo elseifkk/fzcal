@@ -17,6 +17,7 @@ str_buf resq 0
 ;;; 
 section .text align=16
 global mcp_
+global mcle_
 %ifdef _USE32_
 global dw2str_
 %else
@@ -86,7 +87,43 @@ mcp_:
  	mov rax, rdi
 %endif	
 	end_proc
-	
+
+mcle_:
+	start_proc
+%ifdef _USE32_
+	mov edi, [ebp+arg1]
+	mov ecx, [ebp+arg2]
+	;;
+	mov eax, ecx		; eax = n
+	shr eax, 2		; eax = n/4
+	mov edx, ecx		; edx = n
+	mov ecx, eax		; ecx = n/4
+	shl eax, 2		; eax = 4(n/4)
+	sub edx, eax		; edx = n-4(n/4)
+	;;
+	cld
+	xor eax, eax
+  	rep stosd
+	;;
+	mov ecx, edx
+	rep stosb
+%else
+ 	mov rax, rsi ; n
+ 	shr rax, 3   ; n/8
+ 	mov rcx, rax ; n/8
+ 	shl rcx, 3   ; (n/8)*8
+ 	sub rdx, rcx ; n-(n/8)*8
+ 	mov rcx, rax
+ 	cld
+	xor rax, rax
+ 	rep stosq
+ 	mov rcx, rdx
+ 	rep stosb
+	;; 
+ 	mov rax, rdi
+%endif	
+	end_proc
+
 ;;;
 %macro div10m 0
 	push eax

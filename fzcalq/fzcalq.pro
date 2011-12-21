@@ -10,3 +10,5 @@ HEADERS = src/mainwindowimpl.h
 SOURCES = src/mainwindowimpl.cpp src/main.cpp
 LIBS += -lkdeui /usr/local/lib/libfzcal.a -lgfortran -L/usr/local/lib
 INCLUDEPATH += /usr/local/include
+RESOURCES += src/mainwindow.qrc
+RCC_DIR = build

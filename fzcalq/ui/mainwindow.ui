@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>718</width>
-    <height>418</height>
+    <height>429</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,6 +22,9 @@
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
+      </property>
+      <property name="autoCompletion">
+       <bool>true</bool>
       </property>
      </widget>
     </item>
@@ -338,7 +341,7 @@
            </size>
           </property>
           <property name="text">
-           <string>exp</string>
+           <string>Exp</string>
           </property>
          </widget>
         </item>
@@ -712,7 +715,7 @@
              </size>
             </property>
             <property name="text">
-             <string>sqrt</string>
+             <string/>
             </property>
            </widget>
           </item>
@@ -787,7 +790,7 @@
              </size>
             </property>
             <property name="text">
-             <string>pow</string>
+             <string/>
             </property>
            </widget>
           </item>
@@ -971,13 +974,18 @@
      <x>0</x>
      <y>0</y>
      <width>718</width>
-     <height>28</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>KComboBox</class>
+   <extends>QComboBox</extends>
+   <header>kcombobox.h</header>
+  </customwidget>
   <customwidget>
    <class>KHistoryComboBox</class>
    <extends>KComboBox</extends>
@@ -993,8 +1001,8 @@
    <slot>returnSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>113</x>
-     <y>68</y>
+     <x>122</x>
+     <y>62</y>
     </hint>
     <hint type="destinationlabel">
      <x>186</x>
@@ -1009,8 +1017,8 @@
    <slot>f0Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>45</x>
-     <y>314</y>
+     <x>50</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
      <x>166</x>
@@ -1025,8 +1033,8 @@
    <slot>f1Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>32</x>
-     <y>278</y>
+     <x>43</x>
+     <y>337</y>
     </hint>
     <hint type="destinationlabel">
      <x>28</x>
@@ -1041,8 +1049,8 @@
    <slot>f2Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>86</x>
-     <y>278</y>
+     <x>96</x>
+     <y>337</y>
     </hint>
     <hint type="destinationlabel">
      <x>107</x>
@@ -1057,8 +1065,8 @@
    <slot>f3Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>122</x>
-     <y>278</y>
+     <x>142</x>
+     <y>337</y>
     </hint>
     <hint type="destinationlabel">
      <x>172</x>
@@ -1073,8 +1081,8 @@
    <slot>f4Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>23</x>
-     <y>240</y>
+     <x>34</x>
+     <y>291</y>
     </hint>
     <hint type="destinationlabel">
      <x>34</x>
@@ -1089,8 +1097,8 @@
    <slot>f5Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>73</x>
-     <y>240</y>
+     <x>96</x>
+     <y>291</y>
     </hint>
     <hint type="destinationlabel">
      <x>179</x>
@@ -1105,8 +1113,8 @@
    <slot>f6Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>122</x>
-     <y>242</y>
+     <x>142</x>
+     <y>291</y>
     </hint>
     <hint type="destinationlabel">
      <x>210</x>
@@ -1121,8 +1129,8 @@
    <slot>f7Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>25</x>
-     <y>174</y>
+     <x>36</x>
+     <y>245</y>
     </hint>
     <hint type="destinationlabel">
      <x>31</x>
@@ -1137,8 +1145,8 @@
    <slot>f8Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>65</x>
-     <y>170</y>
+     <x>96</x>
+     <y>245</y>
     </hint>
     <hint type="destinationlabel">
      <x>170</x>
@@ -1153,8 +1161,8 @@
    <slot>f9Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>109</x>
-     <y>169</y>
+     <x>142</x>
+     <y>245</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1169,8 +1177,8 @@
    <slot>dotSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>86</x>
-     <y>314</y>
+     <x>96</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1185,8 +1193,8 @@
    <slot>expSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>122</x>
-     <y>314</y>
+     <x>142</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
      <x>227</x>
@@ -1201,8 +1209,8 @@
    <slot>ACSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>265</x>
-     <y>202</y>
+     <x>255</x>
+     <y>245</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1217,8 +1225,8 @@
    <slot>delSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>229</x>
-     <y>202</y>
+     <x>209</x>
+     <y>245</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1233,8 +1241,8 @@
    <slot>divSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>265</x>
-     <y>238</y>
+     <x>255</x>
+     <y>291</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1249,8 +1257,8 @@
    <slot>mulSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>229</x>
-     <y>238</y>
+     <x>209</x>
+     <y>291</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1265,8 +1273,8 @@
    <slot>subSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>265</x>
-     <y>274</y>
+     <x>255</x>
+     <y>337</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1281,8 +1289,8 @@
    <slot>addSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>229</x>
-     <y>274</y>
+     <x>209</x>
+     <y>337</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1297,8 +1305,8 @@
    <slot>EXESlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>265</x>
-     <y>310</y>
+     <x>255</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1313,8 +1321,8 @@
    <slot>ansSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>229</x>
-     <y>310</y>
+     <x>209</x>
+     <y>383</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1345,8 +1353,8 @@
    <slot>engSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>330</x>
-     <y>305</y>
+     <x>337</x>
+     <y>342</y>
     </hint>
     <hint type="destinationlabel">
      <x>461</x>
@@ -1361,8 +1369,8 @@
    <slot>ratioSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>380</x>
-     <y>305</y>
+     <x>397</x>
+     <y>342</y>
     </hint>
     <hint type="destinationlabel">
      <x>340</x>
@@ -1377,8 +1385,8 @@
    <slot>sqrtSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>430</x>
-     <y>305</y>
+     <x>457</x>
+     <y>342</y>
     </hint>
     <hint type="destinationlabel">
      <x>359</x>
@@ -1393,8 +1401,8 @@
    <slot>logSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>480</x>
-     <y>305</y>
+     <x>517</x>
+     <y>342</y>
     </hint>
     <hint type="destinationlabel">
      <x>429</x>
@@ -1409,8 +1417,8 @@
    <slot>lnSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>530</x>
-     <y>305</y>
+     <x>577</x>
+     <y>342</y>
     </hint>
     <hint type="destinationlabel">
      <x>530</x>
@@ -1425,8 +1433,8 @@
    <slot>powSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>580</x>
-     <y>305</y>
+     <x>637</x>
+     <y>342</y>
     </hint>
     <hint type="destinationlabel">
      <x>549</x>
@@ -1441,8 +1449,8 @@
    <slot>minusSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>330</x>
-     <y>335</y>
+     <x>337</x>
+     <y>382</y>
     </hint>
     <hint type="destinationlabel">
      <x>475</x>
@@ -1457,8 +1465,8 @@
    <slot>hypSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>430</x>
-     <y>335</y>
+     <x>457</x>
+     <y>382</y>
     </hint>
     <hint type="destinationlabel">
      <x>325</x>
@@ -1473,8 +1481,8 @@
    <slot>sinSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>480</x>
-     <y>335</y>
+     <x>517</x>
+     <y>382</y>
     </hint>
     <hint type="destinationlabel">
      <x>453</x>
@@ -1489,8 +1497,8 @@
    <slot>tanSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>580</x>
-     <y>335</y>
+     <x>637</x>
+     <y>382</y>
     </hint>
     <hint type="destinationlabel">
      <x>539</x>
@@ -1505,12 +1513,28 @@
    <slot>cosSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>530</x>
-     <y>335</y>
+     <x>577</x>
+     <y>382</y>
     </hint>
     <hint type="destinationlabel">
      <x>533</x>
      <y>288</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>formulaBox</sender>
+   <signal>textChanged(QString)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>textChangeSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>657</x>
+     <y>46</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>716</x>
+     <y>69</y>
     </hint>
    </hints>
   </connection>
@@ -1549,5 +1573,6 @@
   <slot>sinSlot()</slot>
   <slot>cosSlot()</slot>
   <slot>tanSlot()</slot>
+  <slot>textChangeSlot()</slot>
  </slots>
 </ui>

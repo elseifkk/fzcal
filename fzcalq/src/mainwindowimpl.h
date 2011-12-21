@@ -18,6 +18,7 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   void mess(QString,QColor="black");
   void delText(int i=1);
   void setTriFncBut();
+  void setButIcon(QPushButton *, QString r);
 
  private:
   size_t pfzc;
