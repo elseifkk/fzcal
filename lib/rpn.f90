@@ -31,6 +31,7 @@ module rpn
   integer,parameter::RPNERR_TOO_MANY_ARG = 14
   integer,parameter::RPNERR_TOO_FEW_ARG  = 15
   integer,parameter::RPNERR_NO_ARG       = 16
+  integer,parameter::RPNCERR_INVARG = 17
 
   integer,parameter::RPN_REC_MAX   =  256
   integer,parameter::NUM_VBUF_MIN  =   32
@@ -94,7 +95,6 @@ module rpn
   integer,parameter::TID_PARU  = -32  ! a,b,c,...
   integer,parameter::TID_FIG   =  33  ! 1,2,3,...
   integer,parameter::TID_VAR   =  34  ! fig in rbuf
-  integer,parameter::TID_LVAR  =  35  ! results of logical operation
   integer,parameter::TID_MAC   =  36
   integer,parameter::TID_OP    =  37  ! operators
   integer,parameter::TID_COP   =  38
@@ -105,6 +105,15 @@ module rpn
   integer,parameter::TID_DPAR  =  43  ! dummy par
   integer,parameter::TID_END   =  44
   integer,parameter::TID_ROVAR =  45 
+  integer,parameter::TID_LVAR_T = 46
+  integer,parameter::TID_LVAR_F = 47
+  integer,parameter::TID_LOP    = 48
+
+  integer,parameter::LOID_NOT = 1
+  integer,parameter::LOID_AND = 2
+  integer,parameter::LOID_OR  = 3
+  integer,parameter::LOID_EQ  = 4
+  integer,parameter::LOID_NEQ = 5
 
   integer,parameter::LEN_STR_MAX=1024
   integer,parameter::LEN_FORMULA_MAX=LEN_STR_MAX
@@ -511,25 +520,14 @@ contains
     if(istat/=0) write(*,*) "*** Error delete_par: "//trim(s)//": code = ",istat
   end subroutine delete_par
 
-  integer function get_operand(rpnc,i,logical)
+  integer function get_operand(rpnc,i)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i
-    logical,intent(in),optional::logical
-    logical var
     integer j
     get_operand=0
-    var=.true.
-    if(present(logical)) then
-       if(logical) var=.false.
-    end if
     do j=i,1,-1
        select case(rpnc%que(j)%tid)
-       case(TID_VAR,TID_PAR,TID_ROVAR)
-          if(.not.var) cycle
-          get_operand=j
-          return
-       case(TID_LVAR)
-          if(var) cycle
+       case(TID_VAR,TID_PAR,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
           get_operand=j
           return
        end select
@@ -633,63 +631,85 @@ contains
   end function eval_c
 
   subroutine set_result(rpnc,i,v,n,ks,logical)
+    use zmath, only: zfalse
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     complex(cp),intent(in)::v
     integer,intent(in)::n
     integer,intent(in),optional::ks(n)
     logical,intent(in),optional::logical
-    integer j
-    logical set,var,vskip
+    integer j,tid,k1
+    logical var
     complex(cp) z
     pointer(pz,z)
-    set=.false.
     var=.true.
-    vskip=.false.
+    tid=TID_VAR
     if(present(logical)) then
-       if(logical) var=.false.
-    end if
-    ! if logical the first used operands left unchanged
-    ! and LVAR goes to que(i)
-    if(present(ks)) then
-       do j=n,1,-1
-          if(.not.set) then
-             select case(rpnc%que(ks(j))%tid)
-             case(TID_VAR)
-                if(.not.var.and..not.vskip) then
-                   vskip=.true. ! var found
-                   cycle
-                end if
-             case(TID_LVAR)
-             case default
-                cycle
-             end select
-             pz=rpnc%que(ks(j))%cid
-             z=v
-             set=.true.
+       if(logical) then
+          var=.false.
+          if(v==zfalse) then
+             tid=TID_LVAR_F
           else
-             rpnc%que(ks(j))%tid=TID_NOP
+             tid=TID_LVAR_T
           end if
-       end do
+       end if
     end if
-    if(.not.set) then
-       call put_vbuf(rpnc,i,v)
-    else
-       rpnc%que(i)%tid=TID_NOP
+    k1=0
+    if(present(ks)) then
+       if(var) then
+          ! find the first writable var
+          do j=n,1,-1
+             select case(rpnc%que(ks(j))%tid)
+             case(TID_VAR,TID_LVAR_T,TID_LVAR_F)
+                k1=j
+                exit
+             end select
+          end do
+       else
+          select case(rpnc%que(ks(n))%tid)
+          case(TID_VAR,TID_LVAR_T,TID_LVAR_F)
+             k1=n ! writable var
+          case(TID_ROVAR,TID_PAR)
+             pz=rpnc%que(ks(n))%cid ! unwratable; k1=0
+          end select
+       end if
+       do j=n,1,-1
+          rpnc%que(ks(j))%tid=TID_NOP
+       end do
+       if(k1/=0) then
+          ! writable var found
+          if(var) then
+             pz=rpnc%que(ks(k1))%cid
+             z=v
+             ! else if logical the first operand left unchenged
+             ! and given TID_LVAR
+          end if
+          rpnc%que(ks(k1))%tid=tid
+       end if
+    end if
+    rpnc%que(i)%tid=TID_NOP
+    if(k1==0) then
+       ! no wratable vars
+       if(var) then
+          ! allocate buffer for i
+          call put_vbuf(rpnc,i,v,tid)
+       else
+          ! change the last operands to z with TID_LVAR
+          call put_vbuf(rpnc,ks(n),z,tid)          
+       end if
     end if
     rpnc%tmpans=v
   end subroutine set_result
   
-  integer function get_operands(rpnc,i,n,ps,ks,logical)
+  integer function get_operands(rpnc,i,n,ps,ks)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i,n
     integer,intent(out),optional::ps(0:n) 
     integer,intent(out),optional::ks(n)
-    logical,intent(in),optional::logical
     integer k,j
     k=i-1
     do j=n,1,-1
-       k=get_operand(rpnc,k,logical)
+       k=get_operand(rpnc,k)
        if(k<=j-1) then
           get_operands=RPNERR_NOOP
           return
@@ -720,6 +740,7 @@ contains
   end function eval_0
 
   recursive function eval_r(rpnc,i) result(istat)
+    use zmath, only: zfalse
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     interface
@@ -736,18 +757,94 @@ contains
     complex(cp) v,z1,z2
     pointer(pz1,z1)
     pointer(pz2,z2)
+    logical ok
     
-    istat=get_operands(rpnc,i,2,ks=ods,ps=pvs,logical=.false.)
+    istat=get_operands(rpnc,i,2,ks=ods,ps=pvs)
     if(istat/=0) return
 
-    pfn=rpnc%que(i)%cid
-    pz1=pvs(1)
-    pz2=pvs(2)
-    v=f2(z1,z2)
+    ! ods(1) may be logical
+    ! ods(2) must be value but no ckeck here
+    select case(rpnc%que(ods(1))%tid)
+    case(TID_LVAR_F)
+       ok=.false.
+       v=zfalse
+    case default
+       ok=.true.
+    end select
+
+    if(ok) then
+       pfn=rpnc%que(i)%cid
+       pz1=pvs(1)
+       pz2=pvs(2)
+       v=f2(z1,z2)
+    end if
 
     call set_result(rpnc,i,v,2,ods,logical=.true.)
 
   end function eval_r
+
+  recursive function eval_l(rpnc,i) result(istat)
+    use zmath, only: ztrue, zfalse
+    type(t_rpnc),intent(inout)::rpnc
+    integer,intent(in)::i
+    integer istat
+    integer na
+    integer ks(1:narg_max)
+    logical ods(1:narg_max)
+    logical v
+    integer j,tid
+    complex(cp) z
+
+    na=get_up32(rpnc%que(i)%tid)
+    if(i-1<na) then
+       istat=RPNERR_NOOP
+       return
+    end if
+    
+    istat=get_operands(rpnc,i,na,ks=ks)
+    if(istat/=0) return
+
+    do j=1,na
+       select case(rpnc%que(ks(j))%tid)
+       case(TID_LVAR_T)
+          ods(i)=.true.
+       case(TID_LVAR_F)
+          ods(i)=.false.
+       case default
+          istat=RPNCERR_INVARG
+          return
+       end select
+    end do
+
+    select case(rpnc%que(i)%cid)
+    case(LOID_NOT)
+       v=.not.ods(1)
+    case(LOID_AND)
+       v=ods(1).and.ods(2)
+    case(LOID_OR)
+       v=ods(1).or.ods(2)
+    case(LOID_EQ)
+       v=ods(1).eqv.ods(2)
+    case(LOID_NEQ)
+       v=ods(2).neqv.ods(2)
+    end select
+    
+    do j=1,na
+       rpnc%que(ks(j))%tid=TID_NOP
+    end do
+
+    if(v) then
+       tid=TID_LVAR_T
+       z=ztrue
+    else
+       tid=TID_LVAR_F
+       z=zfalse
+    end if
+
+    call put_vbuf(rpnc,ks(1),z,tid)
+    rpnc%que(i)%tid=TID_NOP
+
+  end function eval_l
 
   recursive function eval_n(rpnc,i) result(istat)
     type(t_rpnc),intent(inout)::rpnc
@@ -899,18 +996,25 @@ contains
     else
        im=1.0_rp
     end if
-    call put_vbuf_z(rpnc,i,complex(v,im))
+    call put_vbuf_z(rpnc,i,complex(v,im),TID_VAR)
   end subroutine put_vbuf_r
 
-  subroutine put_vbuf_z(rpnc,i,v)
+  subroutine put_vbuf_z(rpnc,i,v,tid)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     complex(cp),intent(in)::v
+    integer,intent(in),optional::tid
+    integer t
     if(rpnc%p_vbuf>=size(rpnc%vbuf)) call inc_vbuf(rpnc,NUM_VBUF_MIN)
     rpnc%p_vbuf=rpnc%p_vbuf+1
     rpnc%vbuf(rpnc%p_vbuf)=v
     rpnc%que(i)%cid=loc(rpnc%vbuf(rpnc%p_vbuf))
-    rpnc%que(i)%tid=TID_VAR
+    if(present(tid)) then
+       t=tid
+    else
+       t=TID_VAR
+    end if
+    rpnc%que(i)%tid=t
   end subroutine put_vbuf_z
 
   recursive function eval_m(rpnc,i) result(istat)
@@ -996,6 +1100,8 @@ contains
        select case(get_lo32(rpnc%que(i)%tid))
        case(TID_OP,TID_OPN,TID_AOP)
           istat=eval_n(rpnc,i)
+       case(TID_LOP)
+          istat=eval_l(rpnc,i)          
        case(TID_ROP)
           istat=eval_r(rpnc,i)
        case(TID_COP)
@@ -1441,10 +1547,10 @@ contains
     write(*,*) "# tid cid value"
     if(present(mid)) rpnm=>rpnc%rl%rpnm(mid)
     do i=1,size(rpnc%que)
-       t=rpnc%que(i)%tid
+       t=get_lo32(rpnc%que(i)%tid)
        write(*,10) i,t
        select case(t)
-       case(TID_VAR,TID_PAR,TID_FIG)
+       case(TID_VAR,TID_PAR,TID_FIG,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
           write(*,11) rpnc%que(i)%cid
           if(present(mid)) then
              if(t/=TID_FIG) then
@@ -1463,19 +1569,18 @@ contains
              end if
           end if
           write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
-       case(TID_OP,TID_OPN)
+       case(TID_OP,TID_OPN,TID_ROP)
           write(*,14) rpnc%que(i)%cid
        case(TID_DPAR)
           write(*,16) rpnc%que(i)%cid,"(dummy par)"
        case default
-          write(*,15) rpnc%que(i)%cid
+          write(*,14) rpnc%que(i)%cid
        end select
     end do
 10  format(2(x,i4),$)
-11  format(x,z8,$)
+11  format(x,z16,$)
 13  format(x,i4,x,z8,x,a)
-14  format(x,z8)
-15  format(x,i8)
+14  format(x,z16)
 16  format(x,i8,x,a)
     write(*,*) "vbuf dump:"
     write(*,*) "size= ",rpnc%p_vbuf
@@ -1822,13 +1927,18 @@ contains
           !
           ! operators 
           !
-       case(TID_UOP1,TID_UOP2,TID_UOP3,TID_LOP1)
+       case(TID_UOP1,TID_UOP2,TID_UOP3)
           q%tid=get_i32(TID_OP,1)
           q%cid=get_oid1()
-       case(TID_BOP1,TID_BOP2,TID_BOP3,TID_BOP4,&
-            TID_LOP2,TID_LOP3,TID_LOP4)
+       case(TID_LOP1)
+          q%tid=get_i32(TID_LOP,1)
+          q%cid=get_loid1()
+       case(TID_BOP1,TID_BOP2,TID_BOP3,TID_BOP4)
           q%tid=get_i32(TID_OP,2)
           q%cid=get_oid2()
+       case(TID_LOP2,TID_LOP3,TID_LOP4)
+          q%tid=get_i32(TID_LOP,2)
+          q%cid=get_loid2()
        case(TID_ROP)
           q%tid=get_i32(TID_ROP,2)
           q%cid=get_oid2()          
@@ -2163,12 +2273,20 @@ contains
          else
             get_oid1=loc(zm_dec_f)
          end if
-      case("~")
-         get_oid1=loc(zml_not)
       case default
          STOP "*** UNEXPECTED ERROR in get_oid1"
       end select
     end function get_oid1
+
+    integer function get_loid1()
+      use zmath
+      select case(_EXPR_(i)) 
+      case("~")
+         get_loid1=LOID_NOT
+      case default
+         STOP "*** UNEXPECTED ERROR in get_loid1"
+      end select      
+    end function get_loid1
 
     integer function get_oid2()
       use zmath
@@ -2220,18 +2338,26 @@ contains
          get_oid2=loc(zmr_le)
       case(">=")
          get_oid2=loc(zmr_ge)
-      case("and")
-         get_oid2=loc(zml_and)
-      case("or")
-         get_oid2=loc(zml_or)
-      case("eq")
-         get_oid2=loc(zml_eq)
-      case("neq")
-         get_oid2=loc(zml_neq)
       case default
          STOP "*** UNEXPECTED ERROR in get_oid2"
       end select
     end function get_oid2
+
+    integer function get_loid2()
+      use zmath
+      select case(_EXPR_(i))
+      case("and")
+         get_loid2=LOID_AND
+      case("or")
+         get_loid2=LOID_OR
+      case("eq")
+         get_loid2=LOID_EQ
+      case("neq")
+         get_loid2=LOID_NEQ
+      case default
+         STOP "*** UNEXPECTED ERROR in get_loid2"
+      end select
+    end function get_loid2
 
   end function build_rpnc
 

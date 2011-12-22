@@ -98,8 +98,8 @@ module zmath
 
   real(rp),parameter::pi =4.0_rp*atan(1.0_rp)
   real(rp),parameter::pi2=2.0_rp*pi
-  complex,parameter::ztrue=complex(1.0_rp,rzero)
-  complex,parameter::zfalse=czero
+  complex,public,parameter::ztrue=complex(1.0_rp,rzero)
+  complex,public,parameter::zfalse=czero
 
   logical::random_seed_init=.false.
 
