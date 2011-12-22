@@ -49,6 +49,12 @@ contains
     case("dbg","debug")
        rpnc%opt=ior(rpnc%opt,RPNCOPT_DEBUG)
        parse_command=CID_DONE
+    case("dat","data")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_DAT)
+       parse_command=CID_DONE
+    case("n","norm")
+       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DAT))
+       parse_command=CID_DONE
     case("nodbg","nodebug")
        rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DEBUG))
        parse_command=CID_DONE

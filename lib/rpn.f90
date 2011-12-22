@@ -166,6 +166,8 @@ module rpn
      integer,pointer::rc ! recursion count
      integer,pointer::opt
      integer,pointer::pfs(:) 
+     complex(cp),pointer::vs(:)
+     integer,pointer::p_vs
   end type t_rpnc
 
   integer,parameter::RPNCOPT_NOP             =  0
@@ -176,10 +178,17 @@ module rpn
   integer,parameter::RPNCOPT_NO_AUTO_ADD_PAR =  Z"00000008"
   integer,parameter::RPNCOPT_RATIO           =  Z"00000010"
   integer,parameter::RPNCOPT_NO_WARN         =  Z"00000020"
+  integer,parameter::RPNCOPT_DAT             =  Z"00000040"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
   integer,parameter::OID_CND = 1
+
+  character*(*),parameter::LOPS_NOT ="not"
+  character*(*),parameter::LOPS_AND ="and"
+  character*(*),parameter::LOPS_OR  ="or"
+  character*(*),parameter::LOPS_EQ  ="eq"
+  character*(*),parameter::LOPS_NEQ ="neq" 
 
   integer,parameter::int_fnc_max_len=5
   character*(*),parameter::int_fnc=&
@@ -489,6 +498,8 @@ contains
     if(associated(rpnc%rc)) deallocate(rpnc%rc)
     if(associated(rpnc%rl)) call uinit_rpnlist(rpnc%rl)
     if(associated(rpnc%pfs)) deallocate(rpnc%pfs)
+    if(associated(rpnc%vs)) deallocate(rpnc%vs)
+    if(associated(rpnc%p_vs)) deallocate(rpnc%p_vs)
   end subroutine uinit_rpnc
 
   function init_par(rpnc,sz,nmax)
@@ -807,9 +818,9 @@ contains
     do j=1,na
        select case(rpnc%que(ks(j))%tid)
        case(TID_LVAR_T)
-          ods(i)=.true.
+          ods(j)=.true.
        case(TID_LVAR_F)
-          ods(i)=.false.
+          ods(j)=.false.
        case default
           istat=RPNCERR_INVARG
           return
@@ -826,9 +837,11 @@ contains
     case(LOID_EQ)
        v=ods(1).eqv.ods(2)
     case(LOID_NEQ)
-       v=ods(2).neqv.ods(2)
+       v=ods(1).neqv.ods(2)
+    case default
+       stop "internal error"
     end select
-    
+
     do j=1,na
        rpnc%que(ks(j))%tid=TID_NOP
     end do
@@ -841,8 +854,8 @@ contains
        z=zfalse
     end if
 
-    call put_vbuf(rpnc,ks(1),z,tid)
-    rpnc%que(i)%tid=TID_NOP
+    call put_vbuf(rpnc,i,z,tid)
+    rpnc%tmpans=z
 
   end function eval_l
 
@@ -1119,6 +1132,8 @@ contains
        end if
     end do
     
+    rpnc%rc=rpnc%rc-1
+
     if(istat/=0) return
 
     if(ec==0.and.size(rpnc%que)==1) then ! only fig or par
@@ -1128,14 +1143,31 @@ contains
        rpnc%answer=rpnc%tmpans
     end if
 
-!!$    if(iand(rpnc%opt,RPNCOPT_NEW)/=0) then
-!!$       istat=realloc_new(rpnc%pars)
-!!$    end if
     call remove_dup(rpnc%pars)
 
-    rpnc%rc=rpnc%rc-1
-
+    if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) call set_dat(rpnc)
+    
   end function eval
+
+  subroutine init_vs(rpnc)
+    type(t_rpnc),intent(inout)::rpnc
+    allocate(rpnc%vs(128)) !<<<<<<<<<<<<<<<<<<<<<<<<
+    allocate(rpnc%p_vs)
+    rpnc%p_vs=0
+  end subroutine init_vs
+
+  subroutine reset_dat(rpnc)
+    type(t_rpnc),intent(inout)::rpnc
+    if(associated(rpnc%p_vs)) rpnc%p_vs=0
+  end subroutine reset_dat
+
+  subroutine set_dat(rpnc)
+    type(t_rpnc),intent(inout)::rpnc
+    if(.not.associated(rpnc%vs)) call init_vs(rpnc)
+    if(rpnc%p_vs+1>size(rpnc%vs)) STOP "Vs overfow"
+    rpnc%p_vs=rpnc%p_vs+1
+    rpnc%vs(rpnc%p_vs)=rpnc%answer
+  end subroutine set_dat
 
   integer function get_lo32(cid)
     integer,intent(in)::cid
@@ -1212,16 +1244,16 @@ contains
     character*(*),intent(in)::s
     integer,intent(inout)::t
     select case(s)
-    case("not")
+    case(LOPS_not)
        t=TID_LOP1
        is_lop=.true.
-    case("and")
+    case(LOPS_and)
        t=TID_LOP2
        is_lop=.true.
-    case("or")
+    case(LOPS_or)
        t=TID_LOP3
        is_lop=.true.
-    case("eq","neq")
+    case(LOPS_eq,LOPS_neq)
        t=TID_LOP4
        is_lop=.true.
     case default
@@ -2281,7 +2313,7 @@ contains
     integer function get_loid1()
       use zmath
       select case(_EXPR_(i)) 
-      case("~")
+      case("~",LOPS_NOT)
          get_loid1=LOID_NOT
       case default
          STOP "*** UNEXPECTED ERROR in get_loid1"
@@ -2346,13 +2378,13 @@ contains
     integer function get_loid2()
       use zmath
       select case(_EXPR_(i))
-      case("and")
+      case(LOPS_AND)
          get_loid2=LOID_AND
-      case("or")
+      case(LOPS_OR)
          get_loid2=LOID_OR
-      case("eq")
+      case(LOPS_EQ)
          get_loid2=LOID_EQ
-      case("neq")
+      case(LOPS_NEQ)
          get_loid2=LOID_NEQ
       case default
          STOP "*** UNEXPECTED ERROR in get_loid2"
