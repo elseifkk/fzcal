@@ -19,6 +19,7 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   void delText(int i=1);
   void setTriFncBut();
   void setButIcon(QPushButton *, QString r);
+  void enableStaButs(bool on);
 
  private:
   size_t pfzc;
@@ -58,6 +59,16 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   void cosSlot();
   void tanSlot();
   void textChangeSlot();
+  void datSlot();
+  void staSlot();
+  void nSlot();
+  void sumSlot();
+  void sum2Slot();
+  void aveSlot();
+  void varSlot();
+  void uvarSlot();
+  void autoSlot();
+  void cleSlot();
 
  protected:
   void keyPressEvent(QKeyEvent*);

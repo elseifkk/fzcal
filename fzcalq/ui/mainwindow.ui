@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>718</width>
-    <height>429</height>
+    <width>844</width>
+    <height>379</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>fzcalq</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout_4">
+   <layout class="QGridLayout" name="gridLayout_5">
     <item row="0" column="0">
      <widget class="KHistoryComboBox" name="formulaBox">
       <property name="sizePolicy">
@@ -28,7 +28,38 @@
       </property>
      </widget>
     </item>
-    <item row="1" column="0">
+    <item row="0" column="1">
+     <widget class="QPushButton" name="autoBut">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>54</width>
+        <height>34</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>54</width>
+        <height>34</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>auto</string>
+      </property>
+      <property name="checkable">
+       <bool>true</bool>
+      </property>
+      <property name="checked">
+       <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0" colspan="2">
      <widget class="QTextEdit" name="resultBox">
       <property name="font">
        <font>
@@ -41,8 +72,8 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="0">
-     <layout class="QHBoxLayout" name="horizontalLayout">
+    <item row="2" column="0" colspan="2">
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
        <layout class="QGridLayout" name="gridLayout">
         <item row="0" column="0">
@@ -348,7 +379,7 @@
        </layout>
       </item>
       <item>
-       <spacer name="horizontalSpacer_4">
+       <spacer name="horizontalSpacer_5">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
@@ -357,8 +388,8 @@
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>13</width>
-          <height>22</height>
+          <width>8</width>
+          <height>17</height>
          </size>
         </property>
        </spacer>
@@ -568,7 +599,7 @@
        </layout>
       </item>
       <item>
-       <spacer name="horizontalSpacer">
+       <spacer name="horizontalSpacer_4">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
@@ -577,8 +608,8 @@
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>13</width>
-          <height>30</height>
+          <width>8</width>
+          <height>17</height>
          </size>
         </property>
        </spacer>
@@ -586,366 +617,687 @@
       <item>
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <spacer name="verticalSpacer">
+         <spacer name="verticalSpacer_2">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
-            <width>20</width>
-            <height>40</height>
+            <width>17</width>
+            <height>13</height>
            </size>
           </property>
          </spacer>
         </item>
         <item>
-         <layout class="QGridLayout" name="gridLayout_3">
-          <item row="0" column="0">
-           <widget class="QPushButton" name="shiftBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>shift</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
-            </property>
-           </widget>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <layout class="QGridLayout" name="gridLayout_4">
+            <item row="0" column="0">
+             <widget class="QPushButton" name="shiftBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>shift</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <spacer name="horizontalSpacer_3">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="1" column="0">
+             <widget class="QPushButton" name="engBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>eng</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QPushButton" name="ratioBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>a/b</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="2">
+             <widget class="QPushButton" name="sqrtBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="3">
+             <widget class="QPushButton" name="logBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>log</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="4">
+             <widget class="QPushButton" name="lnBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>ln</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="5">
+             <widget class="QPushButton" name="powBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QPushButton" name="minusBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>-</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QPushButton" name="undefBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="2">
+             <widget class="QPushButton" name="hypBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>hyp</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="3">
+             <widget class="QPushButton" name="sinBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>sin</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="4">
+             <widget class="QPushButton" name="cosBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>cos</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="5">
+             <widget class="QPushButton" name="tanBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>tan</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
-          <item row="0" column="2" colspan="2">
-           <spacer name="horizontalSpacer_3">
+          <item>
+           <spacer name="horizontalSpacer_6">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Fixed</enum>
+            </property>
             <property name="sizeHint" stdset="0">
              <size>
-              <width>40</width>
-              <height>20</height>
+              <width>8</width>
+              <height>17</height>
              </size>
             </property>
            </spacer>
           </item>
-          <item row="1" column="0">
-           <widget class="QPushButton" name="engBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>eng</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QPushButton" name="ratioBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>a/b</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="2">
-           <widget class="QPushButton" name="sqrtBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3">
-           <widget class="QPushButton" name="logBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>log</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="4">
-           <widget class="QPushButton" name="lnBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>ln</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="5">
-           <widget class="QPushButton" name="powBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QPushButton" name="minusBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>-</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QPushButton" name="undefBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="2">
-           <widget class="QPushButton" name="hypBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>hyp</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="3">
-           <widget class="QPushButton" name="sinBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>sin</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="4">
-           <widget class="QPushButton" name="cosBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>cos</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="5">
-           <widget class="QPushButton" name="tanBut">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>54</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>tan</string>
-            </property>
-           </widget>
+          <item>
+           <layout class="QGridLayout" name="gridLayout_3">
+            <item row="0" column="0">
+             <widget class="QPushButton" name="datBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>dat</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QPushButton" name="staBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>sta</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QPushButton" name="cleBut">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>cle</string>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QPushButton" name="sum2But">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>sum2</string>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QPushButton" name="sumBut">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>sum</string>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="2">
+             <widget class="QPushButton" name="nBut">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>n</string>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QPushButton" name="aveBut">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>ave</string>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QPushButton" name="varBut">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>var</string>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="2">
+             <widget class="QPushButton" name="uvarBut">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>54</width>
+                <height>34</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>uvar</string>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </item>
@@ -958,7 +1310,7 @@
         </property>
         <property name="sizeHint" stdset="0">
          <size>
-          <width>36</width>
+          <width>68</width>
           <height>17</height>
          </size>
         </property>
@@ -973,7 +1325,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>718</width>
+     <width>844</width>
      <height>26</height>
     </rect>
    </property>
@@ -1018,7 +1370,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>50</x>
-     <y>383</y>
+     <y>481</y>
     </hint>
     <hint type="destinationlabel">
      <x>166</x>
@@ -1033,8 +1385,8 @@
    <slot>f1Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>43</x>
-     <y>337</y>
+     <x>50</x>
+     <y>426</y>
     </hint>
     <hint type="destinationlabel">
      <x>28</x>
@@ -1050,7 +1402,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>96</x>
-     <y>337</y>
+     <y>426</y>
     </hint>
     <hint type="destinationlabel">
      <x>107</x>
@@ -1066,7 +1418,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>142</x>
-     <y>337</y>
+     <y>426</y>
     </hint>
     <hint type="destinationlabel">
      <x>172</x>
@@ -1081,8 +1433,8 @@
    <slot>f4Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>34</x>
-     <y>291</y>
+     <x>45</x>
+     <y>371</y>
     </hint>
     <hint type="destinationlabel">
      <x>34</x>
@@ -1098,7 +1450,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>96</x>
-     <y>291</y>
+     <y>371</y>
     </hint>
     <hint type="destinationlabel">
      <x>179</x>
@@ -1114,7 +1466,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>142</x>
-     <y>291</y>
+     <y>371</y>
     </hint>
     <hint type="destinationlabel">
      <x>210</x>
@@ -1129,8 +1481,8 @@
    <slot>f7Slot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>36</x>
-     <y>245</y>
+     <x>47</x>
+     <y>316</y>
     </hint>
     <hint type="destinationlabel">
      <x>31</x>
@@ -1146,7 +1498,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>96</x>
-     <y>245</y>
+     <y>316</y>
     </hint>
     <hint type="destinationlabel">
      <x>170</x>
@@ -1162,7 +1514,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>142</x>
-     <y>245</y>
+     <y>316</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1178,7 +1530,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>96</x>
-     <y>383</y>
+     <y>481</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1194,7 +1546,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>142</x>
-     <y>383</y>
+     <y>481</y>
     </hint>
     <hint type="destinationlabel">
      <x>227</x>
@@ -1209,8 +1561,8 @@
    <slot>ACSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>255</x>
-     <y>245</y>
+     <x>236</x>
+     <y>319</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1225,8 +1577,8 @@
    <slot>delSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>209</x>
-     <y>245</y>
+     <x>190</x>
+     <y>319</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1241,8 +1593,8 @@
    <slot>divSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>255</x>
-     <y>291</y>
+     <x>236</x>
+     <y>372</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1257,8 +1609,8 @@
    <slot>mulSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>209</x>
-     <y>291</y>
+     <x>190</x>
+     <y>372</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1273,8 +1625,8 @@
    <slot>subSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>255</x>
-     <y>337</y>
+     <x>236</x>
+     <y>427</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1289,8 +1641,8 @@
    <slot>addSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>209</x>
-     <y>337</y>
+     <x>190</x>
+     <y>427</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1305,8 +1657,8 @@
    <slot>EXESlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>255</x>
-     <y>383</y>
+     <x>236</x>
+     <y>481</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1321,8 +1673,8 @@
    <slot>ansSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>209</x>
-     <y>383</y>
+     <x>190</x>
+     <y>481</y>
     </hint>
     <hint type="destinationlabel">
      <x>252</x>
@@ -1337,8 +1689,8 @@
    <slot>shiftSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>330</x>
-     <y>275</y>
+     <x>302</x>
+     <y>413</y>
     </hint>
     <hint type="destinationlabel">
      <x>370</x>
@@ -1353,8 +1705,8 @@
    <slot>engSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>337</x>
-     <y>342</y>
+     <x>301</x>
+     <y>456</y>
     </hint>
     <hint type="destinationlabel">
      <x>461</x>
@@ -1369,8 +1721,8 @@
    <slot>ratioSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>397</x>
-     <y>342</y>
+     <x>361</x>
+     <y>456</y>
     </hint>
     <hint type="destinationlabel">
      <x>340</x>
@@ -1385,8 +1737,8 @@
    <slot>sqrtSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>457</x>
-     <y>342</y>
+     <x>421</x>
+     <y>456</y>
     </hint>
     <hint type="destinationlabel">
      <x>359</x>
@@ -1401,8 +1753,8 @@
    <slot>logSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>517</x>
-     <y>342</y>
+     <x>481</x>
+     <y>456</y>
     </hint>
     <hint type="destinationlabel">
      <x>429</x>
@@ -1417,8 +1769,8 @@
    <slot>lnSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>577</x>
-     <y>342</y>
+     <x>541</x>
+     <y>456</y>
     </hint>
     <hint type="destinationlabel">
      <x>530</x>
@@ -1433,8 +1785,8 @@
    <slot>powSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>637</x>
-     <y>342</y>
+     <x>601</x>
+     <y>456</y>
     </hint>
     <hint type="destinationlabel">
      <x>549</x>
@@ -1449,8 +1801,8 @@
    <slot>minusSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>337</x>
-     <y>382</y>
+     <x>301</x>
+     <y>496</y>
     </hint>
     <hint type="destinationlabel">
      <x>475</x>
@@ -1465,8 +1817,8 @@
    <slot>hypSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>457</x>
-     <y>382</y>
+     <x>421</x>
+     <y>496</y>
     </hint>
     <hint type="destinationlabel">
      <x>325</x>
@@ -1481,8 +1833,8 @@
    <slot>sinSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>517</x>
-     <y>382</y>
+     <x>481</x>
+     <y>496</y>
     </hint>
     <hint type="destinationlabel">
      <x>453</x>
@@ -1497,8 +1849,8 @@
    <slot>tanSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>637</x>
-     <y>382</y>
+     <x>601</x>
+     <y>496</y>
     </hint>
     <hint type="destinationlabel">
      <x>539</x>
@@ -1513,8 +1865,8 @@
    <slot>cosSlot()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>577</x>
-     <y>382</y>
+     <x>541</x>
+     <y>496</y>
     </hint>
     <hint type="destinationlabel">
      <x>533</x>
@@ -1535,6 +1887,166 @@
     <hint type="destinationlabel">
      <x>716</x>
      <y>69</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>datBut</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>datSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>664</x>
+     <y>382</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>680</x>
+     <y>250</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>staBut</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>staSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>724</x>
+     <y>382</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>742</x>
+     <y>290</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>sum2But</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>sum2Slot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>664</x>
+     <y>433</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>731</x>
+     <y>278</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>sumBut</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>sumSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>724</x>
+     <y>433</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>821</x>
+     <y>298</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>nBut</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>nSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>784</x>
+     <y>433</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>810</x>
+     <y>324</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>uvarBut</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>uvarSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>784</x>
+     <y>484</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>858</x>
+     <y>405</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>varBut</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>varSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>724</x>
+     <y>484</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>858</x>
+     <y>370</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>aveBut</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>aveSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>664</x>
+     <y>484</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>656</x>
+     <y>403</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cleBut</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>cleSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>761</x>
+     <y>382</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>840</x>
+     <y>336</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>autoBut</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>autoSlot()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>280</x>
+     <y>383</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>334</x>
+     <y>366</y>
     </hint>
    </hints>
   </connection>
@@ -1574,5 +2086,15 @@
   <slot>cosSlot()</slot>
   <slot>tanSlot()</slot>
   <slot>textChangeSlot()</slot>
+  <slot>datSlot()</slot>
+  <slot>staSlot()</slot>
+  <slot>sumSlot()</slot>
+  <slot>sum2Slot()</slot>
+  <slot>nSlot()</slot>
+  <slot>aveSlot()</slot>
+  <slot>varSlot()</slot>
+  <slot>uvarSlot()</slot>
+  <slot>cleSlot()</slot>
+  <slot>autoSlot()</slot>
  </slots>
 </ui>

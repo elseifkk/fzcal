@@ -55,7 +55,7 @@ void MainWindowImpl::returnSlot(bool quiet)
 
 void MainWindowImpl::textChangeSlot()
 {
-  returnSlot(true);
+  if(autoBut->isChecked()) returnSlot(true);
 }
 
 void MainWindowImpl::dotSlot()
@@ -286,6 +286,72 @@ void MainWindowImpl::appendText(QString s)
   QString text=formulaBox->lineEdit()->text().insert(j,s);
   formulaBox->lineEdit()->setText(text);
 }
+
+void MainWindowImpl::datSlot()
+{
+  if(datBut->isChecked()){
+    staBut->setChecked(false);
+    fzc_cle_opt(pfzc,FZCOPT_STA);
+    fzc_set_opt(pfzc,FZCOPT_DAT);
+  }else{
+    fzc_cle_opt(pfzc,FZCOPT_DAT);
+  }
+}
+
+void MainWindowImpl::staSlot()
+{
+  if(staBut->isChecked()){
+    datBut->setChecked(false);
+    fzc_cle_opt(pfzc,FZCOPT_DAT);
+    fzc_set_opt(pfzc,FZCOPT_STA);
+  }else{
+    fzc_cle_opt(pfzc,FZCOPT_STA);
+  }
+  enableStaButs(staBut->isChecked());
+}
+
+void MainWindowImpl::enableStaButs(bool on)
+{
+  nBut->setEnabled(on);
+  sumBut->setEnabled(on);
+  sum2But->setEnabled(on);
+  varBut->setEnabled(on);
+  uvarBut->setEnabled(on);
+  aveBut->setEnabled(on);
+}
+
+void MainWindowImpl::nSlot()
+{
+  appendText("n");
+}
+void MainWindowImpl::sumSlot()
+{
+  appendText("sum");
+}
+void MainWindowImpl::sum2Slot()
+{
+  appendText("sum2");
+}
+void MainWindowImpl::varSlot()
+{
+  appendText("var");
+}
+void MainWindowImpl::uvarSlot()
+{
+  appendText("uvar");
+}
+void MainWindowImpl::aveSlot()
+{
+  appendText("ave");
+}
+
+void MainWindowImpl::cleSlot()
+{
+  fzc_cle_dat(pfzc);
+}
+
+void MainWindowImpl::autoSlot()
+{}
 
 void MainWindowImpl::keyPressEvent(QKeyEvent *e)
 {

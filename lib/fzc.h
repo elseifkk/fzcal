@@ -9,8 +9,10 @@
 #define PK_INT   4
 
 
-#define FZCOPT_NOAUTO_ADDPAR 8
+#define FZCOPT_NOAUTO_ADDPAR 0x08
 #define FZCOPT_NOWARN        0x20
+#define FZCOPT_STA           0x80
+#define FZCOPT_DAT           0x40
 
 #ifdef __cplusplus
 extern "C"
@@ -26,6 +28,7 @@ extern "C"
   void    __fzc_MOD_fzc_get_str_ans ( const size_t, const size_t );
   int     __fzc_MOD_fzc_regist_parameter ( const size_t, const size_t, const size_t, const size_t );
   double  __fzc_MOD_fzc_get_ans(const size_t );
+  void    __fzc_MOD_fzc_cle_dat ( const size_t );
 #ifdef __cplusplus
 }
 #endif
@@ -40,5 +43,6 @@ extern "C"
 #define fzc_regpar      __fzc_MOD_fzc_regist_parameter
 #define fzc_get_strans  __fzc_MOD_fzc_get_str_ans
 #define fzc_get_ans     __fzc_MOD_fzc_get_ans
+#define fzc_cle_dat     __fzc_MOD_fzc_cle_dat
 
 #endif 

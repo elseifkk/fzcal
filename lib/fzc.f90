@@ -112,4 +112,12 @@ contains
          int(add_par_by_reference(rpnc%pars,name,ptr_var,ro=.true.,pk=int(pk)),kind=C_INT)
   end function fzc_regist_parameter
 
+  subroutine fzc_cle_dat(ptr_rpnc)
+    size_t,intent(in),value::ptr_rpnc
+    type(t_rpnc) rpnc
+    pointer(pr,rpnc)
+    pr=ptr_rpnc
+    call reset_dat(rpnc)
+  end subroutine fzc_cle_dat
+
 end module fzc

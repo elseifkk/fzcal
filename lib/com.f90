@@ -12,6 +12,7 @@ module com
   integer,parameter::CID_DUMP_M  =  8
   integer,parameter::CID_INI     = 14
   integer,parameter::CID_EXIT    = 16
+  integer,parameter::CID_SCLE    = 17
   integer,parameter::CID_DONE    =999
 
 contains
@@ -48,12 +49,18 @@ contains
        parse_command=CID_DONE
     case("dbg","debug")
        rpnc%opt=ior(rpnc%opt,RPNCOPT_DEBUG)
+       parse_command=CID_DONE 
+    case("cle")
+       parse_command=CID_SCLE
+    case("s","sta","stat")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_STA)
+       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DAT)) ! <<<
        parse_command=CID_DONE
-    case("dat","data")
+    case("d","dat","data")
        rpnc%opt=ior(rpnc%opt,RPNCOPT_DAT)
        parse_command=CID_DONE
     case("n","norm")
-       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DAT))
+       rpnc%opt=iand(rpnc%opt,not(ior(RPNCOPT_DAT,RPNCOPT_STA)))
        parse_command=CID_DONE
     case("nodbg","nodebug")
        rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DEBUG))
