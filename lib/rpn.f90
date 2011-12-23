@@ -108,6 +108,7 @@ module rpn
   integer,parameter::TID_LVAR_T = 46
   integer,parameter::TID_LVAR_F = 47
   integer,parameter::TID_LOP    = 48
+  integer,parameter::TID_SOP    = 49
 
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2
@@ -179,6 +180,7 @@ module rpn
   integer,parameter::RPNCOPT_RATIO           =  Z"00000010"
   integer,parameter::RPNCOPT_NO_WARN         =  Z"00000020"
   integer,parameter::RPNCOPT_DAT             =  Z"00000040"
+  integer,parameter::RPNCOPT_STA             =  Z"00000080"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
@@ -190,8 +192,21 @@ module rpn
   character*(*),parameter::LOPS_EQ  ="eq"
   character*(*),parameter::LOPS_NEQ ="neq" 
 
-  integer,parameter::int_fnc_max_len=5
-  character*(*),parameter::int_fnc=&
+  character(*),parameter::spars=&
+       achar(1)//"n"//&
+       achar(3)//"ave"//&
+       achar(3)//"var"//&
+       achar(3)//"sum"//&
+       achar(4)//"uvar"//&
+       achar(0)
+  integer,parameter::SID_N     = 1
+  integer,parameter::SID_AVE   = 2
+  integer,parameter::SID_VAR   = 3
+  integer,parameter::SID_SUM   = 4
+  integer,parameter::SID_UVAR  = 5
+
+  integer,parameter::int_fncs_max_len=5
+  character*(*),parameter::int_fncs=&
        achar(3)//"ran"//&
        achar(3)//"sin"//&
        achar(3)//"cos"//&
@@ -430,6 +445,8 @@ contains
     allocate(rpnc%p_vbuf)
     allocate(rpnc%rc)
     allocate(rpnc%opt)
+    nullify(rpnc%vs)
+    nullify(rpnc%p_vs)
     allocate(rpnc%pfs(3))
     rpnc%pfs(1)=loc(zm_f1)
     rpnc%pfs(2)=loc(zm_f2)
@@ -646,8 +663,8 @@ contains
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     complex(cp),intent(in)::v
-    integer,intent(in)::n
-    integer,intent(in),optional::ks(n)
+    integer,intent(in),optional::n
+    integer,intent(in),optional::ks(:)
     logical,intent(in),optional::logical
     integer j,tid,k1
     logical var
@@ -858,6 +875,30 @@ contains
     rpnc%tmpans=z
 
   end function eval_l
+
+  recursive function eval_s(rpnc,i) result(istat)
+    type(t_rpnc),intent(inout)::rpnc
+    integer,intent(in)::i
+    integer istat
+    interface
+       function fn(n,vs)
+         use fpio, only: cp
+         complex(cp) fn
+         integer,intent(in)::n
+         complex(cp),intent(in)::vs(n)
+       end function fn
+    end interface
+    pointer(pfn,fn)
+    complex(cp) v
+    if(rpnc%p_vs==0) then
+       v=czero
+    else
+       pfn=rpnc%que(i)%cid
+       v=fn(rpnc%p_vs,rpnc%vs)
+    end if
+    call set_result(rpnc,i,v)
+    istat=0
+  end function eval_s
 
   recursive function eval_n(rpnc,i) result(istat)
     type(t_rpnc),intent(inout)::rpnc
@@ -1123,6 +1164,14 @@ contains
           istat=eval_m(rpnc,i)
        case(TID_UFNC)
           istat=eval_uf(rpnc,i)
+       case(TID_SOP)
+          istat=eval_s(rpnc,i)
+       case(TID_END)
+          ec=ec-1
+          rpnc%rc=rpnc%rc-1
+          call set_ans(.true.)
+          rpnc%rc=rpnc%rc+1
+          ec=0
        case default
           ec=ec-1
        end select
@@ -1132,20 +1181,34 @@ contains
        end if
     end do
     
-    rpnc%rc=rpnc%rc-1
-
     if(istat/=0) return
 
-    if(ec==0.and.size(rpnc%que)==1) then ! only fig or par
-       pv=rpnc%que(1)%cid
-       rpnc%answer=v
-    else
-       rpnc%answer=rpnc%tmpans
-    end if
+    rpnc%rc=rpnc%rc-1       
+
+    if(get_lo32(rpnc%que(size(rpnc%que))%tid)/=TID_END) &
+         call set_ans(.false.)
 
     call remove_dup(rpnc%pars)
 
-    if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) call set_dat(rpnc)
+  contains
+    
+    subroutine set_ans(end)
+      logical,intent(in)::end
+      integer k
+      if(ec==0) then ! only fig or par
+         if(end) then
+            k=i-1
+         else
+            k=size(rpnc%que)
+         end if
+         pv=rpnc%que(k)%cid
+         rpnc%answer=v
+      else
+         rpnc%answer=rpnc%tmpans
+      end if
+    if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
+         call set_dat(rpnc)
+   end subroutine set_ans
     
   end function eval
 
@@ -1278,30 +1341,54 @@ contains
     is_numeric=(is_number(a).or.a==46)
   end function is_numeric
   
+  logical function is_spar(a,ent)
+    character*(*),intent(in)::a
+    integer,intent(out),optional::ent
+    integer k
+    k=get_index(spars,a)
+    if(k/=0) then
+       if(present(ent)) ent=k
+       is_spar=.true.
+    else
+       is_spar=.false.
+    end if    
+  end function is_spar
+
   logical function is_int_fnc(a,ent)
     character*(*),intent(in)::a
     integer,intent(out),optional::ent
+    integer k
+    k=get_index(int_fncs,a)
+    if(k/=0) then
+       if(present(ent)) ent=k
+       is_int_fnc=.true.
+    else
+       is_int_fnc=.false.
+    end if
+  end function is_int_fnc
+
+  integer function get_index(sl,a)
+    character*(*),intent(in)::sl,a
     integer len,lenf
     integer i,k,j
     len=len_trim(a)
-    is_int_fnc=.false.
     k=1
     i=0
+    get_index=0
     do
        i=i+1
-       lenf=ichar(int_fnc(k:k))
+       lenf=ichar(sl(k:k))
        if(lenf==0) exit
        if(lenf==len) then
           j=k+1
-          if(int_fnc(j:j+len-1)==a(1:len)) then
-             is_int_fnc=.true.
-             if(present(ent)) ent=i
+          if(sl(j:j+len-1)==a(1:len)) then
+             get_index=i
              return
           end if
        end if
        k=k+lenf+1
     end do
-  end function is_int_fnc
+  end function get_index
 
   integer function get_tid(a)
     character*1,intent(in)::a
@@ -1358,8 +1445,9 @@ contains
     end if
   end function is_usr_fnc
   
-  integer function get_next(rpnb,p1,p2,sl)
+  integer function get_next(rpnb,rpnc,p1,p2,sl)
     type(t_rpnb),intent(inout)::rpnb
+    type(t_rpnc),intent(in)::rpnc
     integer,intent(out)::p1,p2
     type(t_slist),intent(in)::sl
     integer k,t,kf
@@ -1447,7 +1535,8 @@ contains
        if(t==TID_PARU) then
           p2=get_end_of_par(rpnb,p1)
           if(p2<rpnb%len_expr) then
-             if(.not.is_lop(rpnb%expr(p1:p2),t)) then
+             if(.not.is_lop(rpnb%expr(p1:p2),t)&
+                  .and..not.(is_set(RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))) then
                 k=p2+1
                 if(rpnb%expr(k:k)=="(") then
                    if(is_usr_fnc(sl,rpnb%expr(p1:p2),kf)) then
@@ -2027,7 +2116,12 @@ contains
              STOP "*** UNEXPECTED ERROR in build_rpnc"
           end if
           call put_vbuf(rpnc,i,x)
-       case(TID_PAR) 
+       case(TID_PAR)
+          if(is_set(RPNCOPT_STA).and.is_spar(_EXPR_(i),k)) then
+             q%tid=TID_SOP
+             q%cid=get_sid(k)
+             cycle
+          end if
           if(rpnc%rl%s%n>0) then
              ! find the macro first
              k=find_str(rpnc%rl%s,_EXPR_(i))
@@ -2142,6 +2236,25 @@ contains
     end subroutine find_delim
 
 #define isdeg iand(rpnc%opt,RPNCOPT_DEG)/=0
+
+    integer function get_sid(sid)
+      use zmath
+      integer,intent(in)::sid
+      select case(sid)
+      case(SID_N)
+         get_sid=loc(zms_n)
+      case(SID_AVE)
+         get_sid=loc(zms_ave)
+      case(SID_VAR)
+         get_sid=loc(zms_var)
+      case(SID_SUM)
+         get_sid=loc(zms_sum)
+      case(SID_UVAR)
+         get_sid=loc(zms_uvar)
+      case default
+         STOP "*** UNEXPECTED ERROR in get_sid" 
+      end select
+    end function get_sid
 
     integer function get_fid(fid)
       use zmath
@@ -2603,7 +2716,7 @@ contains
     istat=0
 
     do 
-       t=get_next(rpnb,p1,p2,rpnc%rl%s)
+       t=get_next(rpnb,rpnc,p1,p2,rpnc%rl%s)
        select case(t)
        case(TID_BLK)
           cycle

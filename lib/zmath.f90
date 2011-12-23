@@ -46,6 +46,12 @@ module zmath
   public zm_uvar
   public zm_sum2
 
+  public zms_n
+  public zms_sum
+  public zms_ave
+  public zms_var
+  public zms_uvar
+
   public zm_sin
   public zm_cos
   public zm_tan
@@ -699,6 +705,36 @@ contains
     integer,intent(in)::pzs(0:n)
     zm_uvar=zm_var(n,pzs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
   end function zm_uvar
+
+  complex(cp) function zms_n(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n)
+    zms_n=n
+  end function zms_n
+
+  complex(cp) function zms_ave(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n)
+    zms_ave=sum(vs)/n
+  end function zms_ave
+
+  complex(cp) function zms_var(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n)
+    zms_var=sqrt(sum(vs**2.0_rp)/real(n,kind=rp)-(sum(vs)/real(n,kind=rp))**2.0_rp)
+  end function zms_var
+
+  complex(cp) function zms_uvar(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n)
+    zms_uvar=zms_var(n,vs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
+  end function zms_uvar
+  
+  complex(cp) function zms_sum(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n)
+    zms_sum=sum(vs)
+  end function zms_sum
 
 !!!!!!---------------------------------------------------------------------!!!!!!
   ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX

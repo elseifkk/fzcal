@@ -24,6 +24,9 @@ program fzcal
      select case(cid)
      case(CID_EXIT)
         exit main
+     case(CID_SCLE)
+        call reset_dat(rpnc)
+        cycle
      case(CID_DUMP_P)
         call dump_plist(rpnc%pars)
         cycle main
