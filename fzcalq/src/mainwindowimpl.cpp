@@ -15,12 +15,17 @@ MainWindowImpl::MainWindowImpl( QWidget * parent, Qt::WFlags f)
   setupUi(this);
   pfzc=fzc_init();
   shiftSlot();//<<< to set icons
+  resultSet=false;
+
+  this->setStyleSheet("QPushButton {background-color: rgb(30,30,30); border-style: outset; border-width: 2px; border-radius: 6px; border-color: rgb(50,50,50); color: white; font: bold} QPushButton:disabled {background-color: black; color: gray} QPushButton:checked {color: skyblue;} QPushButton:pressed {background-color: rgb(30,30,30); } QTextEdit {background-color: rgb(210,255,180); color: black; font: bold 14pt;}" );
+
 }
 
 void MainWindowImpl::mess(QString s, QColor c)
 {
   resultBox->setTextColor(c);
   resultBox->setText(s);
+  resultBox->setAlignment(Qt::AlignRight);
 }
 
 void MainWindowImpl::returnSlot(bool quiet)
@@ -43,14 +48,14 @@ void MainWindowImpl::returnSlot(bool quiet)
     rc=fzc_eval ( pfzc );
     if ( rc!=0 ) {
       if(!quiet) mess ( "Eval Error","red" );
-      return;
+    }else{
+      formulaBox->addToHistory ( formulaBox->lineEdit()->text() );
+      fzc_get_strans ( pfzc, pcstr );
+      str=cstr;
+      mess ( str );
     }
-    formulaBox->addToHistory ( formulaBox->lineEdit()->text() );
-    fzc_get_strans ( pfzc, pcstr );
-    str=cstr;
-    mess ( str );
-    //    lcdBox->display(str);
   }
+  resultSet=true;
 }
 
 void MainWindowImpl::textChangeSlot()
@@ -60,50 +65,62 @@ void MainWindowImpl::textChangeSlot()
 
 void MainWindowImpl::dotSlot()
 {
+  tryClear();
   appendText(".");
 }
 void MainWindowImpl::expSlot()
 {
+  tryClear();
   appendText("e");
 }
 void MainWindowImpl::f0Slot()
 {
+  tryClear();
   appendText("0");
 }
 void MainWindowImpl::f1Slot()
 {
+  tryClear();
   appendText("1");
 }
 void MainWindowImpl::f2Slot()
 {
+  tryClear();
   appendText("2");
 }
 void MainWindowImpl::f3Slot()
 {
+  tryClear();
   appendText("3");
 }
 void MainWindowImpl::f4Slot()
 {
+  tryClear();
   appendText("4");
 }
 void MainWindowImpl::f5Slot()
 {
+  tryClear();
   appendText("5");
 }
 void MainWindowImpl::f6Slot()
 {
+  tryClear();
   appendText("6");
 }
 void MainWindowImpl::f7Slot()
 {
+  tryClear();
   appendText("7");
 }
 void MainWindowImpl::f8Slot()
 {
+  tryClear();
   appendText("8");
 }
 void MainWindowImpl::f9Slot()
 {
+  tryClear();
   appendText("9");
 }
 
@@ -111,6 +128,7 @@ void MainWindowImpl::ACSlot()
 {
   formulaBox->lineEdit()->clear();
   resultBox->clear();
+  resultSet=false;
 }
 void MainWindowImpl::delSlot()
 {
@@ -118,22 +136,27 @@ void MainWindowImpl::delSlot()
 }
 void MainWindowImpl::mulSlot()
 {
+  resultSet=false;
   appendText("*");
 }
 void MainWindowImpl::divSlot()
 {
+  resultSet=false;
   appendText("/");
 }
 void MainWindowImpl::addSlot()
 {
+  resultSet=false;
   appendText("+");
 }
 void MainWindowImpl::subSlot()
 {
+  resultSet=false;
   appendText("-");
 }
 void MainWindowImpl::ansSlot()
 {
+  tryClear();
   appendText("ans ");
 }
 void MainWindowImpl::EXESlot()
@@ -192,6 +215,7 @@ void MainWindowImpl::ratioSlot()
 }
 void MainWindowImpl::sqrtSlot()
 {
+  tryClear();
   if(!shiftBut->isChecked()){
     appendText("sqrt(");
   }else{
@@ -200,6 +224,7 @@ void MainWindowImpl::sqrtSlot()
 }
 void MainWindowImpl::logSlot()
 {
+  tryClear();
   if(!shiftBut->isChecked()){
     appendText("log(");
   }else{
@@ -208,6 +233,7 @@ void MainWindowImpl::logSlot()
 }
 void MainWindowImpl::lnSlot()
 {
+  tryClear();
   if(!shiftBut->isChecked()){
     appendText("ln(");
   }else{
@@ -216,6 +242,7 @@ void MainWindowImpl::lnSlot()
 }
 void MainWindowImpl::powSlot()
 {
+  tryClear();
   if(!shiftBut->isChecked()){
     appendText("^");
   }else{
@@ -260,14 +287,17 @@ void MainWindowImpl::hypSlot()
 }
 void MainWindowImpl::sinSlot()
 {
+  tryClear();
   appendText(sinBut->text()+"(");
 }
 void MainWindowImpl::cosSlot()
 {
+  tryClear();
   appendText(cosBut->text()+"(");
 }
 void MainWindowImpl::tanSlot()
 {
+  tryClear();
   appendText(tanBut->text()+"(");
 }
 
@@ -322,26 +352,32 @@ void MainWindowImpl::enableStaButs(bool on)
 
 void MainWindowImpl::nSlot()
 {
+  tryClear();
   appendText("n");
 }
 void MainWindowImpl::sumSlot()
 {
+  tryClear();
   appendText("sum");
 }
 void MainWindowImpl::sum2Slot()
 {
+  tryClear();
   appendText("sum2");
 }
 void MainWindowImpl::varSlot()
 {
+  tryClear();
   appendText("var");
 }
 void MainWindowImpl::uvarSlot()
 {
+  tryClear();
   appendText("uvar");
 }
 void MainWindowImpl::aveSlot()
 {
+  tryClear();
   appendText("ave");
 }
 
@@ -352,6 +388,15 @@ void MainWindowImpl::cleSlot()
 
 void MainWindowImpl::autoSlot()
 {}
+
+void MainWindowImpl::tryClear()
+{
+  if(resultSet&&!autoBut->isChecked()){
+    formulaBox->lineEdit()->clear();
+    resultBox->clear();
+    resultSet=false;
+  }
+}
 
 void MainWindowImpl::keyPressEvent(QKeyEvent *e)
 {
@@ -408,7 +453,7 @@ void MainWindowImpl::keyPressEvent(QKeyEvent *e)
       dotSlot();
       break;
     case Qt::Key_Return:
-      if(!formulaBox->hasFocus()) returnSlot();
+      returnSlot();
       break;
     case Qt::Key_E:
       expSlot();
