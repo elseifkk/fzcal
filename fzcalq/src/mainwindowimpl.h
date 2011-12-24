@@ -20,9 +20,11 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   void setTriFncBut();
   void setButIcon(QPushButton *, QString r);
   void enableStaButs(bool on);
+  void tryClear();
 
  private:
   size_t pfzc;
+  bool resultSet;
 
   private slots:
   void returnSlot(bool quiet=false);
