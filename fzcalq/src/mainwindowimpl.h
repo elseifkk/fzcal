@@ -21,6 +21,7 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   void setButIcon(QPushButton *, QString r);
   void enableStaButs(bool on);
   void tryClear();
+  void setEngBut();
 
  private:
   size_t pfzc;

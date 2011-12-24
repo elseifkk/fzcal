@@ -63,65 +63,143 @@ void MainWindowImpl::textChangeSlot()
   if(autoBut->isChecked()) returnSlot(true);
 }
 
+void MainWindowImpl::setEngBut()
+{
+  if(shiftBut->isChecked()){
+    dotBut->setText("ran");
+    expBut->setText("pi");
+    f0But->setText("");
+    f1But->setText("f");
+    f2But->setText("p");
+    f3But->setText("n");
+    f4But->setText("u");
+    f5But->setText("m");
+    f6But->setText("k");
+    f7But->setText("M");
+    f8But->setText("G");
+    f9But->setText("T");
+  }else{
+    dotBut->setText(".");
+    expBut->setText("Exp");
+    f0But->setText("0");
+    f1But->setText("1");
+    f2But->setText("2");
+    f3But->setText("3");
+    f4But->setText("4");
+    f5But->setText("5");
+    f6But->setText("6");
+    f7But->setText("7");
+    f8But->setText("8");
+    f9But->setText("9");
+  }
+}
+
 void MainWindowImpl::dotSlot()
 {
   tryClear();
-  appendText(".");
+  if(!shiftBut->isChecked()){
+    appendText(".");
+  }else{
+    appendText("ran()");
+  }
 }
 void MainWindowImpl::expSlot()
 {
   tryClear();
-  appendText("e");
+  if(!shiftBut->isChecked()){
+    appendText("e");
+  }else{
+    appendText("pi");
+  }
 }
 void MainWindowImpl::f0Slot()
 {
   tryClear();
-  appendText("0");
+  if(!shiftBut->isChecked()){
+    appendText("0");
+  }else{
+  }
 }
 void MainWindowImpl::f1Slot()
 {
   tryClear();
-  appendText("1");
+  if(!shiftBut->isChecked()){
+    appendText("1");
+  }else{
+    appendText("f");
+  }
 }
 void MainWindowImpl::f2Slot()
 {
   tryClear();
-  appendText("2");
+  if(!shiftBut->isChecked()){
+    appendText("2");
+  }else{
+    appendText("p");
+  }
 }
 void MainWindowImpl::f3Slot()
 {
   tryClear();
-  appendText("3");
+  if(!shiftBut->isChecked()){
+    appendText("3");
+  }else{
+    appendText("n");
+  }
 }
 void MainWindowImpl::f4Slot()
 {
   tryClear();
-  appendText("4");
+  if(!shiftBut->isChecked()){
+    appendText("4");
+  }else{
+    appendText("u");
+  }
 }
 void MainWindowImpl::f5Slot()
 {
   tryClear();
-  appendText("5");
+  if(!shiftBut->isChecked()){
+    appendText("5");
+  }else{
+    appendText("m");
+  }
 }
 void MainWindowImpl::f6Slot()
 {
   tryClear();
-  appendText("6");
+  if(!shiftBut->isChecked()){
+    appendText("6");
+  }else{
+    appendText("k");
+  }
 }
 void MainWindowImpl::f7Slot()
 {
   tryClear();
-  appendText("7");
+  if(!shiftBut->isChecked()){
+    appendText("7");
+  }else{
+    appendText("M");
+  }
 }
 void MainWindowImpl::f8Slot()
 {
   tryClear();
-  appendText("8");
+  if(!shiftBut->isChecked()){
+    appendText("8");
+  }else{
+    appendText("G");
+  }
 }
 void MainWindowImpl::f9Slot()
 {
   tryClear();
-  appendText("9");
+  if(!shiftBut->isChecked()){
+    appendText("9");
+  }else{
+    appendText("T");
+  }
 }
 
 void MainWindowImpl::ACSlot()
@@ -206,9 +284,15 @@ void MainWindowImpl::shiftSlot()
     minusBut->setText("-");
   }
   setTriFncBut();
+  setEngBut();
 }
 void MainWindowImpl::engSlot()
 {
+  if(engBut->isChecked()){
+    fzc_set_opt(pfzc,FZCOPT_ENG);
+  }else{
+    fzc_set_opt(pfzc,FZCOPT_ENG);
+  }
 }
 void MainWindowImpl::ratioSlot()
 {
