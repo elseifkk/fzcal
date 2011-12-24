@@ -11,8 +11,9 @@
 
 #define FZCOPT_NOAUTO_ADDPAR 0x08
 #define FZCOPT_NOWARN        0x20
-#define FZCOPT_STA           0x80
 #define FZCOPT_DAT           0x40
+#define FZCOPT_STA           0x80
+#define FZCOPT_ENG           0x100
 
 #ifdef __cplusplus
 extern "C"

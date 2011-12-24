@@ -90,6 +90,7 @@ module rpn
   integer,parameter::TID_DLM2  = -76  ! ket
   integer,parameter::TID_BLK   = -77  ! space and tab
   integer,parameter::TID_HKET  = -78  ! }
+  integer,parameter::TID_USCR  = -79  ! _
   ! 
   integer,parameter::TID_PAR   =  32  ! a,b,c,...
   integer,parameter::TID_PARU  = -32  ! a,b,c,...
@@ -195,21 +196,22 @@ module rpn
   character*(*),parameter::LOPS_NEQ ="neq" 
 
   character(*),parameter::ppars=&
-       achar(1)//"y"//&
-       achar(1)//"z"//&
-       achar(1)//"a"//&
-       achar(1)//"f"//&
-       achar(1)//"p"//&
-       achar(1)//"n"//&
-       achar(1)//"u"//&
-       achar(1)//"m"//&
-       achar(1)//"k"//&
-       achar(1)//"M"//&
-       achar(1)//"G"//&
-       achar(1)//"T"//&
-       achar(1)//"E"//&
-       achar(1)//"Z"//&
-       achar(1)//"Y"//&
+       achar(2)//"_y"//&
+       achar(2)//"_z"//&
+       achar(2)//"_a"//&
+       achar(2)//"_f"//&
+       achar(2)//"_p"//&
+       achar(2)//"_n"//&
+       achar(2)//"_u"//&
+       achar(2)//"_m"//&
+       achar(2)//"_k"//&
+       achar(2)//"_M"//&
+       achar(2)//"_G"//&
+       achar(2)//"_T"//&
+       achar(2)//"_P"//&
+       achar(2)//"_E"//&
+       achar(2)//"_Z"//&
+       achar(2)//"_Y"//&
        achar(0)
   integer,parameter::PID_yoc =  1
   integer,parameter::PID_zep =  2
@@ -894,6 +896,7 @@ contains
     z=complex(p,rzero)
     call put_vbuf(rpnc,i,z)
     rpnc%tmpans=z
+    istat=0
   end function eval_p
 
   recursive function eval_l(rpnc,i) result(istat)
@@ -1526,6 +1529,8 @@ contains
        get_tid=TID_LOP1U
     case("<",">")
        get_tid=TID_ROP
+    case("_")
+       get_tid=TID_USCR
     case default
        get_tid=TID_UNDEF
     end select
@@ -1619,6 +1624,14 @@ contains
        else
           t=TID_BOP3
        end if
+    case(TID_USCR)
+       t=TID_INV
+       if(p1<rpnb%len_expr) then
+          p2=get_end_of_par(rpnb,p1+1)
+          if(is_ppar(rpnb%expr(p1:p2))) then
+             t=TID_PAR
+          end if
+       end if
     case(TID_PARU)
        if(rpnb%old_tid==TID_FIG.and.rpnb%expr(k:k)=="e") then
           if(k<rpnb%len_expr) then
@@ -1636,9 +1649,7 @@ contains
           p2=get_end_of_par(rpnb,p1)
           if(p2<rpnb%len_expr) then
              if(.not.is_lop(rpnb%expr(p1:p2),t)&
-                  .and..not.(is_set(RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))&
-                  .and..not.(is_set(RPNCOPT_ENG).and.is_ppar(rpnb%expr(p1:p2)))) then
-
+                  .and..not.(is_set(RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))) then
                 k=p2+1
                 if(rpnb%expr(k:k)=="(") then
                    if(is_usr_fnc(sl,rpnb%expr(p1:p2),kf)) then
@@ -2219,7 +2230,7 @@ contains
           end if
           call put_vbuf(rpnc,i,x)
        case(TID_PAR)
-          if(is_set(RPNCOPT_ENG).and.is_ppar(_EXPR_(i),k)) then
+          if(is_ppar(_EXPR_(i),k)) then
              q%tid=TID_POP
              q%cid=k
              cycle
