@@ -109,6 +109,7 @@ module rpn
   integer,parameter::TID_LVAR_F = 47
   integer,parameter::TID_LOP    = 48
   integer,parameter::TID_SOP    = 49
+  integer,parameter::TID_POP    = 50
 
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2
@@ -181,6 +182,7 @@ module rpn
   integer,parameter::RPNCOPT_NO_WARN         =  Z"00000020"
   integer,parameter::RPNCOPT_DAT             =  Z"00000040"
   integer,parameter::RPNCOPT_STA             =  Z"00000080"
+  integer,parameter::RPNCOPT_ENG             =  Z"00000100"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
@@ -192,18 +194,54 @@ module rpn
   character*(*),parameter::LOPS_EQ  ="eq"
   character*(*),parameter::LOPS_NEQ ="neq" 
 
+  character(*),parameter::ppars=&
+       achar(1)//"y"//&
+       achar(1)//"z"//&
+       achar(1)//"a"//&
+       achar(1)//"f"//&
+       achar(1)//"p"//&
+       achar(1)//"n"//&
+       achar(1)//"u"//&
+       achar(1)//"m"//&
+       achar(1)//"k"//&
+       achar(1)//"M"//&
+       achar(1)//"G"//&
+       achar(1)//"T"//&
+       achar(1)//"E"//&
+       achar(1)//"Z"//&
+       achar(1)//"Y"//&
+       achar(0)
+  integer,parameter::PID_yoc =  1
+  integer,parameter::PID_zep =  2
+  integer,parameter::PID_a   =  3
+  integer,parameter::PID_f   =  4
+  integer,parameter::PID_pi  =  5
+  integer,parameter::PID_n   =  6
+  integer,parameter::PID_u   =  7
+  integer,parameter::PID_mi  =  8
+  integer,parameter::PID_k   =  9
+  integer,parameter::PID_M   = 10
+  integer,parameter::PID_G   = 11
+  integer,parameter::PID_T   = 12
+  integer,parameter::PID_P   = 13
+  integer,parameter::PID_E   = 14
+  integer,parameter::PID_Z   = 15
+  integer,parameter::PID_Y   = 16
+
   character(*),parameter::spars=&
        achar(1)//"n"//&
        achar(3)//"ave"//&
        achar(3)//"var"//&
        achar(3)//"sum"//&
+       achar(4)//"sum2"//&
        achar(4)//"uvar"//&
        achar(0)
   integer,parameter::SID_N     = 1
   integer,parameter::SID_AVE   = 2
   integer,parameter::SID_VAR   = 3
   integer,parameter::SID_SUM   = 4
-  integer,parameter::SID_UVAR  = 5
+  integer,parameter::SID_SUM2  = 5
+  integer,parameter::SID_UVAR  = 6
 
   integer,parameter::int_fncs_max_len=5
   character*(*),parameter::int_fncs=&
@@ -238,10 +276,10 @@ module rpn
        achar(6)//"lgamma"//&
        achar(3)//"psy"//&
        achar(3)//"mod"//&
-       achar(3)//"min"//&
-       achar(3)//"max"//&
        achar(4)//"gami"//&
        achar(5)//"deint"//&
+       achar(3)//"min"//&
+       achar(3)//"max"//&
        achar(3)//"sum"//&
        achar(3)//"ave"//&
        achar(3)//"var"//&
@@ -281,12 +319,12 @@ module rpn
   integer,parameter::FID_PSY       = 30
   integer,parameter::FID_ARG1_END  = 30 !<<<<<<<<
   integer,parameter::FID_MOD       = 31
-  integer,parameter::FID_MIN       = 32
-  integer,parameter::FID_MAX       = 33
-  integer,parameter::FID_GAMI      = 34
-  integer,parameter::FID_ARG2_END  = 34 !<<<<<<<<
-  integer,parameter::FID_DEINT     = 35
-  integer,parameter::FID_ARG3_END  = 35 !<<<<<<<<
+  integer,parameter::FID_GAMI      = 32
+  integer,parameter::FID_ARG2_END  = 32 !<<<<<<<<
+  integer,parameter::FID_DEINT     = 33
+  integer,parameter::FID_ARG3_END  = 33 !<<<<<<<<
+  integer,parameter::FID_MIN       = 34
+  integer,parameter::FID_MAX       = 35
   integer,parameter::FID_SUM       = 36
   integer,parameter::FID_AVE       = 37
   integer,parameter::FID_VAR       = 38
@@ -811,6 +849,53 @@ contains
 
   end function eval_r
 
+  recursive function eval_p(rpnc,i) result(istat)
+    type(t_rpnc),intent(inout)::rpnc
+    integer,intent(in)::i
+    integer istat
+    real(rp) p
+    complex(cp) z
+    select case(rpnc%que(i)%cid)
+    case(PID_yoc)
+       p=1.0e-24_rp
+    case(PID_zep)
+       p=1.0e-21_rp
+    case(PID_a)
+       p=1.0e-18_rp
+    case(PID_f)
+       p=1.0e-15_rp
+    case(PID_pi)
+       p=1.0e-12_rp
+    case(PID_n)
+       p=1.0e-9_rp
+    case(PID_u)
+       p=1.0e-6_rp
+    case(PID_mi)
+       p=1.0e-3_rp
+    case(PID_k)
+       p=1.0e+3_rp
+    case(PID_M)
+       p=1.0e+6_rp
+    case(PID_G)
+       p=1.0e+9_rp
+    case(PID_T)
+       p=1.0e+12_rp
+    case(PID_P)
+       p=1.0e+15_rp
+    case(PID_E)
+       p=1.0e+18_rp
+    case(PID_Z)
+       p=1.0e+21_rp
+    case(PID_Y)
+       p=1.0e+24_rp
+    case default
+       stop "unexpected error in eval_p"
+    end select
+    z=complex(p,rzero)
+    call put_vbuf(rpnc,i,z)
+    rpnc%tmpans=z
+  end function eval_p
+
   recursive function eval_l(rpnc,i) result(istat)
     use zmath, only: ztrue, zfalse
     type(t_rpnc),intent(inout)::rpnc
@@ -1166,6 +1251,8 @@ contains
           istat=eval_uf(rpnc,i)
        case(TID_SOP)
           istat=eval_s(rpnc,i)
+       case(TID_POP)
+          istat=eval_p(rpnc,i)
        case(TID_END)
           ec=ec-1
           rpnc%rc=rpnc%rc-1
@@ -1341,6 +1428,19 @@ contains
     is_numeric=(is_number(a).or.a==46)
   end function is_numeric
   
+  logical function is_ppar(a,ent)
+    character*(*),intent(in)::a
+    integer,intent(out),optional::ent
+    integer k
+    k=get_index(ppars,a)
+    if(k/=0) then
+       if(present(ent)) ent=k
+       is_ppar=.true.
+    else
+       is_ppar=.false.
+    end if    
+  end function is_ppar
+
   logical function is_spar(a,ent)
     character*(*),intent(in)::a
     integer,intent(out),optional::ent
@@ -1536,7 +1636,9 @@ contains
           p2=get_end_of_par(rpnb,p1)
           if(p2<rpnb%len_expr) then
              if(.not.is_lop(rpnb%expr(p1:p2),t)&
-                  .and..not.(is_set(RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))) then
+                  .and..not.(is_set(RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))&
+                  .and..not.(is_set(RPNCOPT_ENG).and.is_ppar(rpnb%expr(p1:p2)))) then
+
                 k=p2+1
                 if(rpnb%expr(k:k)=="(") then
                    if(is_usr_fnc(sl,rpnb%expr(p1:p2),kf)) then
@@ -2117,6 +2219,11 @@ contains
           end if
           call put_vbuf(rpnc,i,x)
        case(TID_PAR)
+          if(is_set(RPNCOPT_ENG).and.is_ppar(_EXPR_(i),k)) then
+             q%tid=TID_POP
+             q%cid=k
+             cycle
+          end if
           if(is_set(RPNCOPT_STA).and.is_spar(_EXPR_(i),k)) then
              q%tid=TID_SOP
              q%cid=get_sid(k)
@@ -2249,6 +2356,8 @@ contains
          get_sid=loc(zms_var)
       case(SID_SUM)
          get_sid=loc(zms_sum)
+      case(SID_SUM2)
+         get_sid=loc(zms_sum2)
       case(SID_UVAR)
          get_sid=loc(zms_uvar)
       case default
