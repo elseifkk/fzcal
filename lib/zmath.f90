@@ -51,6 +51,7 @@ module zmath
   public zms_ave
   public zms_var
   public zms_uvar
+  public zms_sum2
 
   public zm_sin
   public zm_cos
@@ -585,46 +586,6 @@ contains
     zm_mod=mod(int(z1),int(z2))
   end function zm_mod
 
-  complex(cp) function zm_min(z1,z2)
-    complex(cp),intent(in)::z1,z2
-    real(rp) r1,r2,i1,i2
-    r1=realpart(z1)
-    r2=realpart(z2)
-    i1=imagpart(z1)
-    i2=imagpart(z2)
-    if(i1==rzero.and.i2==rzero) then
-       zm_min=complex(min(r1,r2),rzero)
-    else if(r1==rzero.and.r2==rzero) then
-       zm_min=complex(rzero,min(i1,i2))
-    else
-       if(abs(z1)<abs(z2)) then
-          zm_min=z1
-       else
-          zm_min=z2
-       end if
-    end if
-  end function zm_min
-
-  complex(cp) function zm_max(z1,z2)
-    complex(cp),intent(in)::z1,z2
-    real(rp) r1,r2,i1,i2
-    r1=realpart(z1)
-    r2=realpart(z2)
-    i1=imagpart(z1)
-    i2=imagpart(z2)
-    if(i1==rzero.and.i2==rzero) then
-       zm_max=complex(max(r1,r2),rzero)
-    else if(r1==rzero.and.r2==rzero) then
-       zm_max=complex(rzero,max(i1,i2))
-    else
-       if(abs(z1)>abs(z2)) then
-          zm_max=z1
-       else
-          zm_max=z2
-       end if
-    end if
-  end function zm_max
-
   complex(cp) function zm_inc_f(z)
     complex(cp),intent(in)::z
     zm_inc_f=complex(realpart(z)+imagpart(z),imagpart(z))
@@ -649,6 +610,56 @@ contains
     complex(cp),intent(in)::z
     zm_dec=z-1.0_rp
   end function zm_dec
+
+  complex(cp) function zm_min(n,pzs)
+    integer,intent(in)::n
+    integer,intent(in)::pzs(0:n)
+    integer i
+    real(rp) r1,r2,i1,i2
+    complex(cp) z
+    pointer(pz,z)
+    pz=pzs(1)
+    zm_min=z
+    do i=2,n
+       pz=pzs(i)
+       r1=realpart(zm_min)
+       i1=imagpart(zm_min)
+       r2=realpart(z)
+       i2=imagpart(z)
+       if(i1==rzero.and.i2==rzero) then
+          zm_min=complex(min(r1,r2),rzero)
+       else if(r1==rzero.and.r2==rzero) then
+          zm_min=complex(rzero,min(i1,i2))
+       else if(abs(z)<abs(zm_min)) then
+             zm_min=z
+       end if
+    end do
+  end function zm_min
+
+  complex(cp) function zm_max(n,pzs)
+    integer,intent(in)::n
+    integer,intent(in)::pzs(0:n)
+    integer i
+    real(rp) r1,r2,i1,i2
+    complex(cp) z
+    pointer(pz,z)
+    pz=pzs(1)
+    zm_max=z
+    do i=2,n
+       pz=pzs(i)
+       r1=realpart(zm_max)
+       i1=imagpart(zm_max)
+       r2=realpart(z)
+       i2=imagpart(z)
+       if(i1==rzero.and.i2==rzero) then
+          zm_max=complex(max(r1,r2),rzero)
+       else if(r1==rzero.and.r2==rzero) then
+          zm_max=complex(rzero,max(i1,i2))
+       else if(abs(z)>abs(zm_max)) then
+          zm_max=z
+       end if
+    end do
+  end function zm_max
 
   complex(cp) function zm_sum(n,pzs)
     integer,intent(in)::n
@@ -735,6 +746,12 @@ contains
     complex(cp),intent(in)::vs(n)
     zms_sum=sum(vs)
   end function zms_sum
+
+  complex(cp) function zms_sum2(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n)
+    zms_sum2=sum(vs**2.0_rp)
+  end function zms_sum2
 
 !!!!!!---------------------------------------------------------------------!!!!!!
   ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX

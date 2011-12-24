@@ -116,7 +116,6 @@ contains
        f=DISP_FMT_NORM
     end if
     if(abs(x)>disp_huge) f=DISP_FMT_RAW
-
     if(f==DISP_FMT_RAW) then
        if(x/=rzero) then
           write(rtoa,*,iostat=istat) x
