@@ -56,14 +56,11 @@ contains
        rpnc%opt=ior(rpnc%opt,RPNCOPT_STA)
        rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DAT)) ! <<<
        parse_command=CID_DONE
-    case("e","eng")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_ENG)
-       parse_command=CID_DONE       
     case("d","dat","data")
        rpnc%opt=ior(rpnc%opt,RPNCOPT_DAT)
        parse_command=CID_DONE
     case("n","norm")
-       rpnc%opt=iand(rpnc%opt,not(ior(RPNCOPT_DAT,ior(RPNCOPT_STA,RPNCOPT_ENG))))
+       rpnc%opt=iand(rpnc%opt,not(ior(RPNCOPT_DAT,RPNCOPT_STA)))
        parse_command=CID_DONE
     case("nodbg","nodebug")
        rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DEBUG))
