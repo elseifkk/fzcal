@@ -58,7 +58,7 @@ module fpio
   integer,parameter::FP2A_TRIM_ALL_TRAILING_ZEROS     =  Z"040000" ! 1.0 become 1.
   integer,parameter::FP2A_ADJUSTR                     =  Z"080000" ! LSB 4bit represents digit.
   integer,parameter::FP2A_INPUT_REAL4                 =  Z"100000"
-  integer,parameter::FP2A_DEFAULT                     = ior(18,&
+  integer,parameter::FP2A_DEFAULT                     = ior(17,&
        ior(FP2A_ALLOW_ORDINARY_EXPRESSION,&
        ior(FP2A_FORCE_NOT_SHOW_EXPSIGN,&
        ior(FP2A_SUPRESS_E0,&
