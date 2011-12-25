@@ -392,7 +392,16 @@ _FloatToBCD:
 ; local nDigit: DWORD ; number of significant digit
 ; local prefix: BYTE ; for engineering notation
 f2str_:	
- 	start_proc
+	;;  	start_proc
+%assign arg1 08
+%assign arg2 12
+%assign arg3 16
+	push ebp
+	mov ebp, esp
+	push edi
+	push esi
+	push ebx
+	
 	;; 
 %ifdef _USE32_
 	mov esi, [ebp+arg1] ; fpin	

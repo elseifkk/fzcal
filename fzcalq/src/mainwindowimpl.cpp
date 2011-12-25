@@ -126,7 +126,7 @@ void MainWindowImpl::f1Slot()
   if(!shiftBut->isChecked()){
     appendText("1");
   }else{
-    appendText("f");
+    appendText("_f");
   }
 }
 void MainWindowImpl::f2Slot()
@@ -135,7 +135,7 @@ void MainWindowImpl::f2Slot()
   if(!shiftBut->isChecked()){
     appendText("2");
   }else{
-    appendText("p");
+    appendText("_p");
   }
 }
 void MainWindowImpl::f3Slot()
@@ -144,7 +144,7 @@ void MainWindowImpl::f3Slot()
   if(!shiftBut->isChecked()){
     appendText("3");
   }else{
-    appendText("n");
+    appendText("_n");
   }
 }
 void MainWindowImpl::f4Slot()
@@ -153,7 +153,7 @@ void MainWindowImpl::f4Slot()
   if(!shiftBut->isChecked()){
     appendText("4");
   }else{
-    appendText("u");
+    appendText("_u");
   }
 }
 void MainWindowImpl::f5Slot()
@@ -162,7 +162,7 @@ void MainWindowImpl::f5Slot()
   if(!shiftBut->isChecked()){
     appendText("5");
   }else{
-    appendText("m");
+    appendText("_m");
   }
 }
 void MainWindowImpl::f6Slot()
@@ -171,7 +171,7 @@ void MainWindowImpl::f6Slot()
   if(!shiftBut->isChecked()){
     appendText("6");
   }else{
-    appendText("k");
+    appendText("_k");
   }
 }
 void MainWindowImpl::f7Slot()
@@ -180,7 +180,7 @@ void MainWindowImpl::f7Slot()
   if(!shiftBut->isChecked()){
     appendText("7");
   }else{
-    appendText("M");
+    appendText("_M");
   }
 }
 void MainWindowImpl::f8Slot()
@@ -189,7 +189,7 @@ void MainWindowImpl::f8Slot()
   if(!shiftBut->isChecked()){
     appendText("8");
   }else{
-    appendText("G");
+    appendText("_G");
   }
 }
 void MainWindowImpl::f9Slot()
@@ -198,7 +198,7 @@ void MainWindowImpl::f9Slot()
   if(!shiftBut->isChecked()){
     appendText("9");
   }else{
-    appendText("T");
+    appendText("_T");
   }
 }
 
@@ -288,11 +288,6 @@ void MainWindowImpl::shiftSlot()
 }
 void MainWindowImpl::engSlot()
 {
-  if(engBut->isChecked()){
-    fzc_set_opt(pfzc,FZCOPT_ENG);
-  }else{
-    fzc_set_opt(pfzc,FZCOPT_ENG);
-  }
 }
 void MainWindowImpl::ratioSlot()
 {

@@ -48,31 +48,32 @@ module rpn
 
   !! priority table begin
   ! asign and conditional
-  integer,parameter::TID_ASN   =   1  ! =
-  integer,parameter::TID_ASNU  =  -1
-  integer,parameter::TID_AOP   =   2 
-  integer,parameter::TID_TOP1  =   3  ! ?
-  ! logical
-  integer,parameter::TID_LOP4  =  4  ! eq,neq
-  integer,parameter::TID_LOP3  =  5  ! or
-  integer,parameter::TID_LOP2  =  6  ! and
-  integer,parameter::TID_LOP1  =  7  ! not, ~
-  integer,parameter::TID_LOP1U = -7  ! ~
-  integer,parameter::TID_ROP   =  8  ! ==, ~=, <=, >=,...
-  ! unary, binary and functions
-  integer,parameter::TID_BOP1  =   9  ! +,-
-  integer,parameter::TID_BOP1U =  -9  !
-  integer,parameter::TID_BOP2  =  10  ! *,/
-  integer,parameter::TID_BOP2U = -10  !
-  integer,parameter::TID_BOP4  =  11  ! implicit * <<<<<<<<<<< 
-  integer,parameter::TID_BOP3  =  12  ! ^,**,e
-  integer,parameter::TID_BOP3U = -12  !
-  integer,parameter::TID_UOP3  =  13  ! a++
-  integer,parameter::TID_UOP1  =  14  ! +a,-a,++a
-  integer,parameter::TID_UOP2  =  15  ! !,!!
-  integer,parameter::TID_UOP2U = -16  ! 
-  integer,parameter::TID_IFNC  =  17  ! sin, cos,...
-  integer,parameter::TID_UFNC  =  18  !
+  integer,parameter::TID_ASN    =   1  ! =
+  integer,parameter::TID_ASNU   =  -1
+  integer,parameter::TID_AOP    =   2 
+  integer,parameter::TID_TOP1   =   3  ! ?
+  ! logical                     
+  integer,parameter::TID_LOP4    =  4  ! eq,neq
+  integer,parameter::TID_LOP3    =  5  ! or
+  integer,parameter::TID_LOP2    =  6  ! and
+  integer,parameter::TID_LOP1    =  7  ! not, ~
+  integer,parameter::TID_LOP1U   = -7  ! ~
+  integer,parameter::TID_ROP     =  8  ! ==, ~=, <=, >=,...
+  ! unary, binary and functions  
+  integer,parameter::TID_BOP1    =   9  ! +,-
+  integer,parameter::TID_BOP1U   =  -9  !
+  integer,parameter::TID_BOP2    =  10  ! *,/
+  integer,parameter::TID_BOP2U   = -10  !
+  integer,parameter::TID_BOP4    =  11  ! implicit * <<<<<<<<<<< 
+  integer,parameter::TID_BOP3    =  12  ! ^,**,e
+  integer,parameter::TID_BOP3U   = -12  !
+  integer,parameter::TID_UOP3    =  13  ! a++
+  integer,parameter::TID_UOP1    =  14  ! +a,-a,++a
+  integer,parameter::TID_UOP2    =  15  ! !,!!
+  integer,parameter::TID_UOP2U   = -16  ! 
+  integer,parameter::TID_IFNC    =  17  ! sin, cos,...
+  integer,parameter::TID_UFNC    =  18  !
+  integer,parameter::TID_PRI_MAX =  18  ! 
   !! priority tabel end
 
   ! braket and delimiters
@@ -622,16 +623,27 @@ contains
     integer,intent(in)::i
     integer kd,ke,n,kz
     integer od1,j
-    complex(cp) v1
-    pointer(pv1,v1)
+    logical ok
+    complex(cp) v
+    pointer(pv,v)
 
     kd=get_up32(rpnc%que(i)%cid)
     od1=get_operand(rpnc,i-1)
+
     if(od1==0) then
        eval_c=RPNERR_NOOP
        return
     end if
-    pv1=rpnc%que(od1)%cid
+    select case(rpnc%que(od1)%tid)
+    case(TID_LVAR_T)
+       ok=.true.
+    case(TID_LVAR_F)
+       ok=.false.
+    case default
+       eval_c=RPNCERR_INVARG
+       return
+    end select
+
     ke=find_end()
     if(ke==0) then
        kz=size(rpnc%que)
@@ -639,7 +651,7 @@ contains
        kz=ke
     end if
     kz=trim_end(kz)
-    if(realpart(v1)/=0.0_rp) then
+    if(ok) then
        ! true case
        rpnc%que(kd:kz)%tid=TID_NOP
        n=(kd-1)-(i+1)+1
@@ -653,9 +665,9 @@ contains
     end if
     if(n==1) then
        select case(rpnc%que(j)%tid)
-       case(TID_VAR,TID_PAR) 
-          pv1=rpnc%que(j)%cid
-          rpnc%tmpans=v1
+       case(TID_VAR,TID_PAR,TID_ROVAR) ! ROVAR? <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
+          pv=rpnc%que(j)%cid
+          rpnc%tmpans=v
        end select
     end if
     rpnc%que(od1)%tid=TID_NOP
@@ -845,7 +857,6 @@ contains
        pz2=pvs(2)
        v=f2(z1,z2)
     end if
-
     call set_result(rpnc,i,v,2,ods,logical=.true.)
 
   end function eval_r
@@ -2804,7 +2815,8 @@ contains
     else
        do 
           if(rpnb%p_buf<=0) exit
-          if(rpnb%buf(rpnb%p_buf)%tid>=tid&
+          if(rpnb%buf(rpnb%p_buf)%tid<=TID_PRI_MAX &
+               .and.rpnb%buf(rpnb%p_buf)%tid>=tid &
                .and..not.(tid==TID_TOP1.and.rpnb%buf(rpnb%p_buf)%tid==TID_TOP1)) then
              call rpn_pop(rpnb) ! TOP1 must not popout TOP1
           else
@@ -2933,7 +2945,7 @@ contains
              call push_implicit_mul()
           end select
           call rpn_push(rpnb,t,p1,p2)
-       case(TID_HKET)
+      case(TID_HKET)
           if(.not.was_operand()) then
              istat=RPNERR_PARSER
           else
