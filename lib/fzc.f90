@@ -1,6 +1,8 @@
 module fzc
   use iso_c_binding, only: C_SIZE_T, C_INT
-  use rpn
+  use rpnd
+  use rpne
+  use rpnp
   implicit none
 
 #define size_t integer(C_SIZE_T)

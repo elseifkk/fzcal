@@ -3,7 +3,9 @@ program fzcal
   use fpio  ! for test
   use plist ! for test
   use com
-  use rpn
+  use rpnd
+  use rpne
+  use rpnp
   implicit none
   type(t_rpnc) rpnc
   pointer(p,rpnc)

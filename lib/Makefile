@@ -10,9 +10,9 @@ BINDIR = /usr/local/bin
 INCDIR = /usr/local/include
 
 #
-FC  = /usr/local/bin/gfortran46
-CC  = /usr/local/bin/gcc46
-LD  = /usr/local/bin/gfortran46
+FC  = /usr/local/bin/gfortran
+CC  = /usr/local/bin/gcc
+LD  = /usr/local/bin/gfortran
 ASM = yasm
 AR  = ar
 
@@ -32,7 +32,7 @@ LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
 #
 .ifdef _NETWALKER_
     FFLAGS += -D_NO_REAL10_ -D_NO_REAL16_ -D_NO_ASM_ -D_USE32_
-    OBJ = memioF.o fpioF.o slist.o plist.o zmath.o rpn.o com.o
+    OBJ = memioF.o fpioF.o slist.o plist.o zmath.o rpnd.o rpne.o rpnp.o com.o
     SOLIBOBJ = $(OBJ)
 .else
     USE64 != uname -m | grep -e x86_64 -e amd64 | wc -c
@@ -43,8 +43,8 @@ LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
         FFLAGS += -fdefault-integer-8
         AFLAGS += -f elf64 -m amd64
 .   endif
-    OBJ      = memioA.o memioF.o fpioA.o fpioF.o slist.o plist.o zmath.o rpn.o com.o
-    SOLIBOBJ = memioA-d.o memioF.o fpioA-d.o fpioF.o slist.o plist.o zmath.o rpn.o com.o
+    OBJ      = memioA.o memioF.o fpioA.o fpioF.o slist.o plist.o zmath.o rpnd.o rpne.o rpnp.o com.o
+    SOLIBOBJ = memioA-d.o memioF.o fpioA-d.o fpioF.o slist.o plist.o zmath.o rpnd.o rpne.o rpnp.o com.o
 .endif
 
 #
