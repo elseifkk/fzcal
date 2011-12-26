@@ -10,6 +10,8 @@ module rpnp
 #define set_opt(x) rpnc%opt=ior(rpnc%opt,(x))
 #define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
 
+  integer,parameter::narg_max=32
+
   character*(*),parameter::LOPS_NOT ="not"
   character*(*),parameter::LOPS_AND ="and"
   character*(*),parameter::LOPS_OR  ="or"
@@ -554,6 +556,13 @@ contains
     integer kf,km,ka,ke
     integer ac,vc,pc,plen
     integer tc
+
+
+!!$CALL DUMP_RPNB(RPNB)
+!!$CALL DUMP_RPNC(RPNC)
+
+
+
     ke=find_end()
     do i=k1,ke
        if(rpnc%que(i)%tid/=TID_AFNC) cycle
@@ -574,6 +583,19 @@ contains
           if(km==0) stop "*** UNEXPECTED ERROR in set_function"
           ac=km-k1+1-2 ! number of arguments
        else
+!!$# tid p1 p2 expr
+!!$    1   43    3    3 x
+!!$    2   43    6    6 x
+!!$    3    1    5    5 =
+!!$    4   42    1    1 f
+!!$ x x = f
+!!$ f ( x ) = x
+!!$ q     s
+!!$ x     =      
+!!$ f     
+!!$ x
+!!$ =
+
           ! | k1 | ... | km=i |       | ke |
           ! | x  | arg | f    | codes | =  |
           km=i
@@ -1492,8 +1514,6 @@ contains
        tid=get_next(rpnb,rpnc,p1,p2,rpnc%rl%s)
        t=get_lo32(tid)
 
-WRITE(*,*)  "t=",t
-
        select case(t)
        case(TID_BLK)
           cycle
@@ -1631,6 +1651,10 @@ WRITE(*,*)  "t=",t
              if(told/=TID_ASN) then
                 istat=RPNERR_PARSER
              else
+                ! m="
+                ! q   s      q     s
+                ! PAR =  ->  AMAC  MASN
+                !                  QSTA
                 call revert_tid(rpnb,TID_AMAC,p1,find_chr(rpnb%expr(p1+1:),"""")+p1)
                 rpnb%buf(rpnb%p_buf)%tid=TID_MASN ! it must be TID_ASN
                 call rpn_push(rpnb,TID_QSTA,p1,p2)
@@ -1640,9 +1664,10 @@ WRITE(*,*)  "t=",t
              if(.not.was_operand()) then
                 istat=RPNERR_PARSER
              else
-                if(.not.check_narg_all(TID_QSTA)) exit
+                if(.not.check_narg_all(TID_QSTA)) exit ! check unclosed ket of fnc 
                 call rpn_try_pop(rpnb,TID_QSTA)
                 call rpn_put(rpnb,TID_QEND,p1,p2)
+                call rpn_pop(rpnb) ! pop MASN
              end if
           end if
        case(TID_COMA)
@@ -1735,14 +1760,14 @@ WRITE(*,*)  "t=",t
     logical function check_narg(pfnc_off,close,who)
       integer,intent(in)::pfnc_off
       logical,intent(in)::close
-      integer,intent(out),optional::who
+      integer,intent(inout),optional::who
       integer na,namax
       integer*2 w1,w2
       type(t_rrpnq),pointer::b
-      check_narg=.true.
-      if(rpnb%p_buf<=pfnc_off) return
-      check_narg=.false.
-      istat=RPNERR_PARSER
+      if(rpnb%p_buf<=pfnc_off) then
+         check_narg=.true.
+         return
+      end if
       b => rpnb%buf(rpnb%p_buf-pfnc_off)
       w1=int(get_up32(b%p1),kind=2) ! negative if none read
       w2=int(get_up32(b%p2),kind=2) ! positive if closed
@@ -1750,7 +1775,6 @@ WRITE(*,*)  "t=",t
       namax=abs(w2)
       select case(get_lo32(b%tid))
       case(TID_UFNC,TID_IFNC)
-         if(present(who)) who=b%tid
          if(w2<=0) then
             if(w1>=0) then
                if(w1>0) then
@@ -1758,20 +1782,16 @@ WRITE(*,*)  "t=",t
                   if(close) then
                      if(na/=1.and.namax/=narg_max) then
                         istat=RPNERR_TOO_FEW_ARG
-                        return
                      end if
                      b%p2=get_i32(get_lo32(b%p2),namax)
                   else if(na==1) then
                      istat=RPNERR_TOO_MANY_ARG
-                     return
                   end if
                else if(namax/=0) then
                   istat=RPNERR_TOO_MANY_ARG
-                  return
                end if
             else
                istat=RPNERR_NO_ARG
-               return
             end if
          end if
       case(TID_BOP4) 
@@ -1780,8 +1800,12 @@ WRITE(*,*)  "t=",t
       case default
          ! return <<<<<<<
       end select
-      istat=0
-      check_narg=.true.
+      if(istat==0) then
+         check_narg=.true.
+      else
+         if(present(who)) who=b%tid
+         check_narg=.false.
+      end if
     end function check_narg
 
     subroutine set_arg_read()
@@ -1839,6 +1863,7 @@ WRITE(*,*)  "t=",t
             q%tid=TID_AFNC
             q%p1=get_i32(get_lo32(q%p1),p1+1)
             q%p2=get_i32(get_lo32(q%p2),ii)
+            call rpn_pop(rpnb)
             is_fnc_asn=.true.
          else if(rpnb%que(p_q1)%tid==TID_PAR) then ! exclude TID_POP
             q => rpnb%que(p_q1)

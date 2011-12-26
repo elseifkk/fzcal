@@ -4,8 +4,6 @@ module rpnd
   use fpio
   implicit none
 
-  integer,parameter::narg_max=32
-
   integer,parameter::RPNSTA_FNCSET = -1
   integer,parameter::RPNSTA_OK     =  0
 
@@ -73,33 +71,33 @@ module rpnd
 
   ! braket and delimiters
   integer,parameter::TID_SCL   =  64   ! ;
-  integer,parameter::TID_COL   =  65   ! :
+  integer,parameter::TID_COL   =  65   ! : PUSHED!
   integer,parameter::TID_IBRA  =  66   ! implicit (
-  integer,parameter::TID_BRA   =  67   ! (
+  integer,parameter::TID_BRA   =  67   ! ( PUSHED!
   integer,parameter::TID_KET   =  69   ! )
   integer,parameter::TID_QTN   =  70   ! "
   integer,parameter::TID_QEND  =  71
-  integer,parameter::TID_QSTA  =  72
-  integer,parameter::TID_COMA  =  73  ! ,
-  integer,parameter::TID_MASN  =  74  ! = for macro
-  integer,parameter::TID_DLM1  =  75
-  integer,parameter::TID_DLM2  =  76  ! ket
-  integer,parameter::TID_BLK   =  77  ! space and tab
-  integer,parameter::TID_HKET  =  78  ! }
-  integer,parameter::TID_USCR  =  79  ! _
-  ! 
-  integer,parameter::TID_PAR   =  32  ! a,b,c,...
-  integer,parameter::TID_PARU  = -32  ! a,b,c,...
-  integer,parameter::TID_FIG   =  33  ! 1,2,3,...
-  integer,parameter::TID_VAR   =  34  ! fig in rbuf
-  integer,parameter::TID_MAC   =  36
-  integer,parameter::TID_OP    =  37  ! operators
-  integer,parameter::TID_COP   =  38
-  integer,parameter::TID_OPN   =  39
-  integer,parameter::TID_APAR  =  40  ! par assign
-  integer,parameter::TID_AMAC  =  41
-  integer,parameter::TID_AFNC  =  42
-  integer,parameter::TID_DPAR  =  43  ! dummy par
+  integer,parameter::TID_QSTA  =  72   ! PUSHED!
+  integer,parameter::TID_COMA  =  73   ! ,
+  integer,parameter::TID_MASN  =  74   ! = for macro PUSHED!
+  integer,parameter::TID_DLM1  =  75   
+  integer,parameter::TID_DLM2  =  76   ! ket
+  integer,parameter::TID_BLK   =  77   ! space and tab
+  integer,parameter::TID_HKET  =  78   ! }
+  integer,parameter::TID_USCR  =  79   ! _
+  !                                    
+  integer,parameter::TID_PAR   =  32   ! a,b,c,...
+  integer,parameter::TID_PARU  = -32   ! a,b,c,...
+  integer,parameter::TID_FIG   =  33   ! 1,2,3,...
+  integer,parameter::TID_VAR   =  34   ! fig in rbuf
+  integer,parameter::TID_MAC   =  36   
+  integer,parameter::TID_OP    =  37   ! operators
+  integer,parameter::TID_COP   =  38   
+  integer,parameter::TID_OPN   =  39   
+  integer,parameter::TID_APAR  =  40   ! par assign
+  integer,parameter::TID_AMAC  =  41   
+  integer,parameter::TID_AFNC  =  42   
+  integer,parameter::TID_DPAR  =  43   ! dummy par
   integer,parameter::TID_END   =  44
   integer,parameter::TID_ROVAR =  45 
   integer,parameter::TID_LVAR_T = 46
