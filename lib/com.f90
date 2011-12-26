@@ -72,7 +72,7 @@ contains
        parse_command=CID_DONE
     case("f","frac")
        rpnc%opt=iand(rpnc%opt,not(RPNCOPT_RATIO))
-       parse_command=CID_DONEb
+       parse_command=CID_DONE
     case("md")
        parse_command=CID_DUMP_M
     case("fd")
