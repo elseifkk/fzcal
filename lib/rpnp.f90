@@ -1,234 +1,20 @@
-module rpn
+module rpnp
   use slist
   use plist
   use fpio
+  use rpnd
   implicit none
 
 #define is_set(x) (iand(rpnc%opt,(x))/=0)
 #define is_uset(x) (iand(rpnc%opt,(x))==0)
-
-  integer,parameter::narg_max=32
-
-!  private
-
-  integer,parameter::RPNSTA_FNCSET = -1
-  integer,parameter::RPNSTA_OK     =  0
-
-  integer,parameter::RPNERR_NOENT  =  1
-  integer,parameter::RPNERR_NOOP   =  2
-  integer,parameter::RPNERR_NOPAR  =  3
-  integer,parameter::RPNERR_NOFNC  =  4
-  integer,parameter::RPNERR_ADDPAR =  5
-  integer,parameter::RPNERR_INVASN =  6
-  integer,parameter::RPNERR_INVOP  =  7
-  integer,parameter::RPNERR_INVFNC =  8
-  integer,parameter::RPNERR_PARSER =  9
-  integer,parameter::RPNERR_ADDSTR = 10
-  integer,parameter::RPNERR_MEMOV  = 11
-  integer,parameter::RPNERR_RECOV  = 12
-  integer,parameter::RPNERR_NARG   = 13
-  integer,parameter::RPNERR_GETPAR = 14
-  integer,parameter::RPNERR_TOO_MANY_ARG = 14
-  integer,parameter::RPNERR_TOO_FEW_ARG  = 15
-  integer,parameter::RPNERR_NO_ARG       = 16
-  integer,parameter::RPNCERR_INVARG = 17
-
-  integer,parameter::RPN_REC_MAX   =  256
-  integer,parameter::NUM_VBUF_MIN  =   32
-  integer,parameter::NUM_PBUF_MIN  =   32
-  integer,parameter::NUM_RPNM_MIN  =    8
-  integer,parameter::LEN_PLIST_MIN = 1024
-  integer,parameter::LEN_RLIST_MIN = 1024
-
-  ! meta tid
-  integer,parameter::TID_FIN   =   999
-  integer,parameter::TID_UNDEF =  1000
-  integer,parameter::TID_INV   =   666
-  integer,parameter::TID_NOP   =     0
-
-  !! priority table begin
-  ! asign and conditional
-  integer,parameter::TID_ASN    =   1  ! =
-  integer,parameter::TID_ASNU   =  -1
-  integer,parameter::TID_AOP    =   2 
-  integer,parameter::TID_TOP1   =   3  ! ?
-  ! logical                     
-  integer,parameter::TID_LOP4    =  4  ! eq,neq
-  integer,parameter::TID_LOP3    =  5  ! or
-  integer,parameter::TID_LOP2    =  6  ! and
-  integer,parameter::TID_LOP1    =  7  ! not, ~
-  integer,parameter::TID_LOP1U   = -7  ! ~
-  integer,parameter::TID_ROP     =  8  ! ==, ~=, <=, >=,...
-  ! unary, binary and functions  
-  integer,parameter::TID_BOP1    =   9  ! +,-
-  integer,parameter::TID_BOP1U   =  -9  !
-  integer,parameter::TID_BOP2    =  10  ! *,/
-  integer,parameter::TID_BOP2U   = -10  !
-  integer,parameter::TID_BOP4    =  11  ! implicit * <<<<<<<<<<< 
-  integer,parameter::TID_BOP3    =  12  ! ^,**,e
-  integer,parameter::TID_BOP3U   = -12  !
-  integer,parameter::TID_UOP3    =  13  ! a++
-  integer,parameter::TID_UOP1    =  14  ! +a,-a,++a
-  integer,parameter::TID_UOP2    =  15  ! !,!!
-  integer,parameter::TID_UOP2U   = -16  ! 
-  integer,parameter::TID_IFNC    =  17  ! sin, cos,...
-  integer,parameter::TID_UFNC    =  18  !
-  integer,parameter::TID_PRI_MAX =  18  ! 
-  !! priority tabel end
-
-  ! braket and delimiters
-  integer,parameter::TID_SCL   =  64   ! ;
-  integer,parameter::TID_COL   =  65   ! :
-  integer,parameter::TID_IBRA  =  66   ! implicit (
-  integer,parameter::TID_BRA   =  67   ! (
-  integer,parameter::TID_KET   =  69   ! )
-  integer,parameter::TID_QTN   =  70   ! "
-  integer,parameter::TID_QEND  =  71
-  integer,parameter::TID_QSTA  =  72
-  integer,parameter::TID_COMA  =  73  ! ,
-  integer,parameter::TID_MASN  =  74  ! = for macro
-  integer,parameter::TID_DLM1  =  75
-  integer,parameter::TID_DLM2  =  76  ! ket
-  integer,parameter::TID_BLK   =  77  ! space and tab
-  integer,parameter::TID_HKET  =  78  ! }
-  integer,parameter::TID_USCR  =  79  ! _
-  ! 
-  integer,parameter::TID_PAR   =  32  ! a,b,c,...
-  integer,parameter::TID_PARU  = -32  ! a,b,c,...
-  integer,parameter::TID_FIG   =  33  ! 1,2,3,...
-  integer,parameter::TID_VAR   =  34  ! fig in rbuf
-  integer,parameter::TID_MAC   =  36
-  integer,parameter::TID_OP    =  37  ! operators
-  integer,parameter::TID_COP   =  38
-  integer,parameter::TID_OPN   =  39
-  integer,parameter::TID_APAR  =  40  ! par assign
-  integer,parameter::TID_AMAC  =  41
-  integer,parameter::TID_AFNC  =  42
-  integer,parameter::TID_DPAR  =  43  ! dummy par
-  integer,parameter::TID_END   =  44
-  integer,parameter::TID_ROVAR =  45 
-  integer,parameter::TID_LVAR_T = 46
-  integer,parameter::TID_LVAR_F = 47
-  integer,parameter::TID_LOP    = 48
-  integer,parameter::TID_SOP    = 49
-  integer,parameter::TID_POP    = 50
-
-  integer,parameter::LOID_NOT = 1
-  integer,parameter::LOID_AND = 2
-  integer,parameter::LOID_OR  = 3
-  integer,parameter::LOID_EQ  = 4
-  integer,parameter::LOID_NEQ = 5
-
-  integer,parameter::LEN_STR_MAX=1024
-  integer,parameter::LEN_FORMULA_MAX=LEN_STR_MAX
-
-  type t_rrpnq
-     integer tid
-     integer p1,p2
-  end type t_rrpnq
-
-  type t_rpnq
-     integer tid
-     integer cid ! oid or fid or pointer to value
-  end type t_rpnq
-  
-  type t_rpnb
-     character(LEN_FORMULA_MAX) expr
-     integer len_expr
-     integer cur_pos
-     integer old_pos
-     integer old_tid
-     type(t_rrpnq),allocatable::que(:)
-     type(t_rrpnq),allocatable::buf(:)
-     integer p_buf,p_que
-  end type t_rpnb
-
-  type t_rpnm
-     type(t_rpnq),allocatable::que(:)  ! allocated
-     complex(cp),allocatable::vbuf(:)  ! allocated
-     integer,allocatable::p_vbuf       ! allocated
-     type(t_plist),pointer::pars       ! => rpnc%pars
-     complex(cp),pointer::answer       ! => rpnc%answer
-     complex(cp),pointer::tmpans       ! => rpnc%tmpans
-     type(t_slist),allocatable::pnames ! allocated
-     integer,allocatable::na               ! num arg
-  end type t_rpnm
-
-  type t_rpnlist
-     type(t_rpnm),allocatable::rpnm(:)
-     type(t_slist) s
-  end type t_rpnlist
-
-  type t_rpnc
-     type(t_rpnq),pointer::que(:)
-     complex(cp),pointer::vbuf(:)
-     integer,pointer::p_vbuf
-     type(t_plist),pointer::pars
-     complex(cp),pointer::answer
-     complex(cp),pointer::tmpans
-     type(t_rpnlist),pointer::rl
-     integer,pointer::rc ! recursion count
-     integer,pointer::opt
-     integer,pointer::pfs(:) 
-     complex(cp),pointer::vs(:)
-     integer,pointer::p_vs
-  end type t_rpnc
-
-  integer,parameter::RPNCOPT_NOP             =  0
-  integer,parameter::RPNCOPT_DEBUG           =  Z"08000000"
-  integer,parameter::RPNCOPT_READY           =  Z"00000001"
-  integer,parameter::RPNCOPT_DEG             =  Z"00000002"
-  integer,parameter::RPNCOPT_NEW             =  Z"00000004"
-  integer,parameter::RPNCOPT_NO_AUTO_ADD_PAR =  Z"00000008"
-  integer,parameter::RPNCOPT_RATIO           =  Z"00000010"
-  integer,parameter::RPNCOPT_NO_WARN         =  Z"00000020"
-  integer,parameter::RPNCOPT_DAT             =  Z"00000040"
-  integer,parameter::RPNCOPT_STA             =  Z"00000080"
-
-  integer,parameter::AID_NOP = 0
-  integer,parameter::OID_NOP = 0
-  integer,parameter::OID_CND = 1
+#define set_opt(x) rpnc%opt=ior(rpnc%opt,(x))
+#define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
 
   character*(*),parameter::LOPS_NOT ="not"
   character*(*),parameter::LOPS_AND ="and"
   character*(*),parameter::LOPS_OR  ="or"
   character*(*),parameter::LOPS_EQ  ="eq"
   character*(*),parameter::LOPS_NEQ ="neq" 
-
-  character(*),parameter::ppars=&
-       achar(1)//"y"//&
-       achar(1)//"z"//&
-       achar(1)//"a"//&
-       achar(1)//"f"//&
-       achar(1)//"p"//&
-       achar(1)//"n"//&
-       achar(1)//"u"//&
-       achar(1)//"m"//&
-       achar(1)//"k"//&
-       achar(1)//"M"//&
-       achar(1)//"G"//&
-       achar(1)//"T"//&
-       achar(1)//"P"//&
-       achar(1)//"E"//&
-       achar(1)//"Z"//&
-       achar(1)//"Y"//&
-       achar(0)
-  integer,parameter::PID_yoc =  1
-  integer,parameter::PID_zep =  2
-  integer,parameter::PID_a   =  3
-  integer,parameter::PID_f   =  4
-  integer,parameter::PID_pi  =  5
-  integer,parameter::PID_n   =  6
-  integer,parameter::PID_u   =  7
-  integer,parameter::PID_mi  =  8
-  integer,parameter::PID_k   =  9
-  integer,parameter::PID_M   = 10
-  integer,parameter::PID_G   = 11
-  integer,parameter::PID_T   = 12
-  integer,parameter::PID_P   = 13
-  integer,parameter::PID_E   = 14
-  integer,parameter::PID_Z   = 15
-  integer,parameter::PID_Y   = 16
 
   character(*),parameter::spars=&
        achar(1)//"n"//&
@@ -333,44 +119,7 @@ module rpn
   integer,parameter::FID_UVAR      = 39
   integer,parameter::FID_SUM2      = 40
 
-  integer,parameter::SC_RO  = 1
-  integer,parameter::SC_MAC = 2
-  integer,parameter::SC_FNC = 4
-
-  interface put_vbuf
-     module procedure put_vbuf_r
-     module procedure put_vbuf_z
-  end interface put_vbuf
-
 contains
-
-  character(LEN_STR_ANS_MAX) function rpn_sans(rpnc)
-    use memio
-    type(t_rpnc),intent(in)::rpnc
-    if(is_uset(RPNCOPT_RATIO)) then
-       rpn_sans=trim(ztoa(rpnc%answer))
-    else
-       rpn_sans=trim(itoa(int(realpart(rpnc%answer))))
-       if(int(imagpart(rpnc%answer))>1) then
-          rpn_sans=trim(rpn_sans)//"/"//trim(itoa(int(imagpart(rpnc%answer))))
-       end if
-    end if
-  end function rpn_sans
-
-  complex(cp) function rpn_ans(rpnc)
-    type(t_rpnc),intent(in)::rpnc
-    rpn_ans=rpnc%answer
-  end function rpn_ans
-
-  real(rp) function rpn_rans(rpnc)
-    type(t_rpnc),intent(in)::rpnc
-    rpn_rans=realpart(rpnc%answer)
-  end function rpn_rans
-
-  real(dp) function rpn_dans(rpnc)
-    type(t_rpnc),intent(in)::rpnc
-    rpn_dans=real(realpart(rpnc%answer),kind=dp)
-  end function rpn_dans
   
   integer function strip(s)
     character*(*),intent(inout)::s
@@ -393,959 +142,6 @@ contains
     if(wc/=0) k=k-1
     strip=k
   end function strip
-
-  function init_rpnlist(sz,nmax)
-    type(t_rpnlist) init_rpnlist
-    integer,intent(in)::sz,nmax
-    init_rpnlist%s=init_slist(sz)
-    if(nmax>0) allocate(init_rpnlist%rpnm(nmax))
-  end function init_rpnlist
-
-  subroutine uinit_rpnms(n,rpnm)
-    integer,intent(in)::n
-    type(t_rpnm),intent(inout)::rpnm(n)
-    integer i
-    do i=1,n
-       if(allocated (rpnm(i)%que))    deallocate(rpnm(i)%que)
-       if(allocated (rpnm(i)%vbuf))   deallocate(rpnm(i)%vbuf)
-       if(allocated (rpnm(i)%na))     deallocate(rpnm(i)%na)
-       if(associated(rpnm(i)%pars))   nullify(   rpnm(i)%pars)
-       if(associated(rpnm(i)%tmpans)) nullify(   rpnm(i)%tmpans)
-       if(associated(rpnm(i)%answer)) nullify(   rpnm(i)%answer)
-       if(allocated (rpnm(i)%p_vbuf)) deallocate(rpnm(i)%p_vbuf)
-       if(allocated (rpnm(i)%na))     deallocate(rpnm(i)%na)
-       call uinit_slist(rpnm(i)%pnames)
-    end do
-  end subroutine uinit_rpnms
-
-  subroutine uinit_rpnlist(rl)
-    type(t_rpnlist),intent(inout),target::rl
-    call uinit_slist(rl%s)
-    if(.not.allocated(rl%rpnm)) return
-    call uinit_rpnms(size(rl%rpnm),rl%rpnm)
-  end subroutine uinit_rpnlist
-
-  subroutine inc_vbuf(rpnc,n)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::n
-    complex(cp),allocatable::vb(:)
-    if(n<=0) return
-    if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) then
-       allocate(vb(size(rpnc%vbuf)))
-       vb=rpnc%vbuf
-       deallocate(rpnc%vbuf)
-       allocate(rpnc%vbuf(size(vb)+n))
-       rpnc%vbuf(1:size(vb))=vb
-       deallocate(vb)
-    else
-       allocate(rpnc%vbuf(n))
-    end if
-  end subroutine inc_vbuf
-  
-   integer function init_rpnc(nvbuf_,szplist_,npbuf_,szrlist_,nrpnm_)
-     ! type(t_rpnc) function init_rpnc causes segmentation fault
-    use zmath
-    type(t_rpnc) rpnc
-    pointer(p,rpnc)
-    integer,intent(in),optional::nvbuf_,szplist_,npbuf_,szrlist_,nrpnm_
-    integer nvbuf,szplist,npbuf,szrlist,nrpnm
-    p=malloc(sizeof(rpnc))
-    nvbuf=NUM_VBUF_MIN
-    if(present(nvbuf_).and.nvbuf>0) then
-       nvbuf=nvbuf_
-    end if
-    if(present(szplist_)) then
-       szplist=szplist_
-    else
-       szplist=LEN_PLIST_MIN
-    end if
-    if(present(npbuf_)) then
-       npbuf=npbuf_
-    else
-       npbuf=NUM_PBUF_MIN
-    end if
-    if(present(szrlist_)) then
-       szrlist=szrlist_
-    else
-       szrlist=LEN_RLIST_MIN
-    end if
-    if(present(nrpnm_)) then
-       nrpnm=nrpnm_
-    else
-       nrpnm=NUM_RPNM_MIN
-    end if
-    nullify (rpnc%que)
-    nullify (rpnc%vbuf)
-    allocate(rpnc%vbuf(nvbuf))
-    allocate(rpnc%rl)
-    allocate(rpnc%tmpans)
-    allocate(rpnc%answer)
-    rpnc%answer=czero
-    allocate(rpnc%pars)
-    allocate(rpnc%p_vbuf)
-    allocate(rpnc%rc)
-    allocate(rpnc%opt)
-    nullify(rpnc%vs)
-    nullify(rpnc%p_vs)
-    allocate(rpnc%pfs(3))
-    rpnc%pfs(1)=loc(zm_f1)
-    rpnc%pfs(2)=loc(zm_f2)
-    rpnc%pfs(3)=loc(zm_f3)
-    rpnc%pars=init_par(rpnc,szplist,npbuf)
-    rpnc%rl=init_rpnlist(szrlist,nrpnm)
-    rpnc%opt=RPNCOPT_NOP
-    init_rpnc=p
-  end function init_rpnc
-
-  subroutine cp_rpnm(rpnm1,rpnm2)
-    type(t_rpnm),intent(in)::rpnm1
-    type(t_rpnm),intent(inout)::rpnm2
-    if(.not.allocated(rpnm2%que)) then
-       allocate(rpnm2%que(size(rpnm1%que)))
-       rpnm2%que=rpnm1%que
-    end if
-    if(.not.allocated(rpnm2%vbuf)) then
-       allocate(rpnm2%vbuf(size(rpnm1%vbuf)))
-       rpnm2%vbuf=rpnm1%vbuf
-    end if
-    if(.not.allocated(rpnm2%p_vbuf)) then 
-       allocate(rpnm2%p_vbuf)
-       rpnm2%p_vbuf=rpnm1%p_vbuf
-    end if
-    if(.not.allocated(rpnm2%pnames)) then
-       allocate(rpnm2%pnames)
-       rpnm2%pnames=init_slist(0)
-       call min_cp_slist(rpnm1%pnames,rpnm2%pnames) !<<<
-    end if
-  end subroutine cp_rpnm
-
-  subroutine min_cp_rpnlist(rl1,rl2)
-    type(t_rpnlist),intent(in)::rl1
-    type(t_rpnlist),intent(inout)::rl2
-    integer i
-    call min_cp_slist(rl1%s,rl2%s)
-    if(rl2%s%n<=0) return
-    allocate(rl2%rpnm(rl2%s%n))
-    do i=1,rl2%s%n
-       call cp_rpnm(rl1%rpnm(i),rl2%rpnm(i))
-    end do
-  end subroutine min_cp_rpnlist
-
-  integer function cp_rpnc(rpnc_in)
-    type(t_rpnc),intent(in)::rpnc_in
-    type(t_rpnc) rpnc
-    integer istat
-    pointer(p,rpnc)
-    p=init_rpnc(size(rpnc_in%vbuf),0,0,0,0)
-    call min_cp_rpnlist(rpnc_in%rl,rpnc%rl)
-    call min_cp_plist(rpnc_in%pars,rpnc%pars)
-    istat=add_par_by_reference(rpnc%pars,"tmp",loc(rpnc%tmpans),.true.)
-    istat=add_par_by_reference(rpnc%pars,"ans",loc(rpnc%answer),.true.)
-    cp_rpnc=p
-  end function cp_rpnc
-
-  subroutine uinit_rpnc(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
-    if(associated(rpnc%que).and.size(rpnc%que)>0) deallocate(rpnc%que)
-    if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) deallocate(rpnc%vbuf)
-    if(associated(rpnc%tmpans)) deallocate(rpnc%tmpans)
-    if(associated(rpnc%answer)) deallocate(rpnc%answer)
-    if(associated(rpnc%pars)) call uinit_par(rpnc)
-    if(associated(rpnc%p_vbuf)) deallocate(rpnc%p_vbuf)
-    if(associated(rpnc%rc)) deallocate(rpnc%rc)
-    if(associated(rpnc%rl)) call uinit_rpnlist(rpnc%rl)
-    if(associated(rpnc%pfs)) deallocate(rpnc%pfs)
-    if(associated(rpnc%vs)) deallocate(rpnc%vs)
-    if(associated(rpnc%p_vs)) deallocate(rpnc%p_vs)
-  end subroutine uinit_rpnc
-
-  function init_par(rpnc,sz,nmax)
-    type(t_plist) init_par
-    type(t_rpnc),intent(in)::rpnc
-    integer,intent(in)::sz,nmax
-    integer istat
-    init_par=init_plist(sz,nmax)
-    if(sz==0.or.nmax==0) return
-    istat=add_par_by_reference(init_par,"tmp",loc(rpnc%tmpans),.true.)
-    istat=add_par_by_reference(init_par,"ans",loc(rpnc%answer),.true.)
-    istat=add_par_by_value(init_par,"eps",epsilon(0.0_rp),.true.)    
-    istat=add_par_by_value(init_par,"huge",huge(0.0_rp),.true.)    
-    istat=add_par_by_value(init_par,"i",complex(0.0_rp,1.0_rp),.true.)
-    istat=add_par_by_value(init_par,"pi",atan(1.0_rp)*4.0_rp,.true.)
-    istat=add_par_by_value(init_par,"c",2.99792458e8_rp,.true.)
-  end function init_par
-
-  subroutine uinit_par(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
-    call uinit_plist(rpnc%pars)
-  end subroutine uinit_par
-
-  subroutine delete_par(rpnc,s)
-    type(t_rpnc),intent(inout)::rpnc
-    character*(*),intent(in)::s
-    integer istat
-    istat=rm_par(rpnc%pars,trim(adjustl(s)))
-    if(istat/=0) write(*,*) "*** Error delete_par: "//trim(s)//": code = ",istat
-  end subroutine delete_par
-
-  integer function get_operand(rpnc,i)
-    type(t_rpnc),intent(in)::rpnc
-    integer,intent(in)::i
-    integer j
-    get_operand=0
-    do j=i,1,-1
-       select case(rpnc%que(j)%tid)
-       case(TID_VAR,TID_PAR,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
-          get_operand=j
-          return
-       end select
-    end do
-  end function get_operand
-
-  logical function is_integer(z,n)
-    complex(cp),intent(in)::z
-    integer,intent(out),optional::n
-    integer m
-    real(rp) x
-    is_integer=.false.
-    if(imagpart(z)/=rzero) return
-    x=realpart(z)
-    m=int(x)
-    x=x-m
-    if(x==0) then 
-       is_integer=.true.
-       if(present(n)) n=m
-    end if
-  end function is_integer
-
-  integer function eval_c(rpnc,i)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer kd,ke,n,kz
-    integer od1,j
-    logical ok
-    complex(cp) v
-    pointer(pv,v)
-
-    kd=get_up32(rpnc%que(i)%cid)
-    od1=get_operand(rpnc,i-1)
-
-    if(od1==0) then
-       eval_c=RPNERR_NOOP
-       return
-    end if
-    select case(rpnc%que(od1)%tid)
-    case(TID_LVAR_T)
-       ok=.true.
-    case(TID_LVAR_F)
-       ok=.false.
-    case default
-       eval_c=RPNCERR_INVARG
-       return
-    end select
-
-    ke=find_end()
-    if(ke==0) then
-       kz=size(rpnc%que)
-    else
-       kz=ke
-    end if
-    kz=trim_end(kz)
-    if(ok) then
-       ! true case
-       rpnc%que(kd:kz)%tid=TID_NOP
-       n=(kd-1)-(i+1)+1
-       j=i+1
-    else
-       ! false case
-       rpnc%que(i:kd)%tid=TID_NOP
-       n=(kz)-(kd+1)+1
-       if(ke/=0) n=n-1
-       j=kd+1
-    end if
-    if(n==1) then
-       select case(rpnc%que(j)%tid)
-       case(TID_VAR,TID_PAR,TID_ROVAR) ! ROVAR? <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
-          pv=rpnc%que(j)%cid
-          rpnc%tmpans=v
-       end select
-    end if
-    rpnc%que(od1)%tid=TID_NOP
-     
-    eval_c=0
-
-  contains
- 
-    integer function trim_end(kend)
-      integer,intent(in)::kend
-      integer ii
-      do ii=kend,1,-1
-         if(rpnc%que(ii)%tid/=TID_NOP) then
-            trim_end=ii
-            return
-         end if
-      end do
-      trim_end=0
-    end function trim_end
-
-    integer function find_end()
-      integer ii
-      integer c
-      find_end=0
-      c=rpnc%que(kd)%cid ! bra-ket count
-      do ii=i,size(rpnc%que)
-         select case(rpnc%que(ii)%tid)
-         case(TID_END)
-            find_end=ii
-            return
-         case(TID_DLM2)
-            if(rpnc%que(ii)%cid==c) then
-               find_end=ii
-               return
-            end if
-         end select
-      end do
-    end function find_end
-    
-  end function eval_c
-
-  subroutine set_result(rpnc,i,v,n,ks,logical)
-    use zmath, only: zfalse
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    complex(cp),intent(in)::v
-    integer,intent(in),optional::n
-    integer,intent(in),optional::ks(:)
-    logical,intent(in),optional::logical
-    integer j,tid,k1
-    logical var
-    complex(cp) z
-    pointer(pz,z)
-    var=.true.
-    tid=TID_VAR
-    if(present(logical)) then
-       if(logical) then
-          var=.false.
-          if(v==zfalse) then
-             tid=TID_LVAR_F
-          else
-             tid=TID_LVAR_T
-          end if
-       end if
-    end if
-    k1=0
-    if(present(ks)) then
-       if(var) then
-          ! find the first writable var
-          do j=n,1,-1
-             select case(rpnc%que(ks(j))%tid)
-             case(TID_VAR,TID_LVAR_T,TID_LVAR_F)
-                k1=j
-                exit
-             end select
-          end do
-       else
-          select case(rpnc%que(ks(n))%tid)
-          case(TID_VAR,TID_LVAR_T,TID_LVAR_F)
-             k1=n ! writable var
-          case(TID_ROVAR,TID_PAR)
-             pz=rpnc%que(ks(n))%cid ! unwratable; k1=0
-          end select
-       end if
-       do j=n,1,-1
-          rpnc%que(ks(j))%tid=TID_NOP
-       end do
-       if(k1/=0) then
-          ! writable var found
-          if(var) then
-             pz=rpnc%que(ks(k1))%cid
-             z=v
-             ! else if logical the first operand left unchenged
-             ! and given TID_LVAR
-          end if
-          rpnc%que(ks(k1))%tid=tid
-       end if
-    end if
-    rpnc%que(i)%tid=TID_NOP
-    if(k1==0) then
-       ! no wratable vars
-       if(var) then
-          ! allocate buffer for i
-          call put_vbuf(rpnc,i,v,tid)
-       else
-          ! change the last operands to z with TID_LVAR
-          call put_vbuf(rpnc,ks(n),z,tid)          
-       end if
-    end if
-    rpnc%tmpans=v
-  end subroutine set_result
-  
-  integer function get_operands(rpnc,i,n,ps,ks)
-    type(t_rpnc),intent(in)::rpnc
-    integer,intent(in)::i,n
-    integer,intent(out),optional::ps(0:n) 
-    integer,intent(out),optional::ks(n)
-    integer k,j
-    k=i-1
-    do j=n,1,-1
-       k=get_operand(rpnc,k)
-       if(k<=j-1) then
-          get_operands=RPNERR_NOOP
-          return
-       end if
-       if(present(ps)) ps(j)=rpnc%que(k)%cid
-       if(present(ks)) ks(j)=k
-       k=k-1
-    end do
-    get_operands=0
-  end function get_operands
-
-  recursive function eval_0(rpnc,i) result(istat)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    interface
-       function f0()
-         use fpio, only: cp
-         complex(cp) f0
-       end function f0
-    end interface
-    integer istat
-    pointer(pf0,f0)
-    complex(cp) v
-    pf0=rpnc%que(i)%cid
-    v=f0()
-    call set_result(rpnc,i,v,0)
-    istat=0
-  end function eval_0
-
-  recursive function eval_r(rpnc,i) result(istat)
-    use zmath, only: zfalse
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    interface
-       function f2(z1,z2)
-         use fpio, only: cp
-         complex(cp) f2
-         complex(cp),intent(in)::z1,z2
-       end function f2
-    end interface
-    pointer(pfn,f2)
-    integer istat
-    integer pvs(0:narg_max)
-    integer ods(1:narg_max)
-    complex(cp) v,z1,z2
-    pointer(pz1,z1)
-    pointer(pz2,z2)
-    logical ok
-    
-    istat=get_operands(rpnc,i,2,ks=ods,ps=pvs)
-    if(istat/=0) return
-
-    ! ods(1) may be logical
-    ! ods(2) must be value but no ckeck here
-    select case(rpnc%que(ods(1))%tid)
-    case(TID_LVAR_F)
-       ok=.false.
-       v=zfalse
-    case default
-       ok=.true.
-    end select
-
-    if(ok) then
-       pfn=rpnc%que(i)%cid
-       pz1=pvs(1)
-       pz2=pvs(2)
-       v=f2(z1,z2)
-    end if
-    call set_result(rpnc,i,v,2,ods,logical=.true.)
-
-  end function eval_r
-
-  recursive function eval_p(rpnc,i) result(istat)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer istat
-    real(rp) p
-    complex(cp) z
-    select case(rpnc%que(i)%cid)
-    case(PID_yoc)
-       p=1.0e-24_rp
-    case(PID_zep)
-       p=1.0e-21_rp
-    case(PID_a)
-       p=1.0e-18_rp
-    case(PID_f)
-       p=1.0e-15_rp
-    case(PID_pi)
-       p=1.0e-12_rp
-    case(PID_n)
-       p=1.0e-9_rp
-    case(PID_u)
-       p=1.0e-6_rp
-    case(PID_mi)
-       p=1.0e-3_rp
-    case(PID_k)
-       p=1.0e+3_rp
-    case(PID_M)
-       p=1.0e+6_rp
-    case(PID_G)
-       p=1.0e+9_rp
-    case(PID_T)
-       p=1.0e+12_rp
-    case(PID_P)
-       p=1.0e+15_rp
-    case(PID_E)
-       p=1.0e+18_rp
-    case(PID_Z)
-       p=1.0e+21_rp
-    case(PID_Y)
-       p=1.0e+24_rp
-    case default
-       stop "unexpected error in eval_p"
-    end select
-    z=complex(p,rzero)
-    call put_vbuf(rpnc,i,z)
-    rpnc%tmpans=z
-    istat=0
-  end function eval_p
-
-  recursive function eval_l(rpnc,i) result(istat)
-    use zmath, only: ztrue, zfalse
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer istat
-    integer na
-    integer ks(1:narg_max)
-    logical ods(1:narg_max)
-    logical v
-    integer j,tid
-    complex(cp) z
-
-    na=get_up32(rpnc%que(i)%tid)
-    if(i-1<na) then
-       istat=RPNERR_NOOP
-       return
-    end if
-    
-    istat=get_operands(rpnc,i,na,ks=ks)
-    if(istat/=0) return
-
-    do j=1,na
-       select case(rpnc%que(ks(j))%tid)
-       case(TID_LVAR_T)
-          ods(j)=.true.
-       case(TID_LVAR_F)
-          ods(j)=.false.
-       case default
-          istat=RPNCERR_INVARG
-          return
-       end select
-    end do
-
-    select case(rpnc%que(i)%cid)
-    case(LOID_NOT)
-       v=.not.ods(1)
-    case(LOID_AND)
-       v=ods(1).and.ods(2)
-    case(LOID_OR)
-       v=ods(1).or.ods(2)
-    case(LOID_EQ)
-       v=ods(1).eqv.ods(2)
-    case(LOID_NEQ)
-       v=ods(1).neqv.ods(2)
-    case default
-       stop "internal error"
-    end select
-
-    do j=1,na
-       rpnc%que(ks(j))%tid=TID_NOP
-    end do
-
-    if(v) then
-       tid=TID_LVAR_T
-       z=ztrue
-    else
-       tid=TID_LVAR_F
-       z=zfalse
-    end if
-
-    call put_vbuf(rpnc,i,z,tid)
-    rpnc%tmpans=z
-
-  end function eval_l
-
-  recursive function eval_s(rpnc,i) result(istat)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer istat
-    interface
-       function fn(n,vs)
-         use fpio, only: cp
-         complex(cp) fn
-         integer,intent(in)::n
-         complex(cp),intent(in)::vs(n)
-       end function fn
-    end interface
-    pointer(pfn,fn)
-    complex(cp) v
-    if(rpnc%p_vs==0) then
-       v=czero
-    else
-       pfn=rpnc%que(i)%cid
-       v=fn(rpnc%p_vs,rpnc%vs)
-    end if
-    call set_result(rpnc,i,v)
-    istat=0
-  end function eval_s
-
-  recursive function eval_n(rpnc,i) result(istat)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    interface
-       function fn(n,ps)
-         use fpio, only: cp
-         complex(cp) fn
-         integer,intent(in)::n
-         integer,intent(in)::ps(0:n)
-       end function fn
-    end interface
-    pointer(pfn,fn)
-    integer istat
-    integer na
-    integer pvs(0:narg_max)
-    integer ods(1:narg_max)
-    complex(cp) v
-    integer tid
-
-    na=get_up32(rpnc%que(i)%tid)
-    if(na==0) then
-       istat=eval_0(rpnc,i)
-       return
-    end if
-
-    tid=get_lo32(rpnc%que(i)%tid)
-
-    if(i-1<na) then
-       istat=RPNERR_NOOP
-       return
-    end if
-    
-    istat=get_operands(rpnc,i,na,ks=ods,ps=pvs)
-    if(istat/=0) return
-
-    pvs(0)=rpnc%que(i)%cid
-    if(tid/=TID_OPN) then
-       pfn=rpnc%pfs(na) 
-    else
-       pfn=rpnc%que(i)%cid
-    end if
-    v=fn(na,pvs)
-    if(tid==TID_AOP) call set_assign()
-
-    call set_result(rpnc,i,v,na,ods)
-    
-  contains
-    
-    subroutine set_assign()
-      complex(cp) z
-      pointer(pz,z)
-      pz=pvs(1)
-      z=v
-      rpnc%opt=ior(rpnc%opt,RPNCOPT_NEW)
-    end subroutine set_assign
-
-  end function eval_n
-
-  recursive function eval_uf(rpnc,i) result(istat)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer istat
-    type(t_rpnm),pointer::rpnm
-    type(t_rpnc) fnc
-    integer j
-    integer kp
-    integer,allocatable::ods(:)
-    complex(cp) v
-    pointer(pv,v)
-
-    rpnm=>rpnc%rl%rpnm(rpnc%que(i)%cid)
-
-    if(i-1<rpnm%na) then
-       istat=RPNERR_NOOP
-       return
-    end if
-
-    allocate(ods(rpnm%na))
-    istat=get_operands(rpnc,i,rpnm%na,ks=ods)
-    if(istat/=0) then
-       deallocate(ods)
-       return
-    end if
-
-    allocate(fnc%que(size(rpnm%que)))
-    allocate(fnc%vbuf(NUM_VBUF_MIN))
-    allocate(fnc%p_vbuf)
-    fnc%que=rpnm%que
-    fnc%p_vbuf=0
-
-    fnc%pars   => rpnc%pars
-    fnc%answer => rpnc%answer
-    fnc%tmpans => rpnc%tmpans
-    fnc%rl     => rpnc%rl
-    fnc%rc     => rpnc%rc
-    fnc%pfs    => rpnc%pfs
-    fnc%opt    => rpnc%opt
-    
-    istat=0
-    do j=1,size(fnc%que)
-       select case(fnc%que(j)%tid)
-       case(TID_FIG)
-          fnc%que(j)%cid=loc(rpnm%vbuf(fnc%que(j)%cid))
-          fnc%que(j)%tid=TID_ROVAR
-       case(TID_PAR,TID_APAR)
-          call set_par_ptr(kp)
-          if(istat/=0) exit 
-          fnc%que(j)%cid=get_par_loc(fnc%pars,kp)
-          fnc%que(j)%tid=TID_PAR
-       case(TID_DPAR)
-          pv=rpnc%que(ods(fnc%que(j)%cid))%cid
-          call put_vbuf(fnc,j,v)
-       end select
-    end do
-
-    if(istat==0) istat=eval(fnc)
-    
-    if(istat==0)&
-       call set_result(rpnc,i,fnc%answer,rpnm%na,ods)
-
-    deallocate(ods)
-    deallocate(fnc%que)
-    deallocate(fnc%vbuf)
-    deallocate(fnc%p_vbuf)
-
-  contains
-    
-    subroutine set_par_ptr(ent) 
-      integer,intent(out)::ent
-      integer ptr,len      
-      istat=get_str_ptr(rpnm%pnames,fnc%que(j)%cid,ptr,len)
-      if(istat/=0) stop "*** UNEXPECTED ERROR in set_par_ptr"
-      istat=find_par(fnc%pars,trim(cpstr(ptr,len)),ent=ent)
-      if(istat/=0) then
-         write(*,*) "*** No such parameter: "//trim(cpstr(ptr,len))
-      end if
-    end subroutine set_par_ptr
-
-  end function eval_uf
-  
-  subroutine put_vbuf_r(rpnc,i,v)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(inout)::i
-    real(rp),intent(in)::v
-    real(rp) im
-    if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
-       im=rzero
-    else
-       im=1.0_rp
-    end if
-    call put_vbuf_z(rpnc,i,complex(v,im),TID_VAR)
-  end subroutine put_vbuf_r
-
-  subroutine put_vbuf_z(rpnc,i,v,tid)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    complex(cp),intent(in)::v
-    integer,intent(in),optional::tid
-    integer t
-    if(rpnc%p_vbuf>=size(rpnc%vbuf)) call inc_vbuf(rpnc,NUM_VBUF_MIN)
-    rpnc%p_vbuf=rpnc%p_vbuf+1
-    rpnc%vbuf(rpnc%p_vbuf)=v
-    rpnc%que(i)%cid=loc(rpnc%vbuf(rpnc%p_vbuf))
-    if(present(tid)) then
-       t=tid
-    else
-       t=TID_VAR
-    end if
-    rpnc%que(i)%tid=t
-  end subroutine put_vbuf_z
-
-  recursive function eval_m(rpnc,i) result(istat)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::i
-    integer istat
-    type(t_rpnm),pointer::rpnm
-    type(t_rpnc) mac
-    integer j
-    integer kp
-
-    rpnm=>rpnc%rl%rpnm(rpnc%que(i)%cid)
-    
-    allocate(mac%que(size(rpnm%que)))
-    allocate(mac%vbuf(NUM_VBUF_MIN))
-    allocate(mac%p_vbuf)
-    mac%que    = rpnm%que
-    mac%p_vbuf = 0
-
-    mac%pars   => rpnc%pars
-    mac%answer => rpnc%answer
-    mac%tmpans => rpnc%tmpans
-    mac%rl     => rpnc%rl
-    mac%rc     => rpnc%rc
-    mac%pfs    => rpnc%pfs
-    mac%opt    => rpnc%opt
-
-    istat=0
-    do j=1,size(mac%que)
-       select case(mac%que(j)%tid) 
-       case(TID_PAR,TID_APAR)
-          call set_par_ptr(kp)
-          if(istat/=0) exit
-          mac%que(j)%cid=get_par_loc(mac%pars,kp)
-          mac%que(j)%tid=TID_PAR
-       case(TID_FIG)
-          mac%que(j)%cid=loc(rpnm%vbuf(mac%que(j)%cid))
-          mac%que(j)%tid=TID_ROVAR
-       end select
-    end do
-
-    if(istat==0) istat=eval(mac)
-
-    if(istat==0) then
-       rpnc%tmpans=mac%answer
-       call put_vbuf(rpnc,i,mac%answer)
-    end if
-
-    deallocate(mac%que)
-    deallocate(mac%vbuf)
-    deallocate(mac%p_vbuf)
- 
-  contains
-
-    subroutine set_par_ptr(ent)
-      integer,intent(out)::ent
-      integer ptr,len
-      istat=get_str_ptr(rpnm%pnames,mac%que(j)%cid,ptr,len)
-      if(istat/=0) stop "*** UNEXPECTED ERROR in load_par: get_str_ptr"
-      istat=find_par(mac%pars,trim(cpstr(ptr,len)),ent=ent)
-      if(istat/=0) then
-         write(*,*) "*** No such parameter: "//trim(cpstr(ptr,len))
-         istat=RPNERR_NOPAR
-      end if
-    end subroutine set_par_ptr
-
-  end function eval_m
-
-  recursive function eval(rpnc) result(istat)
-    type(t_rpnc),intent(inout),target::rpnc
-    integer i,istat,ec
-    complex(cp) v
-    pointer(pv,v)
-    istat=0
-    ec=0
-    if(rpnc%rc>RPN_REC_MAX) then
-       istat=RPNERR_RECOV
-       return
-    end if
-    rpnc%rc=rpnc%rc+1
-    do i=1,size(rpnc%que)
-       ec=ec+1
-       select case(get_lo32(rpnc%que(i)%tid))
-       case(TID_OP,TID_OPN,TID_AOP)
-          istat=eval_n(rpnc,i)
-       case(TID_LOP)
-          istat=eval_l(rpnc,i)          
-       case(TID_ROP)
-          istat=eval_r(rpnc,i)
-       case(TID_COP)
-          istat=eval_c(rpnc,i)
-       case(TID_MAC)
-          istat=eval_m(rpnc,i)
-       case(TID_UFNC)
-          istat=eval_uf(rpnc,i)
-       case(TID_SOP)
-          istat=eval_s(rpnc,i)
-       case(TID_POP)
-          istat=eval_p(rpnc,i)
-       case(TID_END)
-          ec=ec-1
-          rpnc%rc=rpnc%rc-1
-          call set_ans(.true.)
-          rpnc%rc=rpnc%rc+1
-          ec=0
-       case default
-          ec=ec-1
-       end select
-       if(istat/=0) then
-          write(*,*) "*** Error in eval at que = ", i
-          exit
-       end if
-    end do
-    
-    if(istat/=0) return
-
-    rpnc%rc=rpnc%rc-1       
-
-    if(get_lo32(rpnc%que(size(rpnc%que))%tid)/=TID_END) &
-         call set_ans(.false.)
-
-    call remove_dup(rpnc%pars)
-
-  contains
-    
-    subroutine set_ans(end)
-      logical,intent(in)::end
-      integer k
-      if(ec==0) then ! only fig or par
-         if(end) then
-            k=i-1
-         else
-            k=size(rpnc%que)
-         end if
-         pv=rpnc%que(k)%cid
-         rpnc%answer=v
-      else
-         rpnc%answer=rpnc%tmpans
-      end if
-    if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
-         call set_dat(rpnc)
-   end subroutine set_ans
-    
-  end function eval
-
-  subroutine init_vs(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
-    allocate(rpnc%vs(128)) !<<<<<<<<<<<<<<<<<<<<<<<<
-    allocate(rpnc%p_vs)
-    rpnc%p_vs=0
-  end subroutine init_vs
-
-  subroutine reset_dat(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
-    if(associated(rpnc%p_vs)) rpnc%p_vs=0
-  end subroutine reset_dat
-
-  subroutine set_dat(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
-    if(.not.associated(rpnc%vs)) call init_vs(rpnc)
-    if(rpnc%p_vs+1>size(rpnc%vs)) STOP "Vs overfow"
-    rpnc%p_vs=rpnc%p_vs+1
-    rpnc%vs(rpnc%p_vs)=rpnc%answer
-  end subroutine set_dat
-
-  integer function get_lo32(cid)
-    integer,intent(in)::cid
-    get_lo32=iand(cid,int(Z"FFFF",kind=4))
-  end function get_lo32
-
-  integer function get_up32(cid)
-    integer,intent(in)::cid
-    get_up32=iand(ishft(cid,-16),int(Z"FFFF",kind=4))
-  end function get_up32
-
-  integer function get_i32(lo,up)
-    integer,intent(in)::lo,up
-    get_i32=ior(lo,ishft(up,16))
-  end function get_i32
 
   integer function get_end_of_fig(rpnb,k_)
     type(t_rpnb),intent(in)::rpnb
@@ -1723,129 +519,6 @@ contains
 
   end function get_next
   
-  subroutine dump_rpnm(rpnc,ent)
-    type(t_rpnc),intent(in),target::rpnc
-    integer,intent(in)::ent
-    type(t_rpnm),pointer::rpnm
-    type(t_rpnc) tmprpnc
-    integer ptr,len
-    integer code
-    integer i1,i2,i
-
-    if(ent==0) then
-       i1=1
-       i2=rpnc%rl%s%n
-    else
-       i1=ent
-       i2=ent
-    end if
-    
-    do i=i1,i2
-       if(i>rpnc%rl%s%n.or.i<=0.or.i>size(rpnc%rl%rpnm)&
-            .or.get_str_ptr(rpnc%rl%s,i,ptr,len,code)/=0) then
-          write(*,*) "*** dump_rpnm: no such entry: ",i
-          cycle
-       end if
-       rpnm=>rpnc%rl%rpnm(i)
-       if(iand(code,SC_MAC)/=0) then
-          write(*,*) "MACRO entry: ",i
-       else
-          write(*,*) "FUNCTION entry:",i
-          if(get_str_ptr(rpnm%pnames,2,ptr,len)/=0) then
-             write(*,*) "???"
-             cycle !<<<<<<<<<
-          end if
-       end if
-       write(*,*) "name: "//trim(cpstr(ptr,len))
-
-       if(allocated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
-          write(*,*) "definition: "//trim(cpstr(ptr,len))
-          tmprpnc%que=>rpnm%que
-          tmprpnc%vbuf=>rpnm%vbuf
-          tmprpnc%p_vbuf=>rpnm%p_vbuf
-          tmprpnc%pars=>rpnm%pars
-          tmprpnc%answer=>rpnm%answer
-          tmprpnc%tmpans=>rpnm%tmpans
-          tmprpnc%rl=>rpnc%rl
-          tmprpnc%rc=>rpnc%rc
-          tmprpnc%pfs=>rpnc%pfs
-          if(allocated(rpnm%na)) write(*,*) "number of arguments = ",rpnm%na
-          call dump_rpnc(tmprpnc,i)
-          call dump_slist(rpnm%pnames)
-       else
-          write(*,*) "(empty)"
-       end if
-       write(*,*)
-    end do
-  end subroutine dump_rpnm
-  
-  subroutine dump_rpnc(rpnc,mid)
-    use slist
-    type(t_rpnc),intent(in)::rpnc
-    integer,intent(in),optional::mid
-    type(t_rpnm),pointer::rpnm
-    integer i,t,istat
-    integer ptr,len
-    complex(cp) z
-    complex(cp) v
-    pointer(pv,v)
-    write(*,*) "rpnc dump:"
-    if(.not.associated(rpnc%que).or.size(rpnc%que)<1) then
-       write(*,*) "(empty)"
-       return
-    end if
-    if(.not.present(mid).and.iand(rpnc%opt,RPNCOPT_READY)==0) then
-       write(*,*) "(not set)"
-       return
-    end if
-    write(*,*) "# tid cid value"
-    if(present(mid)) rpnm=>rpnc%rl%rpnm(mid)
-    do i=1,size(rpnc%que)
-       t=get_lo32(rpnc%que(i)%tid)
-       write(*,10) i,t
-       select case(t)
-       case(TID_VAR,TID_PAR,TID_FIG,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
-          write(*,11) rpnc%que(i)%cid
-          if(present(mid)) then
-             if(t/=TID_FIG) then
-                istat=get_str_ptr(rpnm%pnames,rpnc%que(i)%cid,ptr,len)
-                write(*,*) trim(cpstr(ptr,len))
-                cycle
-             else
-                z=rpnm%vbuf(rpnc%que(i)%cid)
-             end if
-          else
-             pv=rpnc%que(i)%cid
-             z=v
-             if(pv==0) then
-                write(*,*) "(undef)"
-                cycle
-             end if
-          end if
-          write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
-       case(TID_OP,TID_OPN,TID_ROP)
-          write(*,14) rpnc%que(i)%cid
-       case(TID_DPAR)
-          write(*,16) rpnc%que(i)%cid,"(dummy par)"
-       case default
-          write(*,14) rpnc%que(i)%cid
-       end select
-    end do
-10  format(2(x,i4),$)
-11  format(x,z16,$)
-13  format(x,i4,x,z8,x,a)
-14  format(x,z16)
-16  format(x,i8,x,a)
-    write(*,*) "vbuf dump:"
-    write(*,*) "size= ",rpnc%p_vbuf
-    if(rpnc%p_vbuf>0) then
-       do i=1,rpnc%p_vbuf
-          write(*,13) i,loc(rpnc%vbuf(i)),trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW))
-       end do
-    end if
-    if(.not.present(mid)) write(*,*)
-  end subroutine dump_rpnc
-
 #define _EXPR_(i) rpnb%expr(get_lo32(rpnb%que(i)%p1):get_lo32(rpnb%que(i)%p2))
 #define _UEXPR_(i) rpnb%expr(get_up32(rpnb%que(i)%p1):get_up32(rpnb%que(i)%p2))
 
@@ -2271,7 +944,7 @@ contains
              end if
           end if
           istat=find_par(rpnc%pars,_EXPR_(i),ent=k)
-          if(amac.and.istat/=0.and.iand(rpnc%opt,RPNCOPT_NO_AUTO_ADD_PAR)==0) then
+          if(amac.and.istat/=0.and.is_uset(RPNCOPT_NO_AUTO_ADD_PAR)) then
              ! par may not already exist
              istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
              if(istat/=0) then
@@ -2340,7 +1013,7 @@ contains
           STOP "*** UNEXPECTED ERROR in build_rpnc"
        end select
        if(istat/=0) then
-          if(iand(rpnc%opt,RPNCOPT_NO_WARN)/=0) &
+          if(is_set(RPNCOPT_NO_WARN)) &
                call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(qq%p1),get_lo32(qq%p2)) 
           exit
        end if
@@ -2374,8 +1047,6 @@ contains
       istat=RPNERR_PARSER
     end subroutine find_delim
 
-#define isdeg iand(rpnc%opt,RPNCOPT_DEG)/=0
-
     integer function get_sid(sid)
       use zmath
       integer,intent(in)::sid
@@ -2396,6 +1067,8 @@ contains
          STOP "*** UNEXPECTED ERROR in get_sid" 
       end select
     end function get_sid
+
+#define isdeg is_set(RPNCOPT_DEG)
 
     integer function get_fid(fid)
       use zmath
@@ -2538,7 +1211,7 @@ contains
       case("+")
          get_oid1=loc(zm_nop) 
       case("-")
-         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+         if(is_uset(RPNCOPT_RATIO)) then
             get_oid1=loc(zm_neg) 
          else
             get_oid1=loc(zm_neg_f)
@@ -2548,13 +1221,13 @@ contains
       case("!!")
          get_oid1=loc(zm_dfac)
       case("++")
-         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+         if(is_uset(RPNCOPT_RATIO)) then
             get_oid1=loc(zm_inc)
          else
             get_oid1=loc(zm_inc_f)
          end if
       case("--")
-         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+         if(is_uset(RPNCOPT_RATIO)) then
             get_oid1=loc(zm_dec)
          else
             get_oid1=loc(zm_dec_f)
@@ -2583,25 +1256,25 @@ contains
       get_oid2=OID_NOP
       select case(_EXPR_(i))
       case("+")
-         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+         if(is_uset(RPNCOPT_RATIO)) then
             get_oid2=loc(zm_add)   
          else
             get_oid2=loc(zm_add_f)
          end if
       case("-")
-         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then         
+         if(is_uset(RPNCOPT_RATIO)) then
             get_oid2=loc(zm_sub)   
          else
             get_oid2=loc(zm_sub_f)   
          end if
       case("*")
-         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+         if(is_uset(RPNCOPT_RATIO)) then
             get_oid2=loc(zm_mul)
          else
             get_oid2=loc(zm_mul_f)
          end if
       case("/")
-         if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+         if(is_uset(RPNCOPT_RATIO)) then
             get_oid2=loc(zm_div)
          else
             get_oid2=loc(zm_div_f)
@@ -2647,52 +1320,7 @@ contains
 
   end function build_rpnc
 
-  subroutine dump_rpnb(rpnb)
-    type(t_rpnb),intent(in),target::rpnb
-    type(t_rrpnq),pointer::q(:)
-    write(*,*) "rpnb que:\n# tid p1 p2 expr"
-    if(.not.allocated(rpnb%que).or.rpnb%p_que<1)  then
-       write(*,*) "(empty)"
-    else
-       q => rpnb%que
-       call dump_q(rpnb%p_que)
-    end if
-    write(*,*) "rpnb buf:\n# tid p1 p2 expr"
-    if(.not.allocated(rpnb%buf).or.rpnb%p_buf<1)  then
-       write(*,*) "(empty)"
-    else
-       q => rpnb%buf
-       call dump_q(rpnb%p_buf)
-    end if
-  contains
-    subroutine dump_q(n)
-      integer,intent(in)::n
-      integer i,p1lo,p2lo,p1up,p2up,tid
-      do i=1,n
-         p1lo=get_lo32(q(i)%p1)
-         p2lo=get_lo32(q(i)%p2)
-         tid=q(i)%tid
-         if(tid>0) tid=get_lo32(tid)
-         write(*,10) i,tid,p1lo,p2lo
-10       format(4(x,i4),x,$)
-         if(q(i)%tid==TID_VAR) then
-            write(*,*) rpnb%expr(p1lo:p2lo)
-         else if(q(i)%tid==TID_AMAC) then
-            p1up=get_up32(q(i)%p1)
-            p2up=get_up32(q(i)%p2)
-            write(*,*) rpnb%expr(p1lo:p2lo)//" "//rpnb%expr(p1up:p2up)
-         else if(p1lo==0) then
-            write(*,*) "(no ref)"
-         else if(q(i)%tid/=TID_NOP) then
-            write(*,*) rpnb%expr(p1lo:p2lo)
-         else
-            write(*,*)
-         end if
-      end do
-    end subroutine dump_q
-  end subroutine dump_rpnb
-
-   subroutine rpn_put(rpnb,tid,p1,p2)
+  subroutine rpn_put(rpnb,tid,p1,p2)
     type(t_rpnb),intent(inout)::rpnb
     integer,intent(in)::tid,p1,p2
     rpnb%p_que=rpnb%p_que+1
@@ -2851,10 +1479,11 @@ contains
     integer pfasn
     integer p_q1
     integer pfnc_opened
+    integer terr,p1err,p2err
 
     call init_rpnb(formula)
 
-    rpnc%opt=iand(rpnc%opt,not(RPNCOPT_READY))
+    cle_opt(RPNCOPT_READY)
 
     call init_stat()
     istat=0
@@ -2862,6 +1491,9 @@ contains
     do 
        tid=get_next(rpnb,rpnc,p1,p2,rpnc%rl%s)
        t=get_lo32(tid)
+
+WRITE(*,*)  "t=",t
+
        select case(t)
        case(TID_BLK)
           cycle
@@ -2958,7 +1590,16 @@ contains
              istat=RPNERR_PARSER
           else
              call rpn_try_pop(rpnb,TID_BRA,bc-kc,p1)
-             if(.not.check_narg(0,.true.)) exit
+             if(.not.check_narg(0,.true.,terr)) then
+                if(get_lo32(terr)==TID_UFNC) then ! err delayed
+                   terr=istat
+                   p1err=p1
+                   p2err=p2
+                   istat=0
+                else
+                   exit
+                end if
+             end if
           end if
           kc=kc+1
        case(TID_AOP)
@@ -2970,7 +1611,9 @@ contains
           end if
        case(TID_ASN)
           ac=ac+1
-          if(.not.is_fnc_asn()) then
+          if(is_fnc_asn()) then
+             if(terr/=0) terr=0
+          else
              if(check_assignable()) then
                 call revert_tid(rpnb,TID_APAR)
              else
@@ -3008,7 +1651,17 @@ contains
              istat=RPNERR_PARSER
           else
              call rpn_pop_until(rpnb,TID_BRA,.true.)
-             if(.not.check_narg(1,.false.)) exit
+             if(.not.check_narg(1,.false.,terr)) then
+                if(get_lo32(terr)==TID_UFNC) then
+                   ! it might be assignment. err delayed.
+                   terr=istat
+                   p1err=p1
+                   p2err=p2
+                   istat=0
+                else
+                   exit
+                end if
+             end if
           end if
        case(TID_COL)
           clc=clc+1
@@ -3034,12 +1687,18 @@ contains
        told=t
     end do
 
-    if(iand(rpnc%opt,RPNCOPT_DEBUG)/=0) call dump_rpnb(rpnb)
+    if(is_set(RPNCOPT_DEBUG)) call dump_rpnb(rpnb)
+
+    if(istat==0.and.terr/=0) then
+       istat=terr
+       p1=p1err
+       p2=p1err
+    end if
 
     if(istat==0) then
        istat=build_rpnc(rpnb,rpnc)       
     else if(.not.is_set(RPNCOPT_NO_WARN)) then
-         call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
+       call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if
 
     parse_formula=istat
@@ -3057,6 +1716,9 @@ contains
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
       amc=0; clc=0; tc=0
       p_q1=rpnb%p_que+1
+      terr=0
+      p1err=0
+      p2err=0
     end subroutine init_stat
 
     logical function check_narg_all(tend)
@@ -3070,9 +1732,10 @@ contains
       end do
     end function check_narg_all
 
-    logical function check_narg(pfnc_off,close)
+    logical function check_narg(pfnc_off,close,who)
       integer,intent(in)::pfnc_off
-      logical close
+      logical,intent(in)::close
+      integer,intent(out),optional::who
       integer na,namax
       integer*2 w1,w2
       type(t_rrpnq),pointer::b
@@ -3080,13 +1743,14 @@ contains
       if(rpnb%p_buf<=pfnc_off) return
       check_narg=.false.
       istat=RPNERR_PARSER
-      b=>rpnb%buf(rpnb%p_buf-pfnc_off)
+      b => rpnb%buf(rpnb%p_buf-pfnc_off)
       w1=int(get_up32(b%p1),kind=2) ! negative if none read
       w2=int(get_up32(b%p2),kind=2) ! positive if closed
       na=abs(w1)
       namax=abs(w2)
       select case(get_lo32(b%tid))
       case(TID_UFNC,TID_IFNC)
+         if(present(who)) who=b%tid
          if(w2<=0) then
             if(w1>=0) then
                if(w1>0) then
@@ -3132,19 +1796,19 @@ contains
 
     subroutine set_narg()
       integer na
-      select case(get_lo32(t))
+      select case(t)
       case(TID_IFNC)
-         if(get_up32(t)<=FID_ARG0_END) then
+         if(get_up32(tid)<=FID_ARG0_END) then
             na=0
-         else if(get_up32(t)<=FID_ARG1_END) then
+         else if(get_up32(tid)<=FID_ARG1_END) then
             na=1
-         else if(get_up32(t)<=FID_ARG2_END) then
+         else if(get_up32(tid)<=FID_ARG2_END) then
             na=2
          else
             na=narg_max ! arbitrary
          end if
       case(TID_UFNC)
-         na=rpnc%rl%rpnm(get_up32(t))%na
+         na=rpnc%rl%rpnm(get_up32(tid))%na
       end select
       p1=get_i32(p1,-na) ! negative for no arg read
       p2=get_i32(p2,-na)
@@ -3171,13 +1835,13 @@ contains
             ii=p1+1+ii
          end if
          if(get_lo32(rpnb%buf(rpnb%p_buf)%tid)==TID_UFNC) then
-            q=>rpnb%buf(rpnb%p_buf)
+            q => rpnb%buf(rpnb%p_buf)
             q%tid=TID_AFNC
             q%p1=get_i32(get_lo32(q%p1),p1+1)
             q%p2=get_i32(get_lo32(q%p2),ii)
             is_fnc_asn=.true.
          else if(rpnb%que(p_q1)%tid==TID_PAR) then ! exclude TID_POP
-            q=>rpnb%que(p_q1)
+            q => rpnb%que(p_q1)
             q%tid=TID_AFNC
             q%p1=get_i32(q%p1,p1+1) ! function body in upper
             q%p2=get_i32(q%p2,ii)
@@ -3309,4 +1973,4 @@ contains
     
   end function parse_formula
 
-end module rpn
+end module rpnp

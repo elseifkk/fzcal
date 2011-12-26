@@ -1,5 +1,5 @@
 module com
-  use rpn
+  use rpnd
   implicit none
   integer,parameter::CID_INV     = -1
   integer,parameter::CID_NOP     =  0
@@ -72,7 +72,7 @@ contains
        parse_command=CID_DONE
     case("f","frac")
        rpnc%opt=iand(rpnc%opt,not(RPNCOPT_RATIO))
-       parse_command=CID_DONE
+       parse_command=CID_DONEb
     case("md")
        parse_command=CID_DUMP_M
     case("fd")
