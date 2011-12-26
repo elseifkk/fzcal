@@ -226,6 +226,8 @@ module rpnd
      module procedure put_vbuf_z
   end interface put_vbuf
 
+  integer,parameter::narg_max=32
+
 contains
 
   function init_rpnlist(sz,nmax)
