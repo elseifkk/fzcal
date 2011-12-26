@@ -10,8 +10,6 @@ module rpnp
 #define set_opt(x) rpnc%opt=ior(rpnc%opt,(x))
 #define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
 
-  integer,parameter::narg_max=32
-
   character*(*),parameter::LOPS_NOT ="not"
   character*(*),parameter::LOPS_AND ="and"
   character*(*),parameter::LOPS_OR  ="or"
@@ -1460,14 +1458,16 @@ contains
   subroutine rpn_try_push(rpnb,tid,p1,p2)
     type(t_rpnb),intent(inout)::rpnb
     integer,intent(in)::tid,p1,p2
+    integer tst
     if(rpnb%p_buf==0) then
        call rpn_push(rpnb,tid,p1,p2)
     else
        do 
           if(rpnb%p_buf<=0) exit
-          if(rpnb%buf(rpnb%p_buf)%tid<=TID_PRI_MAX &
-               .and.rpnb%buf(rpnb%p_buf)%tid>=tid &
-               .and..not.(tid==TID_TOP1.and.rpnb%buf(rpnb%p_buf)%tid==TID_TOP1)) then
+          tst=get_lo32(rpnb%buf(rpnb%p_buf)%tid)
+          if(tst<=TID_PRI_MAX &
+               .and.tst>=tid &
+               .and..not.(tid==TID_TOP1.and.tst==TID_TOP1)) then
              call rpn_pop(rpnb) ! TOP1 must not popout TOP1
           else
              exit
