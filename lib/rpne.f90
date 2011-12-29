@@ -13,10 +13,20 @@ contains
   character(LEN_STR_ANS_MAX) function rpn_sans(rpnc)
     use memio
     type(t_rpnc),intent(in)::rpnc
+    integer f
+    if(is_uset(RPNCOPT_OUTM)) then
+       f=DISP_FMT_NORM
+    else if(is_set(RPNCOPT_OBIN)) then
+       f=DISP_FMT_BIN
+    else if(is_set(RPNCOPT_OOCT)) then
+       f=DISP_FMT_OCT
+    else if(is_set(RPNCOPT_OHEX)) then
+       f=DISP_FMT_HEX
+    end if
     if(is_uset(RPNCOPT_RATIO)) then
-       rpn_sans=trim(ztoa(rpnc%answer))
+          rpn_sans=trim(ztoa(rpnc%answer,fmt=f))
     else
-       rpn_sans=trim(itoa(int(realpart(rpnc%answer))))
+       rpn_sans=trim(itoa(int(realpart(rpnc%answer)),f))
        if(int(imagpart(rpnc%answer))>1) then
           rpn_sans=trim(rpn_sans)//"/"//trim(itoa(int(imagpart(rpnc%answer))))
        end if

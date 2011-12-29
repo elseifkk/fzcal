@@ -1,4 +1,5 @@
 module fpio
+  use memio
   implicit none
   public
   integer,parameter::sp=selected_real_kind(6,37)
@@ -31,15 +32,8 @@ module fpio
 
   integer,parameter::LEN_STR_ANS_MAX=128
   
-  integer,parameter::DISP_FMT_RAW  = 0
-  integer,parameter::DISP_FMT_NORM = 1
-  integer,parameter::DISP_FMT_SCI  = 2
-  integer,parameter::DISP_FMT_ENG  = 3
-  character*9,parameter::sfmt(3)=[&
-       "(G64.38) ",&
-       "(ES64.38)",&
-       "(EN64.38)"]
 
+  character*(*),parameter::sfmt_norm="(G64.38)"
   interface f2str
      integer function f2str(pf,pstr,opt)
        integer,intent(in),value::pf,pstr,opt
@@ -64,7 +58,32 @@ module fpio
        ior(FP2A_SUPRESS_E0,&
        FP2A_TRIM_TRAILING_ZEROS))))
 
+  interface is_integer
+     module procedure is_integer_z
+     module procedure is_integer_x
+  end interface
+
 contains
+
+  logical function is_integer_z(z,n)
+    complex(cp),intent(in)::z
+    integer,intent(out),optional::n
+    is_integer_z=.false.
+    if(imagpart(z)/=rzero) return
+    is_integer_z=is_integer_x(realpart(z),n)
+  end function is_integer_z
+
+  logical function is_integer_x(x,n)
+    real(rp),intent(in)::x
+    integer,intent(out),optional::n
+    integer m
+    is_integer_x=.false.
+    m=int(x)
+    if(x-m==0) then 
+       is_integer_x=.true.
+       if(present(n)) n=m
+    end if
+  end function is_integer_x
 
   character(LEN_STR_ANS_MAX) function trim_zero(a)
     character*(*),intent(in)::a
@@ -105,15 +124,15 @@ contains
     real(rp),intent(in)::x
     logical,intent(out),optional::ok
     integer,intent(in),optional::fmt
-    integer istat,f
+    integer istat,f,n
 #ifndef _NO_ASM_
     integer len,opt
 #endif
     real(dispp) xx
+    f=DISP_FMT_NORM
+    n=0
     if(present(fmt)) then
-       f=fmt
-    else
-       f=DISP_FMT_NORM
+       if(fmt>0.or.is_integer(x,n)) f=fmt
     end if
     if(abs(x)>disp_huge) f=DISP_FMT_RAW
     if(f==DISP_FMT_RAW) then
@@ -129,20 +148,25 @@ contains
     end if
     xx=real(x,kind=dispp)
     rtoa=""
+    if(f>0) then
 #ifdef _NO_ASM_
-    write(rtoa,sfmt(f),iostat=istat) x
-    if(istat==0) rtoa=adjustl(rtoa)
-    rtoa=trim_zero(rtoa)
+       write(rtoa,sfmt_norm,iostat=istat) x
+       if(istat==0) rtoa=adjustl(rtoa)
+       rtoa=trim_zero(rtoa)
 #else
-    opt=FP2A_DEFAULT
-    if(dispp==ep) opt=ior(opt,FP2A_INPUT_REAL10)
-    len=f2str(loc(xx),loc(rtoa),opt)
-    if(len>0) then
-       istat=0
-    else
-       istat=-1
-    end if
+       opt=FP2A_DEFAULT
+       if(dispp==ep) opt=ior(opt,FP2A_INPUT_REAL10)
+       len=f2str(loc(xx),loc(rtoa),opt)
+       if(len>0) then
+          istat=0
+       else
+          istat=-1
+       end if
 #endif
+    else
+       rtoa=itoa(n,f)
+    end if
+
     if(present(ok)) ok=(istat==0)
   end function rtoa
   
@@ -162,7 +186,7 @@ contains
        return
     end if
     if(imagpart(z)/=rzero) then
-       ztoa=trim(rtoa(imagpart(z),retlog))//" i"
+       ztoa=trim(rtoa(imagpart(z),retlog,fmt))//" i"
        if(.not.retlog) then
           if(present(ok)) ok=retlog
           return
@@ -180,7 +204,7 @@ contains
        ztoa=""
     end if
     if(realpart(z)==rzero) return
-    ztoa=trim(rtoa(realpart(z),retlog))//trim(ztoa)
+    ztoa=trim(rtoa(realpart(z),retlog,fmt))//trim(ztoa)
     if(present(ok)) ok=retlog
   end function ztoa
 
@@ -215,5 +239,27 @@ contains
        s(j+1:)=s(p:)
     end if
   end subroutine rmzero
+
+!!$  character(LEN_STR_ANS_MAX) function rtoha(r)
+!!$    real(rp),intent(in)::r
+!!$    real(rp) f
+!!$    integer i,n,m,k
+!!$    n=r
+!!$    rtoha=trim(itoa(n,fmt=DISP_FMT_HEX))//"."
+!!$    k=len_trim(rtoha)
+!!$    f=r-n
+!!$    do i=1,10
+!!$       if(f==rzero) exit
+!!$       f=f*16
+!!$       m=f
+!!$       k=k+1
+!!$       if(m<=9) then
+!!$          rtoha(k:k)=achar(m+z"30")
+!!$       else
+!!$          rtoha(k:k)=achar(m+z"41"-10)
+!!$       end if
+!!$       f=f-m
+!!$    end do
+!!$  end function rtoha
 
 end module fpio

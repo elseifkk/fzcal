@@ -119,22 +119,6 @@ contains
     random_seed_init=.true.
   end subroutine init_random_seed
      
-  logical function is_integer(z,n)
-    complex(cp),intent(in)::z
-    integer,intent(out),optional::n
-    integer m
-    real(rp) x
-    is_integer=.false.
-    if(imagpart(z)/=rzero) return
-    x=realpart(z)
-    m=int(x)
-    x=x-m
-    if(x==0) then 
-       is_integer=.true.
-       if(present(n)) n=m
-    end if
-  end function is_integer
-
   integer function get_gcd(a,b)
     integer,intent(in)::a,b
     integer i1,i2,r ! i1>i2

@@ -2,6 +2,14 @@ module memio
   implicit none
   public
 
+  integer,parameter::DISP_FMT_RAW   = 0
+  integer,parameter::DISP_FMT_NORM  = 1
+
+  integer,parameter::DISP_FMT_BIN   = -1
+  integer,parameter::DISP_FMT_OCT   = -2
+  integer,parameter::DISP_FMT_DEC   = -3
+  integer,parameter::DISP_FMT_HEX   = -4
+
 #ifndef _USE32_
   integer,parameter::ptrsz=selected_int_kind(20)
 #else
@@ -41,32 +49,71 @@ module memio
 
 contains
 
-  integer function atoi(a)
+  integer function atoi(a,fmt,ist)
     character*(*),intent(in)::a
-    integer istat
-    read(a,*,iostat=istat) atoi
+    integer,intent(in),optional::fmt
+    integer,intent(out),optional::ist
+    integer istat,f
+    character*32 sfmt
+    if(present(fmt)) then
+       f=fmt
+    else
+       f=DISP_FMT_DEC
+    end if
+    select case(f)
+    case(DISP_FMT_DEC,DISP_FMT_NORM,DISP_FMT_RAW)
+       read(a,*,iostat=istat) atoi
+       if(present(ist)) ist=istat
+       return
+    case(DISP_FMT_BIN)
+       sfmt="(B"
+    case(DISP_FMT_OCT)
+       sfmt="(O"
+    case(DISP_FMT_HEX)
+       sfmt="(Z"
+    end select
+    sfmt=trim(sfmt)//trim(itoa(len_trim(a)))//")"
+    read(a,sfmt,iostat=istat) atoi
+    if(present(ist)) ist=istat
   end function atoi
 
+  character*32 function itoa(i,fmt) 
+    integer,intent(in)::i
+    integer,intent(in),optional::fmt
+    integer len,f,istat
+    character*32 sfmt
+    itoa=""
+    if(present(fmt)) then
+       f=fmt
+    else
+       f=DISP_FMT_DEC
+    end if
+    select case(f)
+    case(DISP_FMT_RAW)
+       write(itoa,*,iostat=istat) i
+       if(istat==0) itoa=adjustl(itoa)
+       return
+    case(DISP_FMT_DEC,DISP_FMT_NORM)
 #ifndef _NO_ASM_
-  character*32 function itoa(i)
-    integer,intent(in)::i
-    integer len
-    itoa=""
 #ifdef _USE32_
-    len=dw2str(i,loc(itoa))
+       len=dw2str(i,loc(itoa))
 #else
-    len=qw2str(i,loc(itoa))
+       len=qw2str(i,loc(itoa))
 #endif
-  end function itoa
+       return
 #else
-  character*32 function itoa(i)
-    integer,intent(in)::i
-    integer istat
-    itoa=""
-    write(itoa,*,iostat=istat) i
+       sfmt="(I0)"
+#endif
+    case(DISP_FMT_HEX)
+       sfmt="(Z0)"
+    case(DISP_FMT_BIN)
+       sfmt="(B0)"
+    case(DISP_FMT_OCT)
+       sfmt="(O0)"
+    end select
+    write(itoa,sfmt,iostat=istat) i
     if(istat==0) itoa=adjustl(itoa)
   end function itoa
-#endif
 
 #ifdef _NO_ASM_
   subroutine mcp(dst,src,len)

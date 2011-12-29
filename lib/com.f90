@@ -41,6 +41,42 @@ contains
     select case(a(2:ke))
     case("q","quit")
        parse_command=CID_EXIT
+    case("DEC")
+       rpnc%opt=iand(rpnc%opt,not(ior(RPNCOPT_INM,RPNCOPT_OUTM)))
+       parse_command=CID_DONE
+    case("HEX")
+       rpnc%opt=ior(rpnc%opt,ior(RPNCOPT_IHEX,RPNCOPT_OHEX))
+       parse_command=CID_DONE
+    case("OCT")
+       rpnc%opt=ior(rpnc%opt,ior(RPNCOPT_IOCT,RPNCOPT_OOCT))
+       parse_command=CID_DONE
+    case("BIN")
+       rpnc%opt=ior(rpnc%opt,ior(RPNCOPT_IBIN,RPNCOPT_OBIN))
+       parse_command=CID_DONE
+    case("Dec")
+       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_INM))
+       parse_command=CID_DONE
+    case("Hex")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_IHEX)
+       parse_command=CID_DONE
+    case("Oct")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_IOCT)
+       parse_command=CID_DONE
+    case("Bin")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_IBIN)
+       parse_command=CID_DONE
+    case("dec")
+       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_OUTM))
+       parse_command=CID_DONE
+    case("hex")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_OHEX)
+       parse_command=CID_DONE
+    case("oct")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_OOCT)
+       parse_command=CID_DONE
+    case("bin")
+       rpnc%opt=ior(rpnc%opt,RPNCOPT_OBIN)
+       parse_command=CID_DONE
     case("deg")
        rpnc%opt=ior(rpnc%opt,RPNCOPT_DEG)
        parse_command=CID_DONE
