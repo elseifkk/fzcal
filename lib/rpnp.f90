@@ -7,6 +7,8 @@ module rpnp
 
 #define is_set(x) (iand(rpnc%opt,(x))/=0)
 #define is_uset(x) (iand(rpnc%opt,(x))==0)
+#define is_setb(x) (iand(rpnb%opt,(x))/=0)
+#define is_usetb(x) (iand(rpnb%opt,(x))==0)
 #define set_opt(x) rpnc%opt=ior(rpnc%opt,(x))
 #define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
 
@@ -147,6 +149,12 @@ contains
     type(t_rpnb),intent(in)::rpnb
     integer,intent(in)::k_
     integer c,a,k
+    interface 
+       logical function is_valid(a)
+         integer,intent(in)::a
+       end function is_valid
+    end interface
+    pointer(pf,is_valid)
 
     k=k_
     if(rpnb%expr(k:k)==".") then
@@ -155,6 +163,16 @@ contains
        c=0
     end if
     
+    if(is_usetb(RPNCOPT_INM)) then
+       pf=loc(is_numeric)
+    else if(is_setb(RPNCOPT_IBIN)) then
+       pf=loc(is_bin_number)
+    else if(is_setb(RPNCOPT_IOCT)) then
+       pf=loc(is_oct_number)
+    else if(is_setb(RPNCOPT_IHEX)) then
+       pf=loc(is_hex_number)
+    end if
+
     do
        if(k>=rpnb%len_expr) then
           get_end_of_fig=k
@@ -162,7 +180,7 @@ contains
        end if
        k=k+1
        a=ichar(rpnb%expr(k:k))
-       if(.not.is_numeric(a)) then
+       if(.not.is_valid(a)) then !numeric(a)) then
           if(c==1.and.k-1==k_) then
              get_end_of_fig=-k_ ! only .
           else
@@ -237,6 +255,21 @@ contains
     is_alpha=(b>=97.and.b<=122)
   end function is_alpha
   
+  logical function is_hex_number(a)
+    integer,intent(in)::a
+    is_hex_number=(a>=65.and.a<=70).or.(a>=97.and.a<=102).or.is_number(a)
+  end function is_hex_number
+
+  logical function is_oct_number(a)
+    integer,intent(in)::a
+    is_oct_number=(a>=48.and.a<=55)
+  end function is_oct_number
+
+  logical function is_bin_number(a)
+    integer,intent(in)::a
+    is_bin_number=(a>=48.and.a<=49)
+  end function is_bin_number
+
   logical function is_number(a)
     integer,intent(in)::a
     is_number=(a>=48.and.a<=57)
@@ -366,9 +399,8 @@ contains
     end if
   end function is_usr_fnc
   
-  integer function get_next(rpnb,rpnc,p1,p2,sl)
+  integer function get_next(rpnb,p1,p2,sl)
     type(t_rpnb),intent(inout)::rpnb
-    type(t_rpnc),intent(in)::rpnc
     integer,intent(out)::p1,p2
     type(t_slist),intent(in)::sl
     integer k,t,kf
@@ -465,7 +497,7 @@ contains
           p2=get_end_of_par(rpnb,p1)
           if(p2<rpnb%len_expr) then
              if(.not.is_lop(rpnb%expr(p1:p2),t)&
-                  .and..not.(is_set(RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))) then
+                  .and..not.(is_setb(RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))) then
                 k=p2+1
                 if(rpnb%expr(k:k)=="(") then
                    if(is_usr_fnc(sl,rpnb%expr(p1:p2),kf)) then
@@ -555,12 +587,6 @@ contains
     integer ac,vc,pc,plen
     integer tc
 
-
-!!$CALL DUMP_RPNB(RPNB)
-!!$CALL DUMP_RPNC(RPNC)
-
-
-
     ke=find_end()
     do i=k1,ke
        if(rpnc%que(i)%tid/=TID_AFNC) cycle
@@ -581,19 +607,6 @@ contains
           if(km==0) stop "*** UNEXPECTED ERROR in set_function"
           ac=km-k1+1-2 ! number of arguments
        else
-!!$# tid p1 p2 expr
-!!$    1   43    3    3 x
-!!$    2   43    6    6 x
-!!$    3    1    5    5 =
-!!$    4   42    1    1 f
-!!$ x x = f
-!!$ f ( x ) = x
-!!$ q     s
-!!$ x     =      
-!!$ f     
-!!$ x
-!!$ =
-
           ! | k1 | ... | km=i |       | ke |
           ! | x  | arg | f    | codes | =  |
           km=i
@@ -936,11 +949,8 @@ contains
           !
        case(TID_FIG)
           q%tid=TID_VAR
-          read(_EXPR_(i),*,iostat=istat) x          
-          if(istat/=0) then
-             WRITE(*,*) "READ iostat=",istat
-             STOP "*** UNEXPECTED ERROR in build_rpnc"
-          end if
+          istat=read_fig()
+          if(istat/=0) istat=RPNCERR_INVFIG
           call put_vbuf(rpnc,i,x)
        case(TID_PAR)
           k=get_up32(qq%tid)
@@ -1050,6 +1060,21 @@ contains
     build_rpnc=istat
 
   contains
+
+    integer function read_fig()
+      integer f
+      if(is_uset(RPNCOPT_INM)) then
+         read(_EXPR_(i),*,iostat=read_fig) x
+         return
+      else if(is_set(RPNCOPT_IBIN)) then
+         f=DISP_FMT_BIN
+      else if(is_set(RPNCOPT_IOCT)) then
+         f=DISP_FMT_OCT
+      else if(is_set(RPNCOPT_IHEX)) then
+         f=DISP_FMT_HEX
+      end if
+      x=real(atoi(_EXPR_(i),f,read_fig),kind=rp)
+    end function read_fig
 
     subroutine find_delim(pos)
       integer,intent(in)::pos
@@ -1511,7 +1536,7 @@ contains
     istat=0
 
     do 
-       tid=get_next(rpnb,rpnc,p1,p2,rpnc%rl%s)
+       tid=get_next(rpnb,p1,p2,rpnc%rl%s)
        t=get_lo32(tid)
 
        select case(t)
@@ -1986,6 +2011,7 @@ contains
       rpnb%p_que=0
       allocate(rpnb%que(rpnb%len_expr*2)) ! << at most
       allocate(rpnb%buf(rpnb%len_expr*2)) ! << at most
+      rpnb%opt=rpnc%opt
     end subroutine init_rpnb
         
     character*1 function next_chr()
