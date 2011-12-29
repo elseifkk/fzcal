@@ -332,7 +332,8 @@ contains
     allocate(rpnc%rc)
     allocate(rpnc%opt)
     nullify(rpnc%vs)
-    nullify(rpnc%p_vs)
+    allocate(rpnc%p_vs)
+    rpnc%p_vs=0
     allocate(rpnc%pfs(3))
     rpnc%pfs(1)=loc(zm_f1)
     rpnc%pfs(2)=loc(zm_f2)
@@ -437,7 +438,6 @@ contains
   subroutine init_vs(rpnc)
     type(t_rpnc),intent(inout)::rpnc
     allocate(rpnc%vs(128)) !<<<<<<<<<<<<<<<<<<<<<<<<
-    allocate(rpnc%p_vs)
     rpnc%p_vs=0
   end subroutine init_vs
 
