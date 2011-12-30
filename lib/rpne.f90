@@ -15,7 +15,7 @@ contains
     type(t_rpnc),intent(in)::rpnc
     integer f
     if(is_uset(RPNCOPT_OUTM)) then
-       f=DISP_FMT_NORM
+       f=ishft(rpnc%opt,-32) !DISP_FMT_NORM
     else if(is_set(RPNCOPT_OBIN)) then
        f=DISP_FMT_BIN
     else if(is_set(RPNCOPT_OOCT)) then

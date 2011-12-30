@@ -281,16 +281,17 @@ contains
   end function is_numeric
   
   logical function is_ppar(a,ent)
-    character*(*),intent(in)::a
+    character,intent(in)::a
     integer,intent(out),optional::ent
     integer k
-    k=get_index(ppars,a)
-    if(k/=0) then
-       if(present(ent)) ent=k
-       is_ppar=.true.
-    else
-       is_ppar=.false.
-    end if    
+    do k=1,len(si_prefix)
+       if(a==si_prefix(k:k)) then
+          is_ppar=.true.
+          if(present(ent)) ent=k
+          return
+       end if
+    end do
+    is_ppar=.false.
   end function is_ppar
 
   logical function is_spar(a,ent)
@@ -476,7 +477,7 @@ contains
        t=TID_INV ! no par start with _
        if(p1<rpnb%len_expr) then
           p2=get_end_of_par(rpnb,p1+1)
-          if(is_ppar(rpnb%expr(p1+1:p2),k)) then
+          if(p1+1==p2.and.is_ppar(rpnb%expr(p2:p2),k)) then
              t=get_i32(TID_PAR,k)
           end if
        end if

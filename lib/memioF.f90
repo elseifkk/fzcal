@@ -29,24 +29,6 @@ module memio
   end interface
 #endif
 
-#ifndef _NO_ASM_
-#ifdef _USE32_
-  interface dw2str
-     integer function dw2str(dw,pstr)
-       integer,intent(in),value::dw
-       integer,intent(in),value::pstr
-     end function dw2str
-  end interface dw2str
-#else
-  interface qw2str
-     integer function qw2str(qw,pstr)
-       integer,intent(in),value::qw
-       integer,intent(in),value::pstr
-     end function qw2str
-  end interface qw2str
-#endif
-#endif
-
 contains
 
   integer function atoi(a,fmt,ist)
@@ -80,7 +62,7 @@ contains
   character*32 function itoa(i,fmt) 
     integer,intent(in)::i
     integer,intent(in),optional::fmt
-    integer len,f,istat
+    integer f,istat
     character*32 sfmt
     itoa=""
     if(present(fmt)) then
@@ -94,16 +76,7 @@ contains
        if(istat==0) itoa=adjustl(itoa)
        return
     case(DISP_FMT_DEC,DISP_FMT_NORM)
-#ifndef _NO_ASM_
-#ifdef _USE32_
-       len=dw2str(i,loc(itoa))
-#else
-       len=qw2str(i,loc(itoa))
-#endif
-       return
-#else
        sfmt="(I0)"
-#endif
     case(DISP_FMT_HEX)
        sfmt="(Z0)"
     case(DISP_FMT_BIN)

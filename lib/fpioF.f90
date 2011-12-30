@@ -9,54 +9,39 @@ module fpio
 #if !defined _NO_REAL16_
   integer,parameter::rp=qp
   integer,parameter::cp=qp
+  integer,parameter::max_digit=33
+  character*(*),parameter::cfmt="(ES41.33)"
 #elif !defined _NO_REAL10_
   integer,parameter::rp=ep
   integer,parameter::cp=ep
+  integer,parameter::max_digit=18
+  character*(*),parameter::cfmt="(ES26.18)"
 #else
 #define _RP_IS_DP_
   integer,parameter::rp=dp
   integer,parameter::cp=dp
+  integer,parameter::max_digit=15
+  character*(*),parameter::cfmt="(ES23.15)"
 #endif
-#if !defined _NO_REAL10_
-  real(ep),parameter::disp_huge=huge(0.0_ep)
-  integer,parameter::dispp=ep
-#else
-  real(dp),parameter::disp_huge=huge(0.0_dp)
-  integer,parameter::dispp=dp
-#endif
+  integer,parameter::min_digit=3
 
   real(rp),parameter::eps=epsilon(0.0_rp)
   real(rp),parameter::pre=precision(0.0_rp)
   real(rp),parameter::rzero=0.0_rp
   complex(cp),parameter::czero=complex(rzero,rzero)
 
+  integer,parameter::si_prefix_off=9
+  integer,parameter::si_prefix_max=24
+  character*(*),parameter::si_prefix="yzafpnum kMGTPEZY"
+
   integer,parameter::LEN_STR_ANS_MAX=128
   
-
-  character*(*),parameter::sfmt_norm="(G64.38)"
-  interface f2str
-     integer function f2str(pf,pstr,opt)
-       integer,intent(in),value::pf,pstr,opt
-     end function f2str
-  end interface f2str
-  integer,parameter::FP2A_TRIM_TRAILING_ZEROS         =  Z"000100"
-  integer,parameter::FP2A_ALLOW_INTEGER_EXPRESSION    =  Z"000200"
-  integer,parameter::FP2A_ALLOW_ORDINARY_EXPRESSION   =  Z"000400"
-  integer,parameter::FP2A_FORCE_NOT_SHOW_EXPSIGN      =  Z"000800"
-  integer,parameter::FP2A_FORCE_SHOW_SIGN             =  Z"001000"
-  integer,parameter::FP2A_KEEP_LEADING_ZEROS          =  Z"002000" ! for exponential digits
-  integer,parameter::FP2A_ALLOW_ENGINEERING_NOTATION  =  Z"004000"
-  integer,parameter::FP2A_INPUT_REAL10                =  Z"008000"
-  integer,parameter::FP2A_SUPRESS_E0                  =  Z"010000"
-  integer,parameter::FP2A_NULLTERM                    =  Z"020000"
-  integer,parameter::FP2A_TRIM_ALL_TRAILING_ZEROS     =  Z"040000" ! 1.0 become 1.
-  integer,parameter::FP2A_ADJUSTR                     =  Z"080000" ! LSB 4bit represents digit.
-  integer,parameter::FP2A_INPUT_REAL4                 =  Z"100000"
-  integer,parameter::FP2A_DEFAULT                     = ior(17,&
-       ior(FP2A_ALLOW_ORDINARY_EXPRESSION,&
-       ior(FP2A_FORCE_NOT_SHOW_EXPSIGN,&
-       ior(FP2A_SUPRESS_E0,&
-       FP2A_TRIM_TRAILING_ZEROS))))
+  integer*8,parameter:: X2A_ALLOW_ORDINARY = Z"0100"
+  integer*8,parameter:: X2A_TRIM_ZERO      = Z"0200"
+  integer*8,parameter:: X2A_SHOW_E0        = Z"0400"
+  integer*8,parameter:: X2A_FIX            = Z"0800"
+  integer*8,parameter:: X2A_ENG            = Z"1000"
+  integer*8,parameter:: X2A_DEFAULT        = max_digit
 
   interface is_integer
      module procedure is_integer_z
@@ -120,21 +105,16 @@ contains
     end if
   end function trim_zero
 
-  character(LEN_STR_ANS_MAX) function rtoa(x,ok,fmt)
+  character(LEN_STR_ANS_MAX) function rtoa(x,fmt)
     real(rp),intent(in)::x
-    logical,intent(out),optional::ok
     integer,intent(in),optional::fmt
     integer istat,f,n
-#ifndef _NO_ASM_
-    integer len,opt
-#endif
-    real(dispp) xx
-    f=DISP_FMT_NORM
+    f=X2A_DEFAULT
     n=0
     if(present(fmt)) then
-       if(fmt>0.or.is_integer(x,n)) f=fmt
+       if(fmt>=0.or.is_integer(x,n)) f=fmt
+       if(f==DISP_FMT_NORM) f=X2A_DEFAULT 
     end if
-    if(abs(x)>disp_huge) f=DISP_FMT_RAW
     if(f==DISP_FMT_RAW) then
        if(x/=rzero) then
           write(rtoa,*,iostat=istat) x
@@ -143,54 +123,26 @@ contains
        else
           rtoa="0"
        end if
-       if(present(ok)) ok=(istat==0)
        return
     end if
-    xx=real(x,kind=dispp)
     rtoa=""
     if(f>0) then
-#ifdef _NO_ASM_
-       write(rtoa,sfmt_norm,iostat=istat) x
-       if(istat==0) rtoa=adjustl(rtoa)
-       rtoa=trim_zero(rtoa)
-#else
-       opt=FP2A_DEFAULT
-       if(dispp==ep) opt=ior(opt,FP2A_INPUT_REAL10)
-       len=f2str(loc(xx),loc(rtoa),opt)
-       if(len>0) then
-          istat=0
-       else
-          istat=-1
-       end if
-#endif
+       rtoa=xtoa(x,f)
     else
        rtoa=itoa(n,f)
     end if
-
-    if(present(ok)) ok=(istat==0)
   end function rtoa
   
-  character(LEN_STR_ANS_MAX) function ztoa(z,ok,fmt)
+  character(LEN_STR_ANS_MAX) function ztoa(z,fmt)
     complex(cp),intent(in)::z
-    logical,intent(out),optional::ok
     integer,intent(in),optional::fmt
-    logical retlog
-    if(z==0) then
-       ztoa="0"
-       if(present(ok)) ok=.true.
-       return
-    end if
     if(present(fmt).and.fmt==DISP_FMT_RAW) then
-       ztoa="( "//trim(rtoa(realpart(z),ok,fmt))//", "&
-            //trim(rtoa(imagpart(z),ok,fmt))//" )"
+       ztoa="( "//trim(rtoa(realpart(z),fmt))//", "&
+            //trim(rtoa(imagpart(z),fmt))//" )"
        return
     end if
     if(imagpart(z)/=rzero) then
-       ztoa=trim(rtoa(imagpart(z),retlog,fmt))//" i"
-       if(.not.retlog) then
-          if(present(ok)) ok=retlog
-          return
-       end if
+       ztoa=trim(rtoa(imagpart(z),fmt))//" i"
        if(realpart(z)/=rzero) then
           if(imagpart(z)>rzero) then
              ztoa=" + "//trim(ztoa)
@@ -204,8 +156,7 @@ contains
        ztoa=""
     end if
     if(realpart(z)==rzero) return
-    ztoa=trim(rtoa(realpart(z),retlog,fmt))//trim(ztoa)
-    if(present(ok)) ok=retlog
+    ztoa=trim(rtoa(realpart(z),fmt))//trim(ztoa)
   end function ztoa
 
   subroutine rmzero(s)
@@ -261,5 +212,157 @@ contains
 !!$       f=f-m
 !!$    end do
 !!$  end function rtoha
+
+#define is_set(x) (iand(opt,(x))/=0)
+#define is_uset(x) (iand(opt,(x))==0)
+
+  character(LEN_STR_ANS_MAX) function xtoa(x,opt)
+    real(rp),intent(in)::x
+    integer,intent(in)::opt
+    integer sd
+    character(LEN_STR_ANS_MAX) ns
+    integer istat
+    integer p1,p2
+    integer k,d,dd
+    logical cr
+    integer*1 c
+    integer e,ee,r
+    integer len
+    pointer(pc,c)
+    xtoa=""
+    write(xtoa,cfmt,iostat=istat) x
+    if(istat/=0) return
+    if(xtoa(1:1)=="*") then
+       write(xtoa,*,iostat=istat) x
+       if(istat/=0) return
+    end if
+    xtoa=adjustl(xtoa)
+! (-)x.xxxx...xE(-)xxxx
+    p2=index(xtoa,"E")
+    read(xtoa(p2+1:),*,iostat=istat) e
+    if(istat/=0) return
+    ! p1 => first digit
+    ! p2 => last digit
+    p2=p2-1
+    if(xtoa(1:1)=="-") then
+       p1=2
+    else
+       p1=1
+    end if
+    len=p2-p1+1-1 ! digits excluding .
+    ns=xtoa(p1:p1)//xtoa(p1+2:p2)
+    sd=min(max(iand(opt,int(Z"FF")),min_digit),len)
+    if(is_uset(X2A_FIX)) then
+       d=sd
+    else
+       d=e+1+sd
+       if(d<1) then
+          xtoa(p1:)="0."//repeat("0",sd)
+          return
+       end if
+    end if        
+    if(d<len) then
+       pc=loc(ns)+d
+       cr=.false.
+       if(c>=z"35") then
+          do k=1,d
+             pc=pc-1
+             if(c/=z"39") then
+                c=c+1
+                cr=.false.
+             else
+                c=z"30"
+                cr=.true.
+             end if
+             if(.not.cr) exit
+          end do
+       end if
+       if(cr) then
+          ! 9.99... => 10.0...
+          ns="1"//ns(1:d-1)
+          e=e+1
+          if(is_set(X2A_FIX)) then
+             d=d+1
+             ns(d:d)="0"
+          end if
+       end if
+    end if
+    if(abs(e)<d.and.is_set(X2A_ALLOW_ORDINARY).or.is_set(X2A_FIX)) then
+       if(e>=0) then
+          if(e+2<=d) then
+             xtoa(p1:)=ns(1:1+e)//"."//ns(1+e+1:d)
+             if(is_uset(X2A_FIX)) call trimz
+          else
+             xtoa(p1:)=ns(1:d)
+          end if
+       else
+          xtoa(p1:)="0."//repeat("0",-e-1)//ns(1:d)
+          if(is_uset(X2A_FIX)) call trimz
+       end if
+       return
+    end if
+
+    if(is_set(X2A_TRIM_ZERO)) then
+       dd=0
+       pc=loc(ns)+d
+       do k=sd,1,-1
+          pc=pc-1
+          if(c/=z"30") then
+             dd=k
+             exit
+          end if
+       end do
+       if(dd==0) then
+          xtoa="0"
+          return
+       end if
+       if(dd==1) dd=2
+    else
+       dd=d
+    end if
+
+    if(is_set(X2A_ENG).and.abs(e)<si_prefix_max+2) then
+       r=mod(e,3)
+       ee=e/3
+       if(e<0) then
+          if(r/=0) then
+             r=3+r
+             ee=ee-1
+          end if
+       end if
+       k=ee+si_prefix_off
+
+       xtoa(p1:)=ns(1:r+1)
+       p2=p1+r+1
+       if(r+2<=dd) then
+          xtoa(p2:)="."//ns(r+2:dd)
+          p2=p2+(dd-(r+2)+1)
+       end if
+       if(ee/=0) xtoa(p2:)="_"//si_prefix(k:k)
+    else if(e==0.and.is_uset(X2A_SHOW_E0)) then
+       xtoa(p1:)=ns(1:1)//"."//ns(2:dd)
+    else
+       xtoa(p1:)=ns(1:1)//"."//ns(2:dd)//"e"//trim(itoa(e))
+    end if
+
+    contains
+
+      subroutine trimz
+        integer ii
+        do ii=len_trim(xtoa),1,-1
+           select case(xtoa(ii:ii))
+           case("0")
+           case(".")
+              xtoa=xtoa(1:ii-1)
+              return
+           case default
+              xtoa=xtoa(1:ii)
+              return
+           end select
+        end do
+        xtoa="0"
+      end subroutine trimz
+
+  end function xtoa
 
 end module fpio
