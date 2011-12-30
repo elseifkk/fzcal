@@ -135,7 +135,7 @@ module rpnd
      type(t_rrpnq),allocatable::que(:)
      type(t_rrpnq),allocatable::buf(:)
      integer p_buf,p_que
-     integer opt
+     integer*8 opt
   end type t_rpnb
 
   type t_rpnm
@@ -163,53 +163,35 @@ module rpnd
      complex(cp),pointer::tmpans
      type(t_rpnlist),pointer::rl
      integer,pointer::rc ! recursion count
-     integer,pointer::opt
+     integer*8,pointer::opt
      integer,pointer::pfs(:) 
      complex(cp),pointer::vs(:)
      integer,pointer::p_vs
   end type t_rpnc
 
-  integer,parameter::RPNCOPT_NOP             =  0
-  integer,parameter::RPNCOPT_DEBUG           =  Z"08000000"
-  integer,parameter::RPNCOPT_READY           =  Z"00000001"
-  integer,parameter::RPNCOPT_DEG             =  Z"00000002"
-  integer,parameter::RPNCOPT_NEW             =  Z"00000004"
-  integer,parameter::RPNCOPT_NO_AUTO_ADD_PAR =  Z"00000008"
-  integer,parameter::RPNCOPT_RATIO           =  Z"00000010"
-  integer,parameter::RPNCOPT_NO_WARN         =  Z"00000020"
-  integer,parameter::RPNCOPT_DAT             =  Z"00000040"
-  integer,parameter::RPNCOPT_STA             =  Z"00000080"
-  integer,parameter::RPNCOPT_OBIN            =  Z"00000100"
-  integer,parameter::RPNCOPT_OOCT            =  Z"00000200"
-  integer,parameter::RPNCOPT_OHEX            =  Z"00000400"
-  integer,parameter::RPNCOPT_OUTM = ior(RPNCOPT_OHEX,ior(RPNCOPT_OOCT,RPNCOPT_OBIN))     
-  integer,parameter::RPNCOPT_IBIN            =  Z"00000800"
-  integer,parameter::RPNCOPT_IOCT            =  Z"00001000"
-  integer,parameter::RPNCOPT_IHEX            =  Z"00002000"
-  integer,parameter::RPNCOPT_INM = ior(RPNCOPT_IHEX,ior(RPNCOPT_IOCT,RPNCOPT_IBIN))     
+  integer*8,parameter::RPNCOPT_NOP             =  0
+  integer*8,parameter::RPNCOPT_DEBUG           =  Z"08000000"
+  integer*8,parameter::RPNCOPT_READY           =  Z"00000001"
+  integer*8,parameter::RPNCOPT_DEG             =  Z"00000002"
+  integer*8,parameter::RPNCOPT_NEW             =  Z"00000004"
+  integer*8,parameter::RPNCOPT_NO_AUTO_ADD_PAR =  Z"00000008"
+  integer*8,parameter::RPNCOPT_RATIO           =  Z"00000010"
+  integer*8,parameter::RPNCOPT_NO_WARN         =  Z"00000020"
+  integer*8,parameter::RPNCOPT_DAT             =  Z"00000040"
+  integer*8,parameter::RPNCOPT_STA             =  Z"00000080"
+  integer*8,parameter::RPNCOPT_OBIN            =  Z"00000100"
+  integer*8,parameter::RPNCOPT_OOCT            =  Z"00000200"
+  integer*8,parameter::RPNCOPT_OHEX            =  Z"00000400"
+  integer*8,parameter::RPNCOPT_OUTM = ior(RPNCOPT_OHEX,ior(RPNCOPT_OOCT,RPNCOPT_OBIN))     
+  integer*8,parameter::RPNCOPT_IBIN            =  Z"00000800"
+  integer*8,parameter::RPNCOPT_IOCT            =  Z"00001000"
+  integer*8,parameter::RPNCOPT_IHEX            =  Z"00002000"
+  integer*8,parameter::RPNCOPT_INM = ior(RPNCOPT_IHEX,ior(RPNCOPT_IOCT,RPNCOPT_IBIN))     
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
   integer,parameter::OID_CND = 1
 
-  character(*),parameter::ppars=&
-       achar(1)//"y"//&
-       achar(1)//"z"//&
-       achar(1)//"a"//&
-       achar(1)//"f"//&
-       achar(1)//"p"//&
-       achar(1)//"n"//&
-       achar(1)//"u"//&
-       achar(1)//"m"//&
-       achar(1)//"k"//&
-       achar(1)//"M"//&
-       achar(1)//"G"//&
-       achar(1)//"T"//&
-       achar(1)//"P"//&
-       achar(1)//"E"//&
-       achar(1)//"Z"//&
-       achar(1)//"Y"//&
-       achar(0)
   integer,parameter::PID_yoc =  1
   integer,parameter::PID_zep =  2
   integer,parameter::PID_a   =  3
@@ -218,14 +200,15 @@ module rpnd
   integer,parameter::PID_n   =  6
   integer,parameter::PID_u   =  7
   integer,parameter::PID_mi  =  8
-  integer,parameter::PID_k   =  9
-  integer,parameter::PID_M   = 10
-  integer,parameter::PID_G   = 11
-  integer,parameter::PID_T   = 12
-  integer,parameter::PID_P   = 13
-  integer,parameter::PID_E   = 14
-  integer,parameter::PID_Z   = 15
-  integer,parameter::PID_Y   = 16
+  integer,parameter::PID_    =  9
+  integer,parameter::PID_k   = 10
+  integer,parameter::PID_M   = 11
+  integer,parameter::PID_G   = 12
+  integer,parameter::PID_T   = 13
+  integer,parameter::PID_P   = 14
+  integer,parameter::PID_E   = 15
+  integer,parameter::PID_Z   = 16
+  integer,parameter::PID_Y   = 17
 
   integer,parameter::SC_RO  = 1
   integer,parameter::SC_MAC = 2
@@ -340,7 +323,7 @@ contains
     rpnc%pfs(3)=loc(zm_f3)
     rpnc%pars=init_par(rpnc,szplist,npbuf)
     rpnc%rl=init_rpnlist(szrlist,nrpnm)
-    rpnc%opt=RPNCOPT_NOP
+    rpnc%opt=ior(RPNCOPT_NOP,ishft(X2A_DEFAULT,32))
     init_rpnc=p
   end function init_rpnc
 

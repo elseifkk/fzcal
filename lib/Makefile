@@ -19,15 +19,15 @@ AR  = ar
 #
 CFLAGS = -c -Wall
 FFLAGS = -c -Wall -cpp -fbounds-check \
- -fcray-pointer -fbackslash \
+ -fcray-pointer -fbackslash -Wno-conversion \
  -g -fPIC
 AFLAGS  = -g stabs
 ARFLAGS = rv
 LDFLAGS = -L/usr/local/lib -L/usr/local/lib/gcc46
 SOFLAGS = -shared -Wl,-soname,$(SONAME)
 
-LD_RUN_PATH     = /usr/local/lib:/usr/local/lib/gcc46
-LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
+LD_RUN_PATH     = /usr/local/lib:/usr/local/lib/gcc
+LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc
 
 #
 .ifdef _NETWALKER_
@@ -43,8 +43,8 @@ LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
         FFLAGS += -fdefault-integer-8
         AFLAGS += -f elf64 -m amd64
 .   endif
-    OBJ      = memioA.o memioF.o fpioA.o fpioF.o slist.o plist.o zmath.o rpnd.o rpne.o rpnp.o com.o
-    SOLIBOBJ = memioA-d.o memioF.o fpioA-d.o fpioF.o slist.o plist.o zmath.o rpnd.o rpne.o rpnp.o com.o
+    OBJ      = memioA.o memioF.o fpioF.o slist.o plist.o zmath.o rpnd.o rpne.o rpnp.o com.o
+    SOLIBOBJ = memioA-d.o memioF.o fpioF.o slist.o plist.o zmath.o rpnd.o rpne.o rpnp.o com.o
 .endif
 
 #
@@ -71,9 +71,6 @@ BINOBJ   = $(OBJ) fzcal.o
 
 .f90.mod:
 	$(FC) $(FFLAGS) $<
-
-fpioA-d.o: fpioA.s
-	$(ASM) $(AFLAGS) -D_DYNAMIC_ $(.ALLSRC) -o $@
 
 memioA-d.o: memioA.s
 	$(ASM) $(AFLAGS) -D_DYNAMIC_ $(.ALLSRC) -o $@

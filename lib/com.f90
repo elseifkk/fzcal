@@ -14,101 +14,110 @@ module com
   integer,parameter::CID_EXIT    = 16
   integer,parameter::CID_SCLE    = 17
   integer,parameter::CID_DONE    =999
-
+  integer*8,parameter::digit_mask=not(ishft(Z"FF",32))
 contains
 
+#define set_opt(x) rpnc%opt=ior(rpnc%opt,(x))
+#define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
+#define set_disp_opt(x) rpnc%opt=ior(rpnc%opt,ishft((x),32))
+#define cle_disp_opt(x) rpnc%opt=iand(rpnc%opt,not(ishft((x),32)))
+#define cle_disp_opt(x) rpnc%opt=iand(rpnc%opt,not(ishft((x),32)))
+#define put_disp_digit(x) rpnc%opt=ior(iand(rpnc%opt,digit_mask),ishft((x),32))
+
   integer function parse_command(rpnc,a,karg)
+    use fpio
     ! a must not include dup white and must be left adjusted
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(inout)::a
     integer,intent(out)::karg
-    integer k,ko,ke,cid
-
+    integer p1,p2
+    integer*8 n
     parse_command=CID_NOP
 
     if(len_trim(a)<=1) return
     if(a(1:1)/=".") return
+    p2=1
+    p1=get_arg(p2)
 
-    k=index(a," ")-1
-    if(k<=0) then
-       ke=len_trim(a)
-       karg=0
-    else
-       ke=k
-       karg=k+1
-    end if
-
-    select case(a(2:ke))
+    parse_command=CID_DONE
+    select case(a(p1:p2))
+    case("opt")
+       write(*,"(Z16.16)") rpnc%opt
     case("q","quit")
        parse_command=CID_EXIT
+    case("eng")
+       set_disp_opt(ior(X2A_ENG,X2A_TRIM_ZERO))
+       cle_disp_opt(ior(X2A_FIX,ior(X2A_SHOW_E0,X2A_ALLOW_ORDINARY)))
+       call set_disp_digit()
+    case("fix")
+       set_disp_opt(X2A_FIX)
+       cle_disp_opt(ior(X2A_ENG,X2A_SHOW_E0))
+       call set_disp_digit()
+    case("exp")
+       cle_disp_opt(ior(X2A_FIX,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO)))
+       call set_disp_digit()
+    case("fig")
+       set_disp_opt(ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))
+       cle_disp_opt(ior(X2A_FIX,ior(X2A_ENG,X2A_SHOW_E0)))
+       n=max_digit
+       put_disp_digit(n)
     case("DEC")
-       rpnc%opt=iand(rpnc%opt,not(ior(RPNCOPT_INM,RPNCOPT_OUTM)))
-       parse_command=CID_DONE
+       cle_opt(ior(RPNCOPT_INM,RPNCOPT_OUTM))
     case("HEX")
-       rpnc%opt=ior(rpnc%opt,ior(RPNCOPT_IHEX,RPNCOPT_OHEX))
-       parse_command=CID_DONE
+       set_opt(ior(RPNCOPT_IHEX,RPNCOPT_OHEX))
     case("OCT")
-       rpnc%opt=ior(rpnc%opt,ior(RPNCOPT_IOCT,RPNCOPT_OOCT))
-       parse_command=CID_DONE
+       set_opt(ior(RPNCOPT_IOCT,RPNCOPT_OOCT))
     case("BIN")
-       rpnc%opt=ior(rpnc%opt,ior(RPNCOPT_IBIN,RPNCOPT_OBIN))
-       parse_command=CID_DONE
+       set_opt(ior(RPNCOPT_IBIN,RPNCOPT_OBIN))
     case("Dec")
-       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_INM))
-       parse_command=CID_DONE
+       cle_opt(RPNCOPT_INM)
     case("Hex")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_IHEX)
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_IHEX)
     case("Oct")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_IOCT)
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_IOCT)
     case("Bin")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_IBIN)
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_IBIN)
     case("dec")
-       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_OUTM))
-       parse_command=CID_DONE
+       cle_opt((RPNCOPT_OUTM))
     case("hex")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_OHEX)
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_OHEX)
     case("oct")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_OOCT)
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_OOCT)
     case("bin")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_OBIN)
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_OBIN)
     case("deg")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_DEG)
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_DEG)
     case("rad")
-       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DEG))
-       parse_command=CID_DONE
+       cle_opt(RPNCOPT_DEG)
     case("dbg","debug")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_DEBUG)
-       parse_command=CID_DONE 
+       set_opt(RPNCOPT_DEBUG)
     case("cle")
        parse_command=CID_SCLE
     case("s","sta","stat")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_STA)
-       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DAT)) ! <<<
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_STA)
+       cle_opt(RPNCOPT_DAT) ! <<<
     case("d","dat","data")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_DAT)
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_DAT)
     case("n","norm")
-       rpnc%opt=iand(rpnc%opt,not(ior(RPNCOPT_DAT,RPNCOPT_STA)))
-       parse_command=CID_DONE
+       cle_opt(ior(RPNCOPT_DAT,RPNCOPT_STA))
     case("nodbg","nodebug")
-       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_DEBUG))
-       parse_command=CID_DONE
-    case("del","delete")
-       cid=CID_DEL
+       cle_opt(RPNCOPT_DEBUG)
     case("r","ratio")
-       rpnc%opt=ior(rpnc%opt,RPNCOPT_RATIO)
-       parse_command=CID_DONE
+       set_opt(RPNCOPT_RATIO)
     case("f","frac")
-       rpnc%opt=iand(rpnc%opt,not(RPNCOPT_RATIO))
-       parse_command=CID_DONE
+       cle_opt(RPNCOPT_RATIO)
+
+
+
+
+
+
+
+
+
+
+
+    case("del","delete")
     case("md")
        parse_command=CID_DUMP_M
     case("fd")
@@ -126,6 +135,37 @@ contains
     case default
        parse_command=CID_INV
     end select
+
+  contains
+    
+    subroutine set_disp_digit()
+      integer*8 nn
+      p1=get_arg(p2)
+      if(p1>0) then
+         nn=atoi(a(p1:p2))
+         put_disp_digit(nn)
+      end if
+    end subroutine set_disp_digit
+
+    integer function get_arg(pp2)
+      integer,intent(out)::pp2
+      integer kk
+      do kk=p2+1,len_trim(a)
+         select case(a(kk:kk))
+         case(" ","\t")
+         case default
+            get_arg=kk
+            pp2=index(a(kk:)," ")
+            if(pp2==0) then
+               pp2=len_trim(a)
+            else
+               pp2=pp2-1+kk-1
+            end if
+            return
+         end select
+      end do
+      get_arg=0
+    end function get_arg
 
   end function parse_command
 

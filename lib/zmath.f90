@@ -268,8 +268,8 @@ contains
     end if
   end function zmr_le
   
-  complex(cp) function zm_mov(z1,z2)
-    complex(cp),intent(in)::z1,z2
+  complex(cp) function zm_mov(z1_unused,z2)
+    complex(cp),intent(in)::z1_unused,z2
     zm_mov=z2
   end function zm_mov
 
@@ -674,7 +674,6 @@ contains
   complex(cp) function zm_ave(n,pzs)
     integer,intent(in)::n
     integer,intent(in)::pzs(0:n)
-    complex(cp) z
     zm_ave=zm_sum(n,pzs)/real(n,kind=rp)
   end function zm_ave
     
@@ -701,9 +700,9 @@ contains
     zm_uvar=zm_var(n,pzs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
   end function zm_uvar
 
-  complex(cp) function zms_n(n,vs)
+  complex(cp) function zms_n(n,vs_unused)
     integer,intent(in)::n
-    complex(cp),intent(in)::vs(n)
+    complex(cp),intent(in)::vs_unused(n)
     zms_n=n
   end function zms_n
 
