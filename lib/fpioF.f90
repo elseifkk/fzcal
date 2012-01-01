@@ -337,7 +337,7 @@ contains
        p2=p1+r+1
        if(r+2<=dd) then
           xtoa(p2:)="."//ns(r+2:dd)
-          p2=p2+(dd-(r+2)+1)
+          p2=p2+(dd-(r+2)+1)+1
        end if
        if(ee/=0) xtoa(p2:)="_"//si_prefix(k:k)
     else if(e==0.and.is_uset(X2A_SHOW_E0)) then
