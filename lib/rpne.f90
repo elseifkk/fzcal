@@ -725,12 +725,4 @@ contains
     
   end function eval
 
-  subroutine set_dat(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
-    if(.not.associated(rpnc%vs)) call init_vs(rpnc)
-    if(rpnc%p_vs+1>size(rpnc%vs)) STOP "Vs overfow"
-    rpnc%p_vs=rpnc%p_vs+1
-    rpnc%vs(rpnc%p_vs)=rpnc%answer
-  end subroutine set_dat
-
 end module rpne

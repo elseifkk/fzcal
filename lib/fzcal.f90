@@ -11,7 +11,7 @@ program fzcal
   pointer(p,rpnc)
   character*16384 str
   integer istat
-  integer ka
+  integer ka,n,kb
   integer cid
 
   p=init_rpnc()
@@ -22,28 +22,50 @@ program fzcal
      read(*,"(a)") str
      if(str=="") cycle
      str=adjustl(str)
-     cid=parse_command(rpnc,str,ka)
+     cid=parse_command(rpnc,str,ka,kb)
+     if(ka/=0) then
+        n=atoi(str(ka:kb),ist=istat)
+        if(istat/=0) then
+           n=0
+        else
+           str(ka:kb)=""
+        end if
+     end if
      select case(cid)
      case(CID_EXIT)
-        exit main
+        exit
      case(CID_SCLE)
         call reset_dat(rpnc)
         cycle
-     case(CID_DUMP_P)
+     case(-CID_PRI)
+        cycle
+     case(-CID_PRI_PAR)
         call dump_plist(rpnc%pars)
-        cycle main
-     case(CID_DUMP_F)
-        call dump_rpnm(rpnc,atoi(trim(adjustl(str(ka:)))))
         cycle
-     case(CID_DUMP_M)
-        call dump_rpnm(rpnc,atoi(trim(adjustl(str(ka:)))))
+     case(CID_PRI_PAR)
+        call dump_plist(rpnc%pars,n,str(ka:kb))
         cycle
-     case(CID_DEL_P)
-        call delete_par(rpnc,trim(adjustl(str(ka:))))
+     case(-CID_PRI_FNC)
+        call dump_rpnm(rpnc,type=SC_FNC)
         cycle
-     case(CID_DEL_M)
-     case(CID_DEL_F)
-     case(CID_DONE)
+     case(CID_PRI_FNC)
+        call dump_rpnm(rpnc,n,str(ka:kb),type=SC_FNC)
+        cycle
+     case(-CID_PRI_MAC)
+        call dump_rpnm(rpnc,type=SC_MAC)
+        cycle
+     case(CID_PRI_MAC)
+        call dump_rpnm(rpnc,n,str(ka:kb),type=SC_MAC)
+        cycle
+     case(CID_DEL_PAR)
+        call delete_par(rpnc,str(ka:kb))
+        cycle
+     case(CID_DEL_PAR_ALL)
+        call delete_par_all(rpnc)
+        cycle
+     case(CID_DEL_MAC)
+     case(CID_DEL_FNC)
+     case(CID_DONE,CID_INV)
         cycle
      end select
      

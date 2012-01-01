@@ -112,6 +112,7 @@ contains
     pointer(p,b)
     if(present(len)) len=0
     if(sl%n<k.or.k<=0) then
+WRITE(*,*)k,sl%n
        get_str_ptr=SLERR_NOENT
        return
     end if
@@ -181,16 +182,27 @@ contains
   end function add_sc
   
   integer function rm_str(sl,s,ent)
+    use memio
     type(t_slist),intent(inout)::sl
-    character*(*),intent(in)::s
-    integer,intent(out),optional::ent
+    character*(*),intent(inout),optional::s
+    integer,intent(inout),optional::ent
     integer k
-    integer ptr
-    k=find_str(sl,s,ptr=ptr)
-    if(present(ent)) ent=k
-    if(k==0) then
+    integer ptr,l
+    if(present(s).and.s/="") then
+       k=find_str(sl,s,ptr=ptr)
+       if(present(ent)) ent=k
+       if(k==0) then
+          rm_str=SLERR_NOENT
+          return
+       end if
+    else if(present(ent)) then
+       if(ent<=0.or.ent>sl%n.or.get_str_ptr(sl,ent,ptr,len=l)/=0) then
+          rm_str=SLERR_NOENT
+          return
+       end if
+       if(present(s)) call mcp(loc(s),ptr,min(l,len(s)))
+    else
        rm_str=SLERR_NOENT
-       return
     end if
     call shift_slist()
     sl%n=sl%n-1

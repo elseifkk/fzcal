@@ -33,6 +33,7 @@ module rpnd
   integer,parameter::NUM_RPNM_MIN  =    8
   integer,parameter::LEN_PLIST_MIN = 1024
   integer,parameter::LEN_RLIST_MIN = 1024
+  integer,parameter::NUM_VS_MIN    =   32
 
   ! meta tid
   integer,parameter::TID_FIN   =   999
@@ -165,7 +166,7 @@ module rpnd
      integer,pointer::rc ! recursion count
      integer*8,pointer::opt
      integer,pointer::pfs(:) 
-     complex(cp),pointer::vs(:)
+     complex(cp),pointer::vs(:,:) ! n:2
      integer,pointer::p_vs
   end type t_rpnc
 
@@ -410,6 +411,11 @@ contains
     call uinit_plist(rpnc%pars)
   end subroutine uinit_par
 
+  subroutine delete_par_all(rpnc)
+    type(t_rpnc),intent(inout)::rpnc
+    call rm_par_all(rpnc%pars)
+  end subroutine delete_par_all
+
   subroutine delete_par(rpnc,s)
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(in)::s
@@ -418,9 +424,30 @@ contains
     if(istat/=0) write(*,*) "*** Error delete_par: "//trim(s)//": code = ",istat
   end subroutine delete_par
 
+  subroutine set_dat(rpnc)
+    type(t_rpnc),intent(inout)::rpnc
+    if(.not.associated(rpnc%vs)) call init_vs(rpnc)
+    if(rpnc%p_vs==size(rpnc%vs)) call inc_vs(rpnc,8) ! <<<
+    rpnc%p_vs=rpnc%p_vs+1
+    rpnc%vs(rpnc%p_vs,1)=rpnc%answer
+  end subroutine set_dat
+
+  subroutine inc_vs(rpnc,n)
+    type(t_rpnc),intent(inout)::rpnc
+    integer,intent(in)::n
+    complex(cp),allocatable::tmp_vs(:,:)
+    if(.not.associated(rpnc%vs)) then
+       allocate(rpnc%vs(n,2))
+    else
+       allocate(tmp_vs(size(rpnc%vs)+n,2))
+       tmp_vs=rpnc%vs
+       deallocate(tmp_vs)
+    end if
+  end subroutine inc_vs
+
   subroutine init_vs(rpnc)
     type(t_rpnc),intent(inout)::rpnc
-    allocate(rpnc%vs(128)) !<<<<<<<<<<<<<<<<<<<<<<<<
+    allocate(rpnc%vs(NUM_VS_MIN,2))
     rpnc%p_vs=0
   end subroutine init_vs
 
@@ -444,7 +471,7 @@ contains
     get_i32=ior(lo,ishft(up,16))
   end function get_i32
 
-    subroutine put_vbuf_r(rpnc,i,v)
+  subroutine put_vbuf_r(rpnc,i,v)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(inout)::i
     real(rp),intent(in)::v
@@ -475,41 +502,49 @@ contains
     rpnc%que(i)%tid=t
   end subroutine put_vbuf_z
 
-  subroutine dump_rpnm(rpnc,ent)
+  subroutine dump_rpnm(rpnc,ent,name,type)
     type(t_rpnc),intent(in),target::rpnc
-    integer,intent(in)::ent
+    integer,intent(in),optional::ent
+    character*(*),intent(in),optional::name
+    integer,intent(in),optional::type
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) tmprpnc
     integer ptr,len
     integer code
-    integer i1,i2,i
+    integer i
 
-    if(ent==0) then
-       i1=1
-       i2=rpnc%rl%s%n
-    else
-       i1=ent
-       i2=ent
-    end if
-    
-    do i=i1,i2
-       if(i>rpnc%rl%s%n.or.i<=0.or.i>size(rpnc%rl%rpnm)&
+    do i=1,rpnc%rl%s%n
+       if(present(ent)) then
+          if(ent>0.and.i/=ent) cycle
+       end if
+       if(i>size(rpnc%rl%rpnm) &
             .or.get_str_ptr(rpnc%rl%s,i,ptr,len,code)/=0) then
           write(*,*) "*** dump_rpnm: no such entry: ",i
           cycle
        end if
+
        rpnm=>rpnc%rl%rpnm(i)
        if(iand(code,SC_MAC)/=0) then
+          if(present(type)) then
+             if(type/=SC_MAC) cycle
+          end if
           write(*,*) "MACRO entry: ",i
        else
-          write(*,*) "FUNCTION entry:",i
+          if(present(type)) then
+             if(type/=SC_FNC) cycle
+          end if
+          write(*,*) "FUNCTION entry: ",i
           if(get_str_ptr(rpnm%pnames,2,ptr,len)/=0) then
              write(*,*) "???"
              cycle !<<<<<<<<<
           end if
        end if
-       write(*,*) "name: "//trim(cpstr(ptr,len))
 
+       if(present(name)) then
+          if(name/="".and.name/=trim(cpstr(ptr,len))) cycle
+       end if
+
+       write(*,*) "name: "//trim(cpstr(ptr,len))
        if(allocated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
           write(*,*) "definition: "//trim(cpstr(ptr,len))
           tmprpnc%que=>rpnm%que
