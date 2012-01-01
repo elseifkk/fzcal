@@ -571,6 +571,7 @@ contains
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in),optional::mid
     type(t_rpnm),pointer::rpnm
+    type(t_rpnq),pointer::q
     integer i,t,istat
     integer ptr,len
     complex(cp) z
@@ -588,21 +589,24 @@ contains
     write(*,*) "# tid cid value"
     if(present(mid)) rpnm=>rpnc%rl%rpnm(mid)
     do i=1,size(rpnc%que)
-       t=get_lo32(rpnc%que(i)%tid)
+       q => rpnc%que(i)
+       t=get_lo32(q%tid)
        write(*,10) i,t
        select case(t)
        case(TID_VAR,TID_PAR,TID_FIG,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
-          write(*,11) rpnc%que(i)%cid
+          write(*,11) q%cid
           if(present(mid)) then
              if(t/=TID_FIG) then
-                istat=get_str_ptr(rpnm%pnames,rpnc%que(i)%cid,ptr,len)
+                istat=get_str_ptr(rpnm%pnames,q%cid,ptr,len)
                 write(*,*) trim(cpstr(ptr,len))
                 cycle
              else
-                z=rpnm%vbuf(rpnc%que(i)%cid)
+                z=rpnm%vbuf(q%cid)
              end if
           else
-             pv=rpnc%que(i)%cid
+             ! TID_PAR might have pointer deallocated by remove_dup!
+             ! but no way to check
+             pv=q%cid
              z=v
              if(pv==0) then
                 write(*,*) "(undef)"
@@ -611,11 +615,11 @@ contains
           end if
           write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
        case(TID_OP,TID_OPN,TID_ROP)
-          write(*,14) rpnc%que(i)%cid
+          write(*,14) q%cid
        case(TID_DPAR)
-          write(*,16) rpnc%que(i)%cid,"(dummy par)"
+          write(*,16) q%cid,"(dummy par)"
        case default
-          write(*,14) rpnc%que(i)%cid
+          write(*,14) q%cid
        end select
     end do
 10  format(2(x,i4),$)

@@ -535,6 +535,9 @@ contains
        else
           t=TID_ASN
        end if
+    case(TID_SCL)
+       call skip_tid(t)
+       if(p2==rpnb%len_expr) t=TID_FIN
     end select
     
     rpnb%old_tid=t
@@ -543,6 +546,18 @@ contains
     
   contains
     
+    subroutine skip_tid(tid)
+      integer,intent(in)::tid
+      integer i
+      do i=p2+1,rpnb%len_expr
+         if(get_tid(rpnb%expr(i:i))==tid) then
+            p2=i
+         else
+            exit
+         end if
+      end do
+    end subroutine skip_tid
+
     character*1 function next_char(inc)
       integer,intent(in)::inc
       integer kk
@@ -1539,7 +1554,6 @@ contains
     do 
        tid=get_next(rpnb,p1,p2,rpnc%rl%s)
        t=get_lo32(tid)
-WRITE(*,*)TID,TOLD
        select case(t)
        case(TID_BLK)
           cycle
