@@ -10,18 +10,18 @@ module fpio
   integer,parameter::rp=qp
   integer,parameter::cp=qp
   integer,parameter::max_digit=33
-  character*(*),parameter::cfmt="(ES41.33)"
+  character*(*),parameter::cfmt="(ES41.33e4)"
 #elif !defined _NO_REAL10_
   integer,parameter::rp=ep
   integer,parameter::cp=ep
   integer,parameter::max_digit=18
-  character*(*),parameter::cfmt="(ES26.18)"
+  character*(*),parameter::cfmt="(ES26.18e4)"
 #else
 #define _RP_IS_DP_
   integer,parameter::rp=dp
   integer,parameter::cp=dp
   integer,parameter::max_digit=15
-  character*(*),parameter::cfmt="(ES23.15)"
+  character*(*),parameter::cfmt="(ES23.15e4)"
 #endif
   integer,parameter::min_digit=3
 
@@ -151,11 +151,12 @@ contains
           else
              ztoa=" - "//trim(ztoa)
           end if
+       else 
+          return
        end if
     else
        ztoa=""
     end if
-    if(realpart(z)==rzero) return
     ztoa=trim(rtoa(realpart(z),fmt))//trim(ztoa)
   end function ztoa
 

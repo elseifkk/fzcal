@@ -34,6 +34,13 @@ module plist
      type(t_vbuf),allocatable::v(:)
   end type t_plist
   
+  interface rm_par
+     module procedure rm_par_s
+     module procedure rm_par_k
+  end interface
+  public rm_par
+  public rm_par_all
+
   interface put_par
      module procedure put_par_x
      module procedure put_par_z
@@ -51,7 +58,6 @@ module plist
   public add_par_by_reference
   public add_par_by_entry
   public find_par
-  public rm_par
   public init_plist
   public dump_plist
   public uinit_plist
@@ -238,23 +244,43 @@ contains
     call set_pkind(v%sta,pk)
   end subroutine alloc_par
 
-  integer function rm_par(pl,s)
+  subroutine rm_par_all(pl)
+    type(t_plist),intent(inout)::pl
+    integer i,istat
+    do i=pl%s%n,1,-1
+       istat=rm_par_k(pl,i)
+    end do
+  end subroutine rm_par_all
+
+  integer function rm_par_s(pl,s)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
-    integer istat
     integer k
-    integer i
-    istat=rm_str(pl%s,s,ent=k)
-    if(istat/=0) then
-       rm_par=istat
+    k=find_str(pl%s,s)
+    if(k==0) then
+       rm_par_s=PLERR_NOENT
        return
     end if
+    rm_par_s=rm_par_k(pl,k)
+  end function rm_par_s
+
+  integer function rm_par_k(pl,k)
+    type(t_plist),intent(inout)::pl
+    integer,intent(in)::k
+    integer i,kk
+    if(is_read_only(pl%v(k)%sta)) then
+       rm_par_k=PLERR_RDONL
+       return
+    end if
+    kk=k ! <<<
+    rm_par_k=rm_str(pl%s,ent=kk)
+    if(rm_par_k/=0) return
     call uinit_vbuf(pl%v(k))
     do i=k,pl%s%n
        call mv_vbuf(pl%v(i+1),pl%v(i))
     end do
-    rm_par=0
-  end function rm_par
+    rm_par_k=0
+  end function rm_par_k
 
   subroutine min_cp_plist(pl1,pl2)
     type(t_plist),intent(in),target::pl1
@@ -275,8 +301,10 @@ contains
     end if
   end subroutine min_cp_plist
   
-  subroutine dump_plist(pl)
+  subroutine dump_plist(pl,ent,name)
     type(t_plist),intent(in),target::pl
+    integer,intent(in),optional::ent
+    character*(*),intent(in),optional::name
     integer i,len,istat,ptr
     type(t_vbuf),pointer::v
     real(dp) r
@@ -288,8 +316,14 @@ contains
     pointer(px,x)
     pointer(pn,n)
     do i=1,pl%s%n
+       if(present(ent)) then
+          if(ent>0.and.ent/=i) cycle
+       end if
        v => pl%v(i)
        istat=get_str_ptr(pl%s,i,ptr,len)
+       if(present(name)) then
+          if(name/=trim(cpstr(ptr,len))) cycle
+       end if
        write(*,10) i,v%sta,trim(cpstr(ptr,len))
        if(is_reference(v%sta)) write(*,20) v%p
        select case(get_pkind(v%sta))

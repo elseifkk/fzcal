@@ -1539,7 +1539,7 @@ contains
     do 
        tid=get_next(rpnb,p1,p2,rpnc%rl%s)
        t=get_lo32(tid)
-
+WRITE(*,*)TID,TOLD
        select case(t)
        case(TID_BLK)
           cycle
