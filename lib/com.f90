@@ -14,9 +14,10 @@ module com
   integer,parameter::CID_PRI_PAR     =   9
   integer,parameter::CID_PRI_FNC     =  10 
   integer,parameter::CID_PRI_MAC     =  11 
-  integer,parameter::CID_INI         =  12 
-  integer,parameter::CID_EXIT        =  13
-  integer,parameter::CID_SCLE        =  14
+  integer,parameter::CID_PRI_DAT     =  12 
+  integer,parameter::CID_INI         =  13 
+  integer,parameter::CID_EXIT        =  14
+  integer,parameter::CID_SCLE        =  15
   integer,parameter::CID_DONE        = 999
 
   integer,parameter::AK_INV    =  -1
@@ -24,7 +25,8 @@ module com
   integer,parameter::AK_PAR    =   1
   integer,parameter::AK_FNC    =   2
   integer,parameter::AK_MAC    =   3
-  integer,parameter::AK_ANY    =   4
+  integer,parameter::AK_DAT    =   4
+  integer,parameter::AK_ANY    =   5
 
   integer*8,parameter::digit_mask=not(ishft(Z"FF",32))
 
@@ -170,6 +172,8 @@ contains
              parse_command=-CID_PRI_FNC
           case("pp")
              parse_command=-CID_PRI_PAR   
+          case("pd")
+             parse_command=CID_PRI_DAT   
           case("init")
              parse_command=CID_INI
           case default
@@ -196,6 +200,8 @@ contains
              parse_command=-CID_PRI_MAC
           case(AK_FNC)
              parse_command=-CID_PRI_FNC
+          case(AK_DAT)
+             parse_command=CID_PRI_DAT
           case default
              parse_command=CID_INV
              exit
@@ -263,7 +269,9 @@ contains
       case("m","mac","macro")
          get_ak=AK_MAC
       case("p","par","parameter")
-         get_ak=AK_PAR
+         get_ak=AK_PAr
+      case("d","dat","data")
+         get_ak=AK_DAT
       case(".all")
          get_ak=AK_ALL
       case(".any")

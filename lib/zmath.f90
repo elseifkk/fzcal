@@ -47,11 +47,19 @@ module zmath
   public zm_sum2
 
   public zms_n
-  public zms_sum
-  public zms_ave
-  public zms_var
-  public zms_uvar
-  public zms_sum2
+  public zms_sum_x
+  public zms_ave_x
+  public zms_var_x
+  public zms_uvar_x
+  public zms_sum2_x
+  public zms_sum_y
+  public zms_ave_y
+  public zms_var_y
+  public zms_uvar_y
+  public zms_sum2_y
+  public zms_sum_xy
+  public zms_a
+  public zms_b
 
   public zm_sin
   public zm_cos
@@ -702,39 +710,101 @@ contains
 
   complex(cp) function zms_n(n,vs_unused)
     integer,intent(in)::n
-    complex(cp),intent(in)::vs_unused(n)
+    complex(cp),intent(in)::vs_unused(n,2)
     zms_n=n
   end function zms_n
 
-  complex(cp) function zms_ave(n,vs)
+  complex(cp) function zms_ave_x(n,vs)
     integer,intent(in)::n
-    complex(cp),intent(in)::vs(n)
-    zms_ave=sum(vs)/n
-  end function zms_ave
+    complex(cp),intent(in)::vs(n,2)
+    zms_ave_x=sum(vs(:,1))/n
+  end function zms_ave_x
 
-  complex(cp) function zms_var(n,vs)
+  complex(cp) function zms_var_x(n,vs)
     integer,intent(in)::n
-    complex(cp),intent(in)::vs(n)
-    zms_var=sqrt(sum(vs**2.0_rp)/real(n,kind=rp)-(sum(vs)/real(n,kind=rp))**2.0_rp)
-  end function zms_var
+    complex(cp),intent(in)::vs(n,2)
+    complex(cp) s
+    s=sum(vs(:,1))
+    zms_var_x=sqrt(s**2.0_rp/real(n,kind=rp)-(s/real(n,kind=rp))**2.0_rp)
+  end function zms_var_x
 
-  complex(cp) function zms_uvar(n,vs)
+  complex(cp) function zms_uvar_x(n,vs)
     integer,intent(in)::n
-    complex(cp),intent(in)::vs(n)
-    zms_uvar=zms_var(n,vs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
-  end function zms_uvar
+    complex(cp),intent(in)::vs(n,2)
+    zms_uvar_x=zms_var_x(n,vs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
+  end function zms_uvar_x
   
-  complex(cp) function zms_sum(n,vs)
+  complex(cp) function zms_sum_x(n,vs)
     integer,intent(in)::n
-    complex(cp),intent(in)::vs(n)
-    zms_sum=sum(vs)
-  end function zms_sum
+    complex(cp),intent(in)::vs(n,2)
+    zms_sum_x=sum(vs(:,1))
+  end function zms_sum_x
 
-  complex(cp) function zms_sum2(n,vs)
+  complex(cp) function zms_sum2_x(n,vs)
     integer,intent(in)::n
-    complex(cp),intent(in)::vs(n)
-    zms_sum2=sum(vs**2.0_rp)
-  end function zms_sum2
+    complex(cp),intent(in)::vs(n,2)
+    zms_sum2_x=sum(vs(:,1)**2.0_rp)
+  end function zms_sum2_x
+
+  complex(cp) function zms_ave_y(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n,2)
+    zms_ave_y=sum(vs(:,2))/n
+  end function zms_ave_y
+
+  complex(cp) function zms_var_y(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n,2)
+    complex(cp) s
+    s=sum(vs(:,2))
+    zms_var_y=sqrt(s**2.0_rp/real(n,kind=rp)-(s/real(n,kind=rp))**2.0_rp)
+  end function zms_var_y
+
+  complex(cp) function zms_uvar_y(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n,2)
+    zms_uvar_y=zms_var_y(n,vs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
+  end function zms_uvar_y
+  
+  complex(cp) function zms_sum_y(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n,2)
+    zms_sum_y=sum(vs(:,2))
+  end function zms_sum_y
+
+  complex(cp) function zms_sum2_y(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n,2)
+    zms_sum2_y=sum(vs(:,2)**2.0_rp)
+  end function zms_sum2_y
+
+  complex(cp) function zms_sum_xy(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in)::vs(n,2)
+    zms_sum_xy=sum(vs(:,1)*vs(:,2))
+  end function zms_sum_xy
+
+  complex(cp) function zms_a(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in),target::vs(n,2)
+    complex(cp),pointer::x(:),y(:)
+    complex(cp) d
+    x => vs(:,1)
+    y => vs(:,2)
+    d=real(n,kind=rp)*sum(x**2.0_rp)-sum(x)**2.0_rp
+    zms_a = (sum(x**2.0_rp)*sum(y)-sum(x)*sum(x*y))/d
+  end function zms_a
+
+  complex(cp) function zms_b(n,vs)
+    integer,intent(in)::n
+    complex(cp),intent(in),target::vs(n,2)
+    complex(cp),pointer::x(:),y(:)
+    complex(cp) d
+    x => vs(:,1)
+    y => vs(:,2)
+    d=real(n,kind=rp)*sum(x**2.0_rp)-sum(x)**2.0_rp
+    zms_b = (-sum(x)*sum(y)+real(n,kind=rp)*sum(x*y))/d
+  end function zms_b
 
 !!!!!!---------------------------------------------------------------------!!!!!!
   ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX

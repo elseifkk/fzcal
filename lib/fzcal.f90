@@ -63,6 +63,9 @@ program fzcal
      case(CID_DEL_PAR_ALL)
         call delete_par_all(rpnc)
         cycle
+     case(CID_PRI_DAT)
+        call dump_vs(rpnc)
+        cycle
      case(CID_DEL_MAC)
      case(CID_DEL_FNC)
      case(CID_DONE,CID_INV)

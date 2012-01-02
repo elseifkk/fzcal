@@ -107,6 +107,7 @@ module rpnd
   integer,parameter::TID_LOP    = 48
   integer,parameter::TID_SOP    = 49
   integer,parameter::TID_POP    = 50
+  integer,parameter::TID_CPAR   = 51 ! copied par
 
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2
@@ -426,11 +427,47 @@ contains
 
   subroutine set_dat(rpnc)
     type(t_rpnc),intent(inout)::rpnc
+    integer i,j
+    complex(cp) z
+    pointer(pz,z)
     if(.not.associated(rpnc%vs)) call init_vs(rpnc)
-    if(rpnc%p_vs==size(rpnc%vs)) call inc_vs(rpnc,8) ! <<<
-    rpnc%p_vs=rpnc%p_vs+1
-    rpnc%vs(rpnc%p_vs,1)=rpnc%answer
+    call next
+    j=0
+    do i=1,size(rpnc%que)
+       select case(rpnc%que(i)%tid)
+       case(TID_VAR,TID_PAR,TID_CPAR,TID_ROVAR)
+          j=j+1
+          if(j>2) cycle
+          pz=rpnc%que(i)%cid
+       case(TID_END)
+          call next
+          cycle
+       case default
+          cycle
+       end select
+       rpnc%vs(rpnc%p_vs,j)=z
+       if(j==1) rpnc%vs(rpnc%p_vs,2)=rzero
+    end do
+
+  contains
+    
+    subroutine next
+      if(rpnc%p_vs==size(rpnc%vs)) call inc_vs(rpnc,8) ! <<<
+      rpnc%p_vs=rpnc%p_vs+1
+    end subroutine next
+
   end subroutine set_dat
+
+  subroutine dump_vs(rpnc)
+    type(t_rpnc),intent(in)::rpnc
+    integer i
+    integer f
+    f=ishft(rpnc%opt,-32)
+    do i=1,rpnc%p_vs
+       write(*,*) i,trim(ztoa(rpnc%vs(i,1),f)) &
+            //", "//trim(ztoa(rpnc%vs(i,2),f))
+    end do    
+  end subroutine dump_vs
 
   subroutine inc_vs(rpnc,n)
     type(t_rpnc),intent(inout)::rpnc
@@ -593,7 +630,7 @@ contains
        t=get_lo32(q%tid)
        write(*,10) i,t
        select case(t)
-       case(TID_VAR,TID_PAR,TID_FIG,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
+       case(TID_VAR,TID_PAR,TID_CPAR,TID_FIG,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
           write(*,11) q%cid
           if(present(mid)) then
              if(t/=TID_FIG) then
@@ -604,8 +641,10 @@ contains
                 z=rpnm%vbuf(q%cid)
              end if
           else
-             ! TID_PAR might have pointer deallocated by remove_dup!
-             ! but no way to check
+             if(t==TID_CPAR) then
+                write(*,*) "(copied)"
+                cycle
+             end if
              pv=q%cid
              z=v
              if(pv==0) then
