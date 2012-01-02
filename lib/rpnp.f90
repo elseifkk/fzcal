@@ -1072,6 +1072,9 @@ contains
           amac=.false.
           afnc=.false.
           p_q1=i+1
+       case(TID_COL) ! only for dat mode
+          q%tid=TID_COL
+          q%cid=0
        case default
           CALL DUMP_RPNB(RPNB)
           WRITE(*,*) "que=",i,"tid=",qq%tid
@@ -1593,7 +1596,7 @@ contains
        case(TID_BLK)
           cycle
        case(TID_FIN,TID_SCL)
-          if(.not.was_operand().or.tc/=clc) then
+          if(.not.was_operand().or.(tc/=clc.and.is_uset(RPNCOPT_DAT))) then
              istat=RPNERR_PARSER
              exit
           else
@@ -1765,8 +1768,16 @@ contains
           end if
        case(TID_COL)
           clc=clc+1
-          call rpn_pop_until(rpnb,TID_TOP1)
-          call rpn_push(rpnb,t,p1,p2)
+          if(is_uset(RPNCOPT_DAT)) then
+             call rpn_pop_until(rpnb,TID_TOP1)
+             call rpn_push(rpnb,t,p1,p2)
+          else
+             if(clc<=1) then
+                call rpn_put(rpnb,t,p1,p2)
+             else
+                istat=RPNERR_PARSER
+             end if
+          end if
        case(TID_IFNC,TID_UFNC)
           fnc=fnc+1
           call set_arg_read()
