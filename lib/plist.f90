@@ -698,9 +698,10 @@ contains
     add_par_by_value_z=0
   end function add_par_by_value_z
 
-  integer function get_par_loc(pl,k)
+  integer function get_par_loc(pl,k,dup)
     type(t_plist),intent(inout),target::pl
     integer,intent(in)::k
+    logical,intent(out),optional::dup
     type(t_vbuf),pointer::v
     integer pk
     real(rp) x
@@ -711,6 +712,7 @@ contains
     pointer(pr,r)
     pointer(pz,z)
     pointer(pn,n)
+    if(present(dup)) dup=.false.
     get_par_loc=0
     if(k>pl%s%n.or.k<=0) return
     v => pl%v(k)
@@ -735,6 +737,7 @@ contains
           pn=v%p
           z=complex(real(n,kind=rp),rzero)
        end select
+       if(present(dup)) dup=.true.
        get_par_loc=v%pz
        call set_pflg(v%sta,PS_DUP)
     end select

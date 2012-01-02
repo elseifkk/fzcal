@@ -55,7 +55,7 @@ contains
     get_operand=0
     do j=i,1,-1
        select case(rpnc%que(j)%tid)
-       case(TID_VAR,TID_PAR,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
+       case(TID_VAR,TID_PAR,TID_ROVAR,TID_LVAR_T,TID_LVAR_F,TID_CPAR)
           get_operand=j
           return
        end select
@@ -109,7 +109,7 @@ contains
     end if
     if(n==1) then
        select case(rpnc%que(j)%tid)
-       case(TID_VAR,TID_PAR,TID_ROVAR) ! ROVAR? <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
+       case(TID_VAR,TID_PAR,TID_CPAR,TID_ROVAR) ! ROVAR?
           pv=rpnc%que(j)%cid
           rpnc%tmpans=v
        end select
@@ -192,7 +192,7 @@ contains
           select case(rpnc%que(ks(n))%tid)
           case(TID_VAR,TID_LVAR_T,TID_LVAR_F)
              k1=n ! writable var
-          case(TID_ROVAR,TID_PAR)
+          case(TID_ROVAR,TID_PAR,TID_CPAR)
              pz=rpnc%que(ks(n))%cid ! unwratable; k1=0
           end select
        end if
@@ -427,7 +427,7 @@ contains
          use fpio, only: cp
          complex(cp) fn
          integer,intent(in)::n
-         complex(cp),intent(in)::vs(n)
+         complex(cp),intent(in)::vs(n,2)
        end function fn
     end interface
     pointer(pfn,fn)
@@ -436,7 +436,7 @@ contains
        v=czero
     else
        pfn=rpnc%que(i)%cid
-       v=fn(rpnc%p_vs,rpnc%vs)
+       v=fn(rpnc%p_vs,rpnc%vs(1:rpnc%p_vs,:))
     end if
     call set_result(rpnc,i,v)
     istat=0
@@ -501,7 +501,7 @@ contains
   end function eval_n
 
   recursive function eval_uf(rpnc,i) result(istat)
-    type(t_rpnc),intent(inout)::rpnc
+    type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     integer istat
     type(t_rpnm),pointer::rpnm
@@ -511,6 +511,8 @@ contains
     integer,allocatable::ods(:)
     complex(cp) v
     pointer(pv,v)
+    logical dup
+    type(t_rpnq),pointer::q
 
     rpnm=>rpnc%rl%rpnm(rpnc%que(i)%cid)
 
@@ -542,17 +544,22 @@ contains
     
     istat=0
     do j=1,size(fnc%que)
-       select case(fnc%que(j)%tid)
+       q => fnc%que(j)
+       select case(q%tid)
        case(TID_FIG)
-          fnc%que(j)%cid=loc(rpnm%vbuf(fnc%que(j)%cid))
-          fnc%que(j)%tid=TID_ROVAR
+          q%cid=loc(rpnm%vbuf(q%cid))
+          q%tid=TID_ROVAR
        case(TID_PAR,TID_APAR)
           call set_par_ptr(kp)
           if(istat/=0) exit 
-          fnc%que(j)%cid=get_par_loc(fnc%pars,kp)
-          fnc%que(j)%tid=TID_PAR
+          q%cid=get_par_loc(fnc%pars,kp,dup)
+          if(.not.dup) then
+             q%tid=TID_PAR
+          else
+             q%tid=TID_CPAR
+          end if
        case(TID_DPAR)
-          pv=rpnc%que(ods(fnc%que(j)%cid))%cid
+          pv=rpnc%que(ods(q%cid))%cid
           call put_vbuf(fnc,j,v)
        end select
     end do
@@ -583,13 +590,15 @@ contains
   end function eval_uf
 
   recursive function eval_m(rpnc,i) result(istat)
-    type(t_rpnc),intent(inout)::rpnc
+    type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     integer istat
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) mac
     integer j
     integer kp
+    logical dup
+    type(t_rpnq),pointer::q
 
     rpnm=>rpnc%rl%rpnm(rpnc%que(i)%cid)
     
@@ -609,15 +618,20 @@ contains
 
     istat=0
     do j=1,size(mac%que)
-       select case(mac%que(j)%tid) 
+       q => mac%que(j)
+       select case(q%tid) 
        case(TID_PAR,TID_APAR)
           call set_par_ptr(kp)
           if(istat/=0) exit
-          mac%que(j)%cid=get_par_loc(mac%pars,kp)
-          mac%que(j)%tid=TID_PAR
+          q%cid=get_par_loc(mac%pars,kp,dup)
+          if(.not.dup) then
+             q%tid=TID_PAR
+          else
+             q%tid=TID_CPAR
+          end if
        case(TID_FIG)
-          mac%que(j)%cid=loc(rpnm%vbuf(mac%que(j)%cid))
-          mac%que(j)%tid=TID_ROVAR
+          q%cid=loc(rpnm%vbuf(q%cid))
+          q%tid=TID_ROVAR
        end select
     end do
 
@@ -701,6 +715,9 @@ contains
     if(get_lo32(rpnc%que(size(rpnc%que))%tid)/=TID_END) &
          call set_ans(.false.)
 
+    if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
+         call set_dat(rpnc)
+
     call remove_dup(rpnc%pars)
 
   contains
@@ -719,8 +736,6 @@ contains
       else
          rpnc%answer=rpnc%tmpans
       end if
-    if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
-         call set_dat(rpnc)
    end subroutine set_ans
     
   end function eval

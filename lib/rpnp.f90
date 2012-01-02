@@ -25,13 +25,29 @@ module rpnp
        achar(3)//"sum"//&
        achar(4)//"sum2"//&
        achar(4)//"uvar"//&
+       achar(5)//"ave_y"//&
+       achar(5)//"var_y"//&
+       achar(5)//"sum_y"//&
+       achar(6)//"sum2_y"//&
+       achar(6)//"uvar_y"//&
+       achar(6)//"sum_xy"//&
+       achar(1)//"a"//&
+       achar(1)//"b"//&
        achar(0)
-  integer,parameter::SID_N     = 1
-  integer,parameter::SID_AVE   = 2
-  integer,parameter::SID_VAR   = 3
-  integer,parameter::SID_SUM   = 4
-  integer,parameter::SID_SUM2  = 5
-  integer,parameter::SID_UVAR  = 6
+  integer,parameter::SID_N       =  1
+  integer,parameter::SID_AVE     =  2
+  integer,parameter::SID_VAR     =  3
+  integer,parameter::SID_SUM     =  4
+  integer,parameter::SID_SUM2    =  5
+  integer,parameter::SID_UVAR    =  6
+  integer,parameter::SID_AVE_Y   =  7
+  integer,parameter::SID_VAR_Y   =  8
+  integer,parameter::SID_SUM_Y   =  9
+  integer,parameter::SID_SUM2_Y  = 10
+  integer,parameter::SID_UVAR_Y  = 11
+  integer,parameter::SID_SUM_XY  = 12
+  integer,parameter::SID_A       = 13
+  integer,parameter::SID_B       = 14
 
   integer,parameter::int_fncs_max_len=5
   character*(*),parameter::int_fncs=&
@@ -694,7 +710,7 @@ contains
       rpnm%p_vbuf=0
       do ii=1,size(rpnm%que)
          select case(rpnm%que(ii)%tid)
-         case(TID_VAR,TID_PAR)
+         case(TID_VAR,TID_PAR,TID_CPAR)
          case default
             cycle
          end select
@@ -721,7 +737,7 @@ contains
       plen=0
       do ii=km,ke
          select case(rpnc%que(ii)%tid)
-         case(TID_VAR,TID_PAR) 
+         case(TID_VAR,TID_PAR,TID_CPAR) 
             if(rpnb%que(ii)%tid/=TID_FIG) then ! par
                plen=plen+rpnb%que(ii)%p2-rpnb%que(ii)%p1+1
                pc=pc+1
@@ -810,7 +826,7 @@ contains
       rpnm%p_vbuf=0
       do ii=1,tc
          select case(rpnm%que(ii)%tid)
-         case(TID_VAR,TID_PAR)
+         case(TID_VAR,TID_PAR,TID_CPAR)
          case default
             cycle
          end select
@@ -837,7 +853,7 @@ contains
       pc=0
       do ii=i+1,k-1
          select case(rpnc%que(ii)%tid)
-         case(TID_VAR,TID_PAR) 
+         case(TID_VAR,TID_PAR,TID_CPAR) 
             if(rpnb%que(ii)%tid/=TID_FIG) then ! par
                plen=plen+rpnb%que(ii)%p2-rpnb%que(ii)%p1+1
                pc=pc+1
@@ -883,6 +899,7 @@ contains
     integer p_q1
     type(t_rpnq),pointer::q
     type(t_rrpnq),pointer::qq
+    logical dup
 
     p_q1=1
     amac=.false.
@@ -1000,10 +1017,12 @@ contains
           end if
           if(istat==0) then
              q%tid=TID_PAR
-             q%cid=get_par_loc(rpnc%pars,k)
+             q%cid=get_par_loc(rpnc%pars,k,dup)
              if(q%cid==0) then
                 write(*,*) "*** get_par failed: code = ",istat
                 istat=RPNERR_GETPAR
+             else
+                if(dup) q%tid=TID_CPAR
              end if
           else
              write(*,*) "*** No such parameter: "//_EXPR_(i)
@@ -1115,15 +1134,31 @@ contains
       case(SID_N)
          get_sid=loc(zms_n)
       case(SID_AVE)
-         get_sid=loc(zms_ave)
+         get_sid=loc(zms_ave_x)
       case(SID_VAR)
-         get_sid=loc(zms_var)
+         get_sid=loc(zms_var_x)
       case(SID_SUM)
-         get_sid=loc(zms_sum)
+         get_sid=loc(zms_sum_x)
       case(SID_SUM2)
-         get_sid=loc(zms_sum2)
+         get_sid=loc(zms_sum2_x)
       case(SID_UVAR)
-         get_sid=loc(zms_uvar)
+         get_sid=loc(zms_uvar_x)
+      case(SID_AVE_Y)
+         get_sid=loc(zms_ave_y)
+      case(SID_VAR_Y)
+         get_sid=loc(zms_var_y)
+      case(SID_SUM_Y)
+         get_sid=loc(zms_sum_y)
+      case(SID_SUM2_Y)
+         get_sid=loc(zms_sum2_y)
+      case(SID_UVAR_Y)
+         get_sid=loc(zms_uvar_y)
+      case(SID_SUM_XY)
+         get_sid=loc(zms_sum_xy)
+      case(SID_A)
+         get_sid=loc(zms_a)
+      case(SID_B)
+         get_sid=loc(zms_b)
       case default
          STOP "*** UNEXPECTED ERROR in get_sid" 
       end select
