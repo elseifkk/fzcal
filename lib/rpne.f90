@@ -423,20 +423,21 @@ contains
     integer,intent(in)::i
     integer istat
     interface
-       function fn(n,vs)
-         use fpio, only: cp
+       function fn(n,vs,ws)
+         use fpio, only: cp, rp
          complex(cp) fn
          integer,intent(in)::n
          complex(cp),intent(in)::vs(n,2)
+         real(rp),intent(in)::ws(n)
        end function fn
     end interface
     pointer(pfn,fn)
     complex(cp) v
-    if(rpnc%p_vs==0) then
+    if(rpnc%sd%p_vs==0) then
        v=czero
     else
        pfn=rpnc%que(i)%cid
-       v=fn(rpnc%p_vs,rpnc%vs(1:rpnc%p_vs,:))
+       v=fn(rpnc%sd%p_vs,rpnc%sd%vs(1:rpnc%sd%p_vs,:),rpnc%sd%ws(1:rpnc%sd%p_vs))
     end if
     call set_result(rpnc,i,v)
     istat=0
@@ -716,7 +717,7 @@ contains
          call set_ans(.false.)
 
     if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
-         call set_dat(rpnc)
+         call set_sd(rpnc)
 
     call remove_dup(rpnc%pars)
 

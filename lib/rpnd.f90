@@ -156,6 +156,12 @@ module rpnd
      type(t_slist) s
   end type t_rpnlist
 
+  type t_sd
+     real(rp),allocatable::ws(:)
+     complex(cp),allocatable::vs(:,:) ! n:2
+     integer p_vs
+  end type t_sd
+
   type t_rpnc
      type(t_rpnq),pointer::que(:)
      complex(cp),pointer::vbuf(:)
@@ -166,9 +172,8 @@ module rpnd
      type(t_rpnlist),pointer::rl
      integer,pointer::rc ! recursion count
      integer*8,pointer::opt
-     integer,pointer::pfs(:) 
-     complex(cp),pointer::vs(:,:) ! n:2
-     integer,pointer::p_vs
+     integer,pointer::pfs(:)
+     type(t_sd),pointer::sd 
   end type t_rpnc
 
   integer*8,parameter::RPNCOPT_NOP             =  0
@@ -260,7 +265,6 @@ contains
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::n
     complex(cp),allocatable::vb(:)
-    if(n<=0) return
     if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) then
        allocate(vb(size(rpnc%vbuf)))
        vb=rpnc%vbuf
@@ -316,9 +320,7 @@ contains
     allocate(rpnc%p_vbuf)
     allocate(rpnc%rc)
     allocate(rpnc%opt)
-    nullify(rpnc%vs)
-    allocate(rpnc%p_vs)
-    rpnc%p_vs=0
+    allocate(rpnc%sd)
     allocate(rpnc%pfs(3))
     rpnc%pfs(1)=loc(zm_f1)
     rpnc%pfs(2)=loc(zm_f2)
@@ -382,13 +384,21 @@ contains
     if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) deallocate(rpnc%vbuf)
     if(associated(rpnc%tmpans)) deallocate(rpnc%tmpans)
     if(associated(rpnc%answer)) deallocate(rpnc%answer)
-    if(associated(rpnc%pars)) call uinit_par(rpnc)
+    if(associated(rpnc%pars)) then
+       call uinit_par(rpnc)
+       deallocate(rpnc%pars)
+    end if
     if(associated(rpnc%p_vbuf)) deallocate(rpnc%p_vbuf)
     if(associated(rpnc%rc)) deallocate(rpnc%rc)
-    if(associated(rpnc%rl)) call uinit_rpnlist(rpnc%rl)
+    if(associated(rpnc%rl)) then
+       call uinit_rpnlist(rpnc%rl)
+       deallocate(rpnc%rl)
+    end if
     if(associated(rpnc%pfs)) deallocate(rpnc%pfs)
-    if(associated(rpnc%vs)) deallocate(rpnc%vs)
-    if(associated(rpnc%p_vs)) deallocate(rpnc%p_vs)
+    if(associated(rpnc%sd)) then
+       call uinit_sd(rpnc%sd)
+       deallocate(rpnc%sd)
+    end if
   end subroutine uinit_rpnc
 
   function init_par(rpnc,sz,nmax)
@@ -425,73 +435,89 @@ contains
     if(istat/=0) write(*,*) "*** Error delete_par: "//trim(s)//": code = ",istat
   end subroutine delete_par
 
-  subroutine set_dat(rpnc)
+  subroutine set_sd(rpnc)
     type(t_rpnc),intent(inout)::rpnc
     integer i,j
     complex(cp) z
+    logical col
     pointer(pz,z)
-    if(.not.associated(rpnc%vs)) call init_vs(rpnc)
+    if(.not.allocated(rpnc%sd%vs)) call init_sd(rpnc%sd)
     call next
-    j=0
     do i=1,size(rpnc%que)
        select case(rpnc%que(i)%tid)
        case(TID_VAR,TID_PAR,TID_CPAR,TID_ROVAR)
-          j=j+1
-          if(j>2) cycle
           pz=rpnc%que(i)%cid
+          if(.not.col) then
+             j=j+1
+             if(j>2) cycle
+             rpnc%sd%vs(rpnc%sd%p_vs,j)=z
+             if(j==1) then
+                rpnc%sd%vs(rpnc%sd%p_vs,2)=rzero
+                rpnc%sd%ws(rpnc%sd%p_vs)=1.0_rp
+             end if
+          else
+             rpnc%sd%ws(rpnc%sd%p_vs)=realpart(z)
+          end if
+       case(TID_COL)
+          col=.true.
        case(TID_END)
           call next
-          cycle
-       case default
-          cycle
        end select
-       rpnc%vs(rpnc%p_vs,j)=z
-       if(j==1) rpnc%vs(rpnc%p_vs,2)=rzero
     end do
 
   contains
     
     subroutine next
-      if(rpnc%p_vs==size(rpnc%vs)) call inc_vs(rpnc,8) ! <<<
-      rpnc%p_vs=rpnc%p_vs+1
+      if(rpnc%sd%p_vs==size(rpnc%sd%vs,1)) call inc_sd(rpnc%sd,8) ! <<<
+      rpnc%sd%p_vs=rpnc%sd%p_vs+1
+      j=0
+      col=.false.
     end subroutine next
 
-  end subroutine set_dat
+  end subroutine set_sd
 
-  subroutine dump_vs(rpnc)
+  subroutine dump_sd(rpnc)
     type(t_rpnc),intent(in)::rpnc
-    integer i
-    integer f
+    integer i,f
     f=ishft(rpnc%opt,-32)
-    do i=1,rpnc%p_vs
-       write(*,*) i,trim(ztoa(rpnc%vs(i,1),f)) &
-            //", "//trim(ztoa(rpnc%vs(i,2),f))
+    do i=1,rpnc%sd%p_vs
+       write(*,*) trim(itoa(i))//": "//trim(ztoa(rpnc%sd%vs(i,1),f)) &
+            //", "//trim(ztoa(rpnc%sd%vs(i,2),f)) &
+            //" ("//trim(rtoa(rpnc%sd%ws(i),f))//")"
     end do    
-  end subroutine dump_vs
+  end subroutine dump_sd
 
-  subroutine inc_vs(rpnc,n)
-    type(t_rpnc),intent(inout)::rpnc
+  subroutine inc_sd(sd,n)
+    type(t_sd),intent(inout)::sd
     integer,intent(in)::n
     complex(cp),allocatable::tmp_vs(:,:)
-    if(.not.associated(rpnc%vs)) then
-       allocate(rpnc%vs(n,2))
-    else
-       allocate(tmp_vs(size(rpnc%vs)+n,2))
-       tmp_vs=rpnc%vs
-       deallocate(tmp_vs)
-    end if
-  end subroutine inc_vs
+    real(rp),allocatable::tmp_ws(:)
+    allocate(tmp_vs(size(sd%vs,1)+n,2),tmp_ws(size(sd%ws)+n))
+    tmp_vs=sd%vs
+    tmp_ws=sd%ws
+    deallocate(sd%vs,sd%ws)
+    allocate(sd%vs(size(tmp_vs,1),2),sd%ws(size(tmp_ws)))
+    sd%vs=tmp_vs
+    sd%ws=tmp_ws
+    deallocate(tmp_vs,tmp_ws)
+  end subroutine inc_sd
 
-  subroutine init_vs(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
-    allocate(rpnc%vs(NUM_VS_MIN,2))
-    rpnc%p_vs=0
-  end subroutine init_vs
+  subroutine init_sd(sd)
+    type(t_sd),intent(inout)::sd
+    allocate(sd%vs(NUM_VS_MIN,2),sd%ws(NUM_VS_MIN))
+    sd%p_vs=0
+  end subroutine init_sd
 
-  subroutine reset_dat(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
-    if(associated(rpnc%p_vs)) rpnc%p_vs=0
-  end subroutine reset_dat
+  subroutine uinit_sd(sd)
+    type(t_sd),intent(inout)::sd
+    if(allocated(sd%vs)) deallocate(sd%vs)
+    if(allocated(sd%ws)) deallocate(sd%ws)
+  end subroutine uinit_sd
+
+  subroutine reset_sd(sd)
+    type(t_sd),intent(inout)::sd
+    sd%p_vs=0
+  end subroutine reset_sd
 
   integer function get_lo32(cid)
     integer,intent(in)::cid

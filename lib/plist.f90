@@ -324,8 +324,8 @@ contains
        if(present(name)) then
           if(name/=trim(cpstr(ptr,len))) cycle
        end if
-       write(*,10) i,v%sta,trim(cpstr(ptr,len))
-       if(is_reference(v%sta)) write(*,20) v%p
+       write(*,10) trim(itoa(i))//": ["//trim(itoa(v%sta,DISP_FMT_HEX))//"] "//trim(cpstr(ptr,len))
+       if(is_reference(v%sta)) write(*,10) "("//trim(itoa(v%p,DISP_FMT_HEX))//")"
        select case(get_pkind(v%sta))
        case(PK_COMP)
           pz=v%p
@@ -341,8 +341,7 @@ contains
           write(*,*) trim(rtoa(real(n,kind=rp),fmt=DISP_FMT_RAW))
        end select
     end do
-10  format(x,i4,x,z8.8,x,a,$)
-20  format(x,z16,$)
+10  format(x,a,$)
   end subroutine dump_plist
 
   subroutine alloc_vbuf(n,v)

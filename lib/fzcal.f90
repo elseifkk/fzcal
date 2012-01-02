@@ -13,10 +13,12 @@ program fzcal
   integer istat
   integer ka,n,kb
   integer cid
+  logical calc
 
   p=init_rpnc()
 
   main: do
+     calc=.false.
      write(*,10) "> "
 10   format(x,a,$)
      read(*,"(a)") str
@@ -35,43 +37,35 @@ program fzcal
      case(CID_EXIT)
         exit
      case(CID_SCLE)
-        call reset_dat(rpnc)
-        cycle
+        call reset_sd(rpnc%sd)
      case(-CID_PRI)
-        cycle
      case(-CID_PRI_PAR)
         call dump_plist(rpnc%pars)
-        cycle
      case(CID_PRI_PAR)
         call dump_plist(rpnc%pars,n,str(ka:kb))
-        cycle
      case(-CID_PRI_FNC)
         call dump_rpnm(rpnc,type=SC_FNC)
-        cycle
      case(CID_PRI_FNC)
         call dump_rpnm(rpnc,n,str(ka:kb),type=SC_FNC)
-        cycle
      case(-CID_PRI_MAC)
         call dump_rpnm(rpnc,type=SC_MAC)
-        cycle
      case(CID_PRI_MAC)
         call dump_rpnm(rpnc,n,str(ka:kb),type=SC_MAC)
-        cycle
      case(CID_DEL_PAR)
         call delete_par(rpnc,str(ka:kb))
-        cycle
      case(CID_DEL_PAR_ALL)
         call delete_par_all(rpnc)
-        cycle
      case(CID_PRI_DAT)
-        call dump_vs(rpnc)
-        cycle
+        call dump_sd(rpnc)
      case(CID_DEL_MAC)
      case(CID_DEL_FNC)
      case(CID_DONE,CID_INV)
-        cycle
+     case default
+        calc=.true.
      end select
      
+     if(.not.calc) cycle
+
      istat=parse_formula(rpnc,str)
 
      if(istat>0) then

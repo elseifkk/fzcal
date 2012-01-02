@@ -708,102 +708,124 @@ contains
     zm_uvar=zm_var(n,pzs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
   end function zm_uvar
 
-  complex(cp) function zms_n(n,vs_unused)
+  complex(cp) function zms_n(n,vs_unused,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs_unused(n,2)
-    zms_n=n
+    real(rp),intent(in)::ws(n)
+    zms_n=sum(ws)
   end function zms_n
 
-  complex(cp) function zms_ave_x(n,vs)
+  complex(cp) function zms_ave_x(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
-    zms_ave_x=sum(vs(:,1))/n
+    real(rp),intent(in)::ws(n)
+    zms_ave_x=sum(vs(:,1)*ws)/sum(ws)
   end function zms_ave_x
 
-  complex(cp) function zms_var_x(n,vs)
+  complex(cp) function zms_var_x(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
+    real(rp),intent(in)::ws(n)
     complex(cp) s
-    s=sum(vs(:,1))
-    zms_var_x=sqrt(s**2.0_rp/real(n,kind=rp)-(s/real(n,kind=rp))**2.0_rp)
+    real wn
+    wn=sum(ws)
+    s=sum(vs(:,1)*ws)
+    zms_var_x=sqrt(s**2.0_rp/wn-(s/wn)**2.0_rp)
   end function zms_var_x
 
-  complex(cp) function zms_uvar_x(n,vs)
+  complex(cp) function zms_uvar_x(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
-    zms_uvar_x=zms_var_x(n,vs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
+    real(rp),intent(in)::ws(n)
+    real wn
+    wn=sum(ws)
+    zms_uvar_x=zms_var_x(n,vs,ws)*sqrt(wn/(wn-1.0_rp))
   end function zms_uvar_x
   
-  complex(cp) function zms_sum_x(n,vs)
+  complex(cp) function zms_sum_x(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
-    zms_sum_x=sum(vs(:,1))
+    real(rp),intent(in)::ws(n)
+    zms_sum_x=sum(vs(:,1)*ws)
   end function zms_sum_x
 
-  complex(cp) function zms_sum2_x(n,vs)
+  complex(cp) function zms_sum2_x(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
-    zms_sum2_x=sum(vs(:,1)**2.0_rp)
+    real(rp),intent(in)::ws(n)
+    zms_sum2_x=sum(vs(:,1)**2.0_rp*ws)
   end function zms_sum2_x
 
-  complex(cp) function zms_ave_y(n,vs)
+  complex(cp) function zms_ave_y(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
-    zms_ave_y=sum(vs(:,2))/n
+    real(rp),intent(in)::ws(n)
+    zms_ave_y=sum(vs(:,2)*ws)/sum(ws)
   end function zms_ave_y
 
-  complex(cp) function zms_var_y(n,vs)
+  complex(cp) function zms_var_y(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
+    real(rp),intent(in)::ws(n)
     complex(cp) s
-    s=sum(vs(:,2))
-    zms_var_y=sqrt(s**2.0_rp/real(n,kind=rp)-(s/real(n,kind=rp))**2.0_rp)
+    real(rp) wn
+    wn=sum(ws)
+    s=sum(vs(:,2)*ws)
+    zms_var_y=sqrt(s**2.0_rp/wn-(s/wn)**2.0_rp)
   end function zms_var_y
 
-  complex(cp) function zms_uvar_y(n,vs)
+  complex(cp) function zms_uvar_y(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
-    zms_uvar_y=zms_var_y(n,vs)*sqrt(real(n,kind=rp)/real(n-1,kind=rp))
+    real(rp),intent(in)::ws(n)
+    real(rp) wn
+    wn=sum(ws)
+    zms_uvar_y=zms_var_y(n,vs,ws)*sqrt(wn/(wn-1.0_rp))
   end function zms_uvar_y
   
-  complex(cp) function zms_sum_y(n,vs)
+  complex(cp) function zms_sum_y(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
-    zms_sum_y=sum(vs(:,2))
+    real(rp),intent(in)::ws(n)
+    zms_sum_y=sum(vs(:,2)*ws)
   end function zms_sum_y
 
-  complex(cp) function zms_sum2_y(n,vs)
+  complex(cp) function zms_sum2_y(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
-    zms_sum2_y=sum(vs(:,2)**2.0_rp)
+    real(rp),intent(in)::ws(n)
+    zms_sum2_y=sum(vs(:,2)**2.0_rp*ws)
   end function zms_sum2_y
 
-  complex(cp) function zms_sum_xy(n,vs)
+  complex(cp) function zms_sum_xy(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
-    zms_sum_xy=sum(vs(:,1)*vs(:,2))
+    real(rp),intent(in)::ws(n)
+    zms_sum_xy=sum(vs(:,1)*vs(:,2)*ws)
   end function zms_sum_xy
 
-  complex(cp) function zms_a(n,vs)
+  complex(cp) function zms_a(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in),target::vs(n,2)
+    real(rp),intent(in)::ws(n)
     complex(cp),pointer::x(:),y(:)
     complex(cp) d
     x => vs(:,1)
     y => vs(:,2)
-    d=real(n,kind=rp)*sum(x**2.0_rp)-sum(x)**2.0_rp
-    zms_a = (sum(x**2.0_rp)*sum(y)-sum(x)*sum(x*y))/d
+    d=sum(ws)*sum(x**2.0_rp*ws)-sum(x*ws)**2.0_rp
+    zms_a = (sum(x**2.0_rp*ws)*sum(y*ws)-sum(x*ws)*sum(x*y*ws))/d
   end function zms_a
 
-  complex(cp) function zms_b(n,vs)
+  complex(cp) function zms_b(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in),target::vs(n,2)
+    real(rp),intent(in)::ws(n)
     complex(cp),pointer::x(:),y(:)
     complex(cp) d
     x => vs(:,1)
     y => vs(:,2)
-    d=real(n,kind=rp)*sum(x**2.0_rp)-sum(x)**2.0_rp
-    zms_b = (-sum(x)*sum(y)+real(n,kind=rp)*sum(x*y))/d
+    d=sum(ws)*sum(x**2.0_rp*ws)-sum(x*ws)**2.0_rp
+    zms_b = (-sum(x*ws)*sum(y*ws)+sum(ws)*sum(x*y*ws))/d
   end function zms_b
 
 !!!!!!---------------------------------------------------------------------!!!!!!

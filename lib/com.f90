@@ -136,7 +136,6 @@ contains
              parse_command=CID_DONE
           case("cle")
              parse_command=CID_SCLE
-             parse_command=CID_DONE
           case("s","sta","stat")
              set_opt(RPNCOPT_STA)
              cle_opt(RPNCOPT_DAT) ! <<<
