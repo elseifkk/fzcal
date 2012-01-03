@@ -65,6 +65,7 @@ module plist
   public get_par
   public remove_dup
   public min_cp_plist
+  public sort_par
 
 contains
 
@@ -792,6 +793,7 @@ contains
     pointer(pr,r)
     pointer(pz,z)
     pointer(pn,n)
+    ! move value from pz to p 
     do i=1,pl%s%n
        v => pl%v(i)
        if(.not.is_duplicated(v%sta)) cycle
@@ -814,5 +816,33 @@ contains
        call uset_pflg(v%sta,PS_DUP)
     end do
   end subroutine remove_dup
+
+  subroutine sort_par(pl,pz_in)
+    type(t_plist),intent(inout),target::pl
+    integer,intent(in)::pz_in
+    type(t_vbuf),pointer::v
+    real(rp) x
+    complex(cp) z
+    pointer(pz,z)
+    pointer(px,x)
+    integer i
+    real x_in
+    ! reallocate p with PK_REAL if z is real
+    do i=1,pl%s%n
+       v => pl%v(i)
+       if(v%p==pz_in) then
+          pz=pz_in
+          if(imagpart(z)/=rzero) return
+          if(get_pkind(v%sta)/=PK_COMP) return
+          x_in=realpart(z)
+          call free(v%p)
+          v%p=palloc(PK_REAL)
+          px=v%p
+          x=x_in
+          call set_pkind(v%sta,PK_REAL)
+       end if
+    end do
+
+  end subroutine sort_par
 
 end module plist

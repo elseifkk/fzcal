@@ -7,6 +7,8 @@ module rpne
 
 #define is_set(x) (iand(rpnc%opt,(x))/=0)
 #define is_uset(x) (iand(rpnc%opt,(x))==0)
+#define set_opt(x) rpnc%opt=ior(rpnc%opt,(x))
+#define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
 
 contains
 
@@ -485,10 +487,11 @@ contains
        pfn=rpnc%que(i)%cid
     end if
     v=fn(na,pvs)
-    if(tid==TID_AOP) call set_assign()
 
     call set_result(rpnc,i,v,na,ods)
     
+    if(tid==TID_AOP) call set_assign()
+
   contains
     
     subroutine set_assign()
@@ -496,7 +499,8 @@ contains
       pointer(pz,z)
       pz=pvs(1)
       z=v
-      rpnc%opt=ior(rpnc%opt,RPNCOPT_NEW)
+      rpnc%que(ods(1))%tid=TID_NPAR
+      set_opt(RPNCOPT_NEW)
     end subroutine set_assign
 
   end function eval_n
@@ -736,10 +740,20 @@ contains
     if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
          call set_sd(rpnc%ip,rpnc)
 
+    ! order is important
     call remove_dup(rpnc%pars)
+    if(is_set(RPNCOPT_NEW)) call set_newpar
 
   contains
     
+    subroutine set_newpar
+      integer ii
+      do ii=1,size(rpnc%que)
+         if(rpnc%que(ii)%tid==TID_NPAR) call sort_par(rpnc%pars,rpnc%que(ii)%cid)
+      end do
+      cle_opt(RPNCOPT_NEW)
+    end subroutine set_newpar
+
     subroutine set_ans(end)
       logical,intent(in)::end
       integer k
