@@ -18,6 +18,13 @@ module com
   integer,parameter::CID_INI         =  13 
   integer,parameter::CID_EXIT        =  14
   integer,parameter::CID_SCLE        =  15
+  integer,parameter::CID_LOAD        =  16
+  integer,parameter::CID_ECHO        =  17
+  integer,parameter::CID_ECHO_ON     =  18
+  integer,parameter::CID_ECHO_OFF    =  19
+  integer,parameter::CID_SET_PROMPT  =  20
+  integer,parameter::CID_WRITE       =  21
+  integer,parameter::CID_READ        =  22
   integer,parameter::CID_DONE        = 999
 
   integer,parameter::AK_INV    =  -1
@@ -27,6 +34,8 @@ module com
   integer,parameter::AK_MAC    =   3
   integer,parameter::AK_DAT    =   4
   integer,parameter::AK_ANY    =   5
+  integer,parameter::AK_ON     =   6
+  integer,parameter::AK_OFF    =   7
 
   integer*8,parameter::digit_mask=not(ishft(Z"FF",32))
 
@@ -60,6 +69,17 @@ contains
        select case(parse_command)
        case(CID_NOP)
           select case(a(p1:p2))
+          case("read")
+             call read_arg
+             parse_command=CID_READ
+          case("write")
+             parse_command=-CID_WRITE
+          case("prompt")
+             parse_command=-CID_SET_PROMPT
+          case("echo")
+             parse_command=-CID_ECHO
+          case("load")
+             parse_command=-CID_LOAD
           case("opt")
              write(*,"(Z16.16)") rpnc%opt
              parse_command=CID_DONE
@@ -179,6 +199,16 @@ contains
              parse_command=CID_INV
              exit
           end select
+       case(-CID_ECHO)
+          select case(get_ak(a(p1:p2)))
+          case(AK_ON)
+             parse_command=CID_ECHO_ON
+          case(AK_OFF)
+             parse_command=CID_ECHO_OFF
+          case default
+             parse_command=CID_INV
+             exit
+          end select
        case(-CID_DEL)
           select case(get_ak(a(p1:p2)))
           case(AK_PAR)
@@ -205,7 +235,11 @@ contains
              parse_command=CID_INV
              exit
           end select
-       case(-CID_PRI_PAR,-CID_PRI_FNC,-CID_PRI_MAC)
+       case(-CID_WRITE)
+          p1arg=p1
+          p2arg=len_trim(a)
+          parse_command=CID_WRITE
+       case(-CID_PRI_PAR,-CID_PRI_FNC,-CID_PRI_MAC,-CID_LOAD,-CID_SET_PROMPT)
           p1arg=p1
           p2arg=p2
           parse_command=-parse_command
@@ -275,8 +309,32 @@ contains
          get_ak=AK_ALL
       case(".any")
          get_ak=AK_ANY
+      case("on")
+         get_ak=AK_ON
+      case("off")
+         get_ak=AK_OFF
       end select
     end function get_ak
+
+    subroutine read_arg()
+      integer kk,jj
+      character*128 ans ! <<<<<<<<<<
+      character*1024 str ! <<<<<<<<<<
+      write(*,"(a)") "Input: "//trim(adjustl(a(p2+1:len_trim(a))))
+      jj=0
+      do kk=p2+1,len_trim(a)
+         select case(a(kk:kk))
+         case("?")
+            read(*,"(a)") ans
+            str(jj+1:)=trim(ans)
+            jj=jj+len_trim(ans)
+         case default
+            jj=jj+1
+            str(jj:jj)=a(kk:kk)
+         end select
+      end do
+      a=trim(str)
+    end subroutine read_arg
 
   end function parse_command
 

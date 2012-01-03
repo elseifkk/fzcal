@@ -532,6 +532,8 @@ contains
     allocate(fnc%que(size(rpnm%que)))
     allocate(fnc%vbuf(NUM_VBUF_MIN))
     allocate(fnc%p_vbuf)
+    allocate(fnc%ip)
+    fnc%ip=1
     fnc%que=rpnm%que
     fnc%p_vbuf=0
 
@@ -542,7 +544,8 @@ contains
     fnc%rc     => rpnc%rc
     fnc%pfs    => rpnc%pfs
     fnc%opt    => rpnc%opt
-    
+    fnc%sd     => rpnc%sd
+
     istat=0
     do j=1,size(fnc%que)
        q => fnc%que(j)
@@ -574,6 +577,7 @@ contains
     deallocate(fnc%que)
     deallocate(fnc%vbuf)
     deallocate(fnc%p_vbuf)
+    deallocate(fnc%ip)
 
   contains
     
@@ -606,6 +610,8 @@ contains
     allocate(mac%que(size(rpnm%que)))
     allocate(mac%vbuf(NUM_VBUF_MIN))
     allocate(mac%p_vbuf)
+    allocate(mac%ip)
+    mac%ip=0
     mac%que    = rpnm%que
     mac%p_vbuf = 0
 
@@ -616,6 +622,7 @@ contains
     mac%rc     => rpnc%rc
     mac%pfs    => rpnc%pfs
     mac%opt    => rpnc%opt
+    mac%sd     => rpnc%sd
 
     istat=0
     do j=1,size(mac%que)
@@ -646,7 +653,8 @@ contains
     deallocate(mac%que)
     deallocate(mac%vbuf)
     deallocate(mac%p_vbuf)
- 
+    deallocate(mac%ip)
+
   contains
 
     subroutine set_par_ptr(ent)
@@ -666,6 +674,7 @@ contains
   recursive function eval(rpnc) result(istat)
     type(t_rpnc),intent(inout),target::rpnc
     integer i,istat,ec
+    logical ansset
     complex(cp) v
     pointer(pv,v)
     istat=0
@@ -674,8 +683,9 @@ contains
        istat=RPNERR_RECOV
        return
     end if
+    ansset=.false.
     rpnc%rc=rpnc%rc+1
-    do i=1,size(rpnc%que)
+    do i=rpnc%ip,size(rpnc%que)
        ec=ec+1
        select case(get_lo32(rpnc%que(i)%tid))
        case(TID_OP,TID_OPN,TID_AOP)
@@ -698,26 +708,33 @@ contains
           ec=ec-1
           rpnc%rc=rpnc%rc-1
           call set_ans(.true.)
+          if(rpnc%rc==0.and.rpnc%que(i)%cid/=0) then
+             rpnc%que(i)%tid=TID_NOP
+             rpnc%ip=i+1 ! the next code
+             exit
+          end if
           rpnc%rc=rpnc%rc+1
           ec=0
        case default
           ec=ec-1
        end select
+
+       if(i==size(rpnc%que)) then
+          rpnc%ip=0
+          call set_ans(.false.)
+          rpnc%rc=rpnc%rc-1       
+       end if
+
        if(istat/=0) then
           write(*,*) "*** Error in eval at que = ", i
           exit
        end if
+
     end do
-    
+
     if(istat/=0) return
-
-    rpnc%rc=rpnc%rc-1       
-
-    if(get_lo32(rpnc%que(size(rpnc%que))%tid)/=TID_END) &
-         call set_ans(.false.)
-
     if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
-         call set_sd(rpnc)
+         call set_sd(rpnc%ip,rpnc)
 
     call remove_dup(rpnc%pars)
 

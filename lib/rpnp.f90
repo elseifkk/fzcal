@@ -909,6 +909,7 @@ contains
     if(associated(rpnc%que).and.size(rpnc%que)>0) deallocate(rpnc%que)
     allocate(rpnc%que(rpnb%p_que))
     rpnc%rc=0
+    rpnc%ip=1 ! <<<
     rpnc%que(:)%tid=TID_UNDEF
     rpnc%que(:)%cid=0 ! dump_rpnc might refer unset cid as a pointer 
     rpnc%p_vbuf=0
@@ -1065,7 +1066,7 @@ contains
           q%cid=qq%p2 ! bc-kc 
        case(TID_SCL)
           q%tid=TID_END
-          q%cid=0
+          q%cid=qq%p2-qq%p1
           if(amac) istat=set_macro(rpnb,rpnc,p_q1)
           if(afnc) istat=set_function(rpnb,rpnc,p_q1)
           ! istat=RPNSTA_FNCSET
