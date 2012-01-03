@@ -108,6 +108,7 @@ module rpnd
   integer,parameter::TID_SOP    = 49
   integer,parameter::TID_POP    = 50
   integer,parameter::TID_CPAR   = 51 ! copied par
+  integer,parameter::TID_NPAR   = 52 ! just assigned par
 
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2
