@@ -174,6 +174,7 @@ module rpnd
      integer*8,pointer::opt
      integer,pointer::pfs(:)
      type(t_sd),pointer::sd 
+     integer,pointer::ip
   end type t_rpnc
 
   integer*8,parameter::RPNCOPT_NOP             =  0
@@ -321,6 +322,7 @@ contains
     allocate(rpnc%rc)
     allocate(rpnc%opt)
     allocate(rpnc%sd)
+    allocate(rpnc%ip)
     allocate(rpnc%pfs(3))
     rpnc%pfs(1)=loc(zm_f1)
     rpnc%pfs(2)=loc(zm_f2)
@@ -435,18 +437,30 @@ contains
     if(istat/=0) write(*,*) "*** Error delete_par: "//trim(s)//": code = ",istat
   end subroutine delete_par
 
-  subroutine set_sd(rpnc)
-    type(t_rpnc),intent(inout)::rpnc
-    integer i,j
+  subroutine set_sd(ip,rpnc)
+    integer,intent(in)::ip
+    type(t_rpnc),intent(inout),target::rpnc
+    integer i,j,i2
     complex(cp) z
     logical col
     pointer(pz,z)
+    type(t_rpnq),pointer::q
+
     if(.not.allocated(rpnc%sd%vs)) call init_sd(rpnc%sd)
     call next
-    do i=1,size(rpnc%que)
-       select case(rpnc%que(i)%tid)
+    if(ip==0) then
+       i2=size(rpnc%que)
+    else
+       ! the last operand
+       ! ip points to next of ;;
+       i2=ip-2 
+    end if
+    do i=1,i2
+       q => rpnc%que(i)
+       select case(q%tid)
        case(TID_VAR,TID_PAR,TID_CPAR,TID_ROVAR)
-          pz=rpnc%que(i)%cid
+          q%tid=TID_NOP
+          pz=q%cid
           if(.not.col) then
              j=j+1
              if(j>2) cycle
@@ -459,8 +473,10 @@ contains
              rpnc%sd%ws(rpnc%sd%p_vs)=realpart(z)
           end if
        case(TID_COL)
+          q%tid=TID_NOP
           col=.true.
        case(TID_END)
+          q%tid=TID_NOP
           call next
        end select
     end do
