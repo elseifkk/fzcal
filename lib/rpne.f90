@@ -537,9 +537,9 @@ contains
     allocate(fnc%vbuf(NUM_VBUF_MIN))
     allocate(fnc%p_vbuf)
     allocate(fnc%ip)
-    fnc%ip=1
-    fnc%que=rpnm%que
-    fnc%p_vbuf=0
+    fnc%ip     = 1
+    fnc%que    = rpnm%que
+    fnc%p_vbuf = 0
 
     fnc%pars   => rpnc%pars
     fnc%answer => rpnc%answer
@@ -615,7 +615,7 @@ contains
     allocate(mac%vbuf(NUM_VBUF_MIN))
     allocate(mac%p_vbuf)
     allocate(mac%ip)
-    mac%ip=0
+    mac%ip     = 1
     mac%que    = rpnm%que
     mac%p_vbuf = 0
 

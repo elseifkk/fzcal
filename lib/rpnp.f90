@@ -1557,16 +1557,21 @@ contains
     end if
   end subroutine rpn_try_push
 
-  subroutine revert_tid(rpnb,tid,p1,p2)
+  integer function set_tid_par(rpnb,tid,p1,p2)
     type(t_rpnb),intent(inout),target::rpnb
     integer,intent(in)::tid
     integer,intent(in),optional::p1,p2
     type(t_rrpnq),pointer::q
-    q=>rpnb%que(rpnb%p_que)
+    q => rpnb%que(rpnb%p_que)
+    if(q%tid/=TID_PAR) then
+       set_tid_par=RPNERR_PARSER
+       return
+    end if
     q%tid=tid
     if(present(p1)) q%p1=ior(q%p1,ishft(p1,16))
     if(present(p2)) q%p2=ior(q%p2,ishft(p2,16))
-  end subroutine revert_tid
+    set_tid_par=0
+  end function set_tid_par
 
   integer function parse_formula(rpnc,formula)
     type(t_rpnc),intent(inout)::rpnc
@@ -1703,7 +1708,7 @@ contains
           kc=kc+1
        case(TID_AOP)
           if(check_assignable()) then
-             call revert_tid(rpnb,TID_APAR)
+             istat=set_tid_par(rpnb,TID_APAR)
              call rpn_try_push(rpnb,t,p1,p2)
           else
              istat=RPNERR_PARSER
@@ -1714,7 +1719,7 @@ contains
              if(terr/=0) terr=0
           else
              if(check_assignable()) then
-                call revert_tid(rpnb,TID_APAR)
+                istat=set_tid_par(rpnb,TID_APAR)
              else
                 istat=RPNERR_PARSER
              end if
@@ -1734,7 +1739,7 @@ contains
                 ! q   s      q     s
                 ! PAR =  ->  AMAC  MASN
                 !                  QSTA
-                call revert_tid(rpnb,TID_AMAC,p1,find_chr(rpnb%expr(p1+1:),"""")+p1)
+                istat=set_tid_par(rpnb,TID_AMAC,p1,find_chr(rpnb%expr(p1+1:rpnb%len_expr),"""")+p1)
                 rpnb%buf(rpnb%p_buf)%tid=TID_MASN ! it must be TID_ASN
                 call rpn_push(rpnb,TID_QSTA,p1,p2)
                 amac=.true.
@@ -1939,7 +1944,7 @@ contains
       type(t_rrpnq),pointer::q
       is_fnc_asn=.false.
       if(ac==1.and.bc==1.and.kc==1.and.pc>=1.and.fc==0) then
-         ii=index(rpnb%expr(p1+1:),";")
+         ii=index(rpnb%expr(p1+1:rpnb%len_expr),";")
          if(ii==0) then
             ii=rpnb%len_expr
          else
