@@ -28,9 +28,9 @@ contains
     if(is_uset(RPNCOPT_RATIO)) then
           rpn_sans=trim(ztoa(rpnc%answer,fmt=f))
     else
-       rpn_sans=trim(itoa(int(realpart(rpnc%answer)),f))
-       if(int(imagpart(rpnc%answer))>1) then
-          rpn_sans=trim(rpn_sans)//"/"//trim(itoa(int(imagpart(rpnc%answer))))
+       rpn_sans=trim(itoa(int(realpart(rpnc%answer),kind=8),f))
+       if(int(imagpart(rpnc%answer),kind=8)>1) then
+          rpn_sans=trim(rpn_sans)//"/"//trim(itoa(int(imagpart(rpnc%answer),kind=8),f))
        end if
     end if
   end function rpn_sans

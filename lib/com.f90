@@ -268,7 +268,7 @@ contains
       integer*8 nn
       p1=get_arg(p2)
       if(p1>0) then
-         nn=atoi(a(p1:p2))
+         nn=atoi(a(p1:p2),nn)
          put_disp_digit(nn)
       end if
     end subroutine set_disp_digit

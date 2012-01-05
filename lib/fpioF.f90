@@ -11,17 +11,20 @@ module fpio
   integer,parameter::cp=qp
   integer,parameter::max_digit=33
   character*(*),parameter::cfmt="(ES41.33e4)"
+  real(rp),parameter::int_max=2.0_rp**63.0_rp-1.0_rp
 #elif !defined _NO_REAL10_
   integer,parameter::rp=ep
   integer,parameter::cp=ep
   integer,parameter::max_digit=18
   character*(*),parameter::cfmt="(ES26.18e4)"
+  real(rp),parameter::int_max=2.0_rp**63.0_rp-1.0_rp
 #else
 #define _RP_IS_DP_
   integer,parameter::rp=dp
   integer,parameter::cp=dp
-  integer,parameter::max_digit=15
-  character*(*),parameter::cfmt="(ES23.15e4)"
+  integer,parameter::max_digit=18 !15
+  real(rp),parameter::int_max=2.0_rp**31_rp-1.0_rp
+  character*(*),parameter::cfmt="(ES26.18e4)" !"(ES23.15e4)"
 #endif
   integer,parameter::min_digit=3
 
@@ -52,7 +55,7 @@ contains
 
   logical function is_integer_z(z,n)
     complex(cp),intent(in)::z
-    integer,intent(out),optional::n
+    integer*8,intent(out),optional::n
     is_integer_z=.false.
     if(imagpart(z)/=rzero) return
     is_integer_z=is_integer_x(realpart(z),n)
@@ -60,11 +63,14 @@ contains
 
   logical function is_integer_x(x,n)
     real(rp),intent(in)::x
-    integer,intent(out),optional::n
-    integer m
+    integer*8,intent(out),optional::n
+    integer*8 m
+    real(rp) d
     is_integer_x=.false.
-    m=int(x)
-    if(x-m==0) then 
+    if(abs(x)>int_max) return
+    m=int(x,kind=8)
+    d=x-real(m,kind=8)
+    if(d==rzero) then 
        is_integer_x=.true.
        if(present(n)) n=m
     end if
@@ -108,7 +114,8 @@ contains
   character(LEN_STR_ANS_MAX) function rtoa(x,fmt)
     real(rp),intent(in)::x
     integer,intent(in),optional::fmt
-    integer istat,f,n
+    integer istat,f
+    integer*8 n
     f=X2A_DEFAULT
     n=0
     if(present(fmt)) then
@@ -220,6 +227,7 @@ contains
   character(LEN_STR_ANS_MAX) function xtoa(x,opt)
     real(rp),intent(in)::x
     integer,intent(in)::opt
+    real(rp) xx
     integer sd
     character(LEN_STR_ANS_MAX) ns
     integer istat
@@ -228,30 +236,52 @@ contains
     logical cr
     integer*1 c
     integer e,ee,r
-    integer len
+    integer len,len0
+    logical neg
     pointer(pc,c)
+
+    if(x==rzero.and.is_set(X2A_ALLOW_ORDINARY)) then
+       xtoa="0"
+       return
+    end if
+    if(x>rzero) then
+       xx=x
+       neg=.false.
+       p1=1
+    else
+       xx=-x
+       neg=.true.
+       p1=2
+    end if
     xtoa=""
-    write(xtoa,cfmt,iostat=istat) x
+    write(xtoa,cfmt,iostat=istat) xx
     if(istat/=0) return
     if(xtoa(1:1)=="*") then
-       write(xtoa,*,iostat=istat) x
+       write(xtoa,*,iostat=istat) xx
        if(istat/=0) return
     end if
     xtoa=adjustl(xtoa)
-! (-)x.xxxx...xE(-)xxxx
+! x.xxxx...xE+xxxx
     p2=index(xtoa,"E")
-    read(xtoa(p2+1:),*,iostat=istat) e
-    if(istat/=0) return
-    ! p1 => first digit
-    ! p2 => last digit
-    p2=p2-1
-    if(xtoa(1:1)=="-") then
-       p1=2
+    if(p2>0) then
+       read(xtoa(p2+1:),*,iostat=istat) e
+       if(istat/=0) return
     else
-       p1=1
+       e=0
     end if
-    len=p2-p1+1-1 ! digits excluding .
-    ns=xtoa(p1:p1)//xtoa(p1+2:p2)
+    p2=p2-1
+    len=(p2-p1+1)-1 ! digits excluding .
+    ns=xtoa(1:1)//xtoa(3:p2)
+    if(neg) xtoa(1:1)="-"
+    len0=len_trim0(ns)
+    if(is_set(X2A_ALLOW_ORDINARY).and.e>=0.and.e<max_digit) then
+       if(e>=len0-1) then
+          ! integer
+          xtoa(p1:)=ns(1:1+e)
+          return 
+       end if
+    end if
+
     sd=min(max(iand(opt,int(Z"FF")),min_digit),len)
     if(is_uset(X2A_FIX)) then
        d=sd
@@ -347,6 +377,18 @@ contains
     end if
 
     contains
+
+      integer function len_trim0(a)
+        character*(*),intent(in)::a
+        integer ii
+        do ii=len_trim(a),1,-1
+           if(a(ii:ii)/="0") then
+              len_trim0=ii
+              return
+           end if
+        end do
+        len_trim0=0
+      end function len_trim0
 
       subroutine trimz
         integer ii
