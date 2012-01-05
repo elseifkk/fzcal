@@ -196,7 +196,7 @@ contains
        end if
        k=k+1
        a=ichar(rpnb%expr(k:k))
-       if(.not.is_valid(a)) then !numeric(a)) then
+       if(.not.is_valid(a)) then 
           if(c==1.and.k-1==k_) then
              get_end_of_fig=-k_ ! only .
           else
@@ -365,7 +365,7 @@ contains
     select case(a)
     case("+","-")
        get_tid=TID_BOP1U
-    case("*","/")
+    case("*","/","&")
        get_tid=TID_BOP2U
     case("!")
        get_tid=TID_UOP2U
@@ -481,7 +481,18 @@ contains
              end if
           end select
        end if
-       if(t==TID_BOP2U) t=TID_BOP2
+       if(t==TID_BOP2U.and.rpnb%expr(k:k)=="&") then
+          select case(next_char(1))
+          case("P","C")
+             t=TID_BOP2
+             p2=k+1
+             p1=p2
+          case default
+             t=TID_INV
+          end select
+       else
+          t=TID_BOP2
+       end if
     case(TID_BOP3U)
        if(k<rpnb%len_expr-1.and.next_char(1)=="=") then
           t=TID_AOP
@@ -1379,6 +1390,10 @@ contains
          else
             get_oid2=loc(zm_div_f)
          end if
+      case("C")
+         get_oid2=loc(zm_comb)
+      case("P")
+         get_oid2=loc(zm_perm)
       case("**","^")
          get_oid2=loc(zm_pow)
       case("//")

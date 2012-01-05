@@ -39,7 +39,7 @@ program fzcal
      str=adjustl(str)
      cid=parse_command(rpnc,str,ka,kb)
      if(ka/=0) then
-        n=atoi(str(ka:kb),ist=istat)
+        n=atoi(str(ka:kb),n,ist=istat)
         if(istat/=0) then
            n=0
         else

@@ -57,14 +57,14 @@ module rpnd
   ! unary, binary and functions  
   integer,parameter::TID_BOP1    =   9  ! +,-
   integer,parameter::TID_BOP1U   =  -9  !
-  integer,parameter::TID_BOP2    =  10  ! *,/
+  integer,parameter::TID_BOP2    =  10  ! *,/,&P,&C
   integer,parameter::TID_BOP2U   = -10  !
   integer,parameter::TID_BOP4    =  11  ! implicit * <<<<<<<<<<< 
   integer,parameter::TID_BOP3    =  12  ! ^,**,e
   integer,parameter::TID_BOP3U   = -12  !
   integer,parameter::TID_UOP3    =  13  ! a++
   integer,parameter::TID_UOP1    =  14  ! +a,-a,++a
-  integer,parameter::TID_UOP2    =  15  ! !,!!
+  integer,parameter::TID_UOP2    =  15  ! !,!!    
   integer,parameter::TID_UOP2U   = -16  ! 
   integer,parameter::TID_IFNC    =  17  ! sin, cos,...
   integer,parameter::TID_UFNC    =  18  !

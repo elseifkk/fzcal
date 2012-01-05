@@ -45,6 +45,8 @@ module zmath
   public zm_var
   public zm_uvar
   public zm_sum2
+  public zm_perm
+  public zm_comb
 
   public zms_n
   public zms_sum_x
@@ -114,6 +116,24 @@ module zmath
   logical::random_seed_init=.false.
 
 contains
+
+  ! workaround
+  real(rp) function nan()
+    real(rp) a,b
+    a=rzero
+    b=rzero
+    nan=a/b
+  end function nan
+
+  ! workaround
+  logical function is_nan(x)
+    real(rp),intent(in)::x
+    if(x*rzero/=rzero) then
+       is_nan=.true.
+    else
+       is_nan=.false.
+    end if
+  end function is_nan
 
   subroutine init_random_seed()
     integer::i,n,clock
@@ -325,7 +345,7 @@ contains
   
   complex(cp) function zm_pow(z1,z2)
     complex(cp),intent(in)::z1,z2
-    integer n1,n2
+    integer*8 n1,n2
     if(is_integer(z2,n2)) then
        if(is_integer(z1,n1)) then
           zm_pow=real(n1,kind=rp)**real(n2,kind=rp)
@@ -339,7 +359,7 @@ contains
 
   complex(cp) function zm_invpow(z2,z1)
     complex(cp),intent(in)::z2,z1
-    integer n1,n2
+    integer*8 n1,n2
     if(is_integer(z2,n2)) then
        if(is_integer(z1,n1)) then
           zm_invpow=real(n1,kind=rp)**(1.0_rp/real(n2,kind=rp))
@@ -353,7 +373,7 @@ contains
 
   complex(cp) function zm_exp10(z1,z2)
     complex(cp),intent(in)::z1,z2
-    integer n1,n2
+    integer*8 n1,n2
     if(is_integer(z2,n2)) then
        if(is_integer(z1,n1)) then
           zm_exp10=real(n1,kind=rp)*10.0_rp**real(n2,kind=rp)
@@ -410,172 +430,206 @@ contains
     end do
   end function zm_dfac
 
-  complex(cp) function zm_sin(z1)
-    complex(cp),intent(in)::z1
-    zm_sin=sin(z1)
+  complex(cp) function zm_perm(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    integer*8 i,n1,n2,p
+    n1=realpart(z1)
+    n2=realpart(z2)
+    p=n1
+    do i=1,n2-1
+       p=p*(n1-i)
+    end do
+    zm_perm=real(p,kind=rp)
+  end function zm_perm
+
+  complex(cp) function zm_comb(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    integer*8 i,n1,n2,p,d
+    n1=realpart(z1)
+    n2=realpart(z2)
+    p=n1
+    d=1
+    do i=1,n2-1
+       p=p*(n1-i)
+       d=d*(i+1)
+    end do
+    zm_comb=real(p/d,kind=rp)
+  end function zm_comb
+
+  complex(cp) function zm_sin(z)
+    complex(cp),intent(in)::z
+    zm_sin=sin(z)
   end function zm_sin
 
-  complex(cp) function zm_cos(z1)
-    complex(cp),intent(in)::z1
-    zm_cos=cos(z1)
+  complex(cp) function zm_cos(z)
+    complex(cp),intent(in)::z
+    zm_cos=cos(z)
   end function zm_cos
 
-  complex(cp) function zm_tan(z1)
-    complex(cp),intent(in)::z1
-    zm_tan=tan(z1)
+  complex(cp) function zm_tan(z)
+    complex(cp),intent(in)::z
+    zm_tan=tan(z)
   end function zm_tan
 
-  complex(cp) function zm_asin(z1)
-    complex(cp),intent(in)::z1
-    zm_asin=asin(z1)
+  complex(cp) function zm_asin(z)
+    complex(cp),intent(in)::z
+    zm_asin=asin(z)
   end function zm_asin
 
-  complex(cp) function zm_acos(z1)
-    complex(cp),intent(in)::z1
-    zm_acos=acos(z1)
+  complex(cp) function zm_acos(z)
+    complex(cp),intent(in)::z
+    zm_acos=acos(z)
   end function zm_acos
 
-  complex(cp) function zm_atan(z1)
-    complex(cp),intent(in)::z1
-    zm_atan=atan(z1)
+  complex(cp) function zm_atan(z)
+    complex(cp),intent(in)::z
+    zm_atan=atan(z)
   end function zm_atan
 
-  complex(cp) function zm_sind(z1)
-    complex(cp),intent(in)::z1
-    zm_sind=sin(z1/180.0_rp*pi)
+  complex(cp) function zm_sind(z)
+    complex(cp),intent(in)::z
+    zm_sind=sin(z/180.0_rp*pi)
   end function zm_sind
 
-  complex(cp) function zm_cosd(z1)
-    complex(cp),intent(in)::z1
-    zm_cosd=cos(z1/180.0_rp*pi)
+  complex(cp) function zm_cosd(z)
+    complex(cp),intent(in)::z
+    zm_cosd=cos(z/180.0_rp*pi)
   end function zm_cosd
 
-  complex(cp) function zm_tand(z1)
-    complex(cp),intent(in)::z1
-    zm_tand=tan(z1/180.0_rp*pi)
+  complex(cp) function zm_tand(z)
+    complex(cp),intent(in)::z
+    zm_tand=tan(z/180.0_rp*pi)
   end function zm_tand
 
-  complex(cp) function zm_asind(z1)
-    complex(cp),intent(in)::z1
-    zm_asind=asin(z1)/pi*180.0_rp
+  complex(cp) function zm_asind(z)
+    complex(cp),intent(in)::z
+    zm_asind=asin(z)/pi*180.0_rp
   end function zm_asind
 
-  complex(cp) function zm_acosd(z1)
-    complex(cp),intent(in)::z1
-    zm_acosd=acos(z1)/pi*180.0_rp
+  complex(cp) function zm_acosd(z)
+    complex(cp),intent(in)::z
+    zm_acosd=acos(z)/pi*180.0_rp
   end function zm_acosd
 
-  complex(cp) function zm_atand(z1)
-    complex(cp),intent(in)::z1
-    zm_atand=atan(z1)/pi*180.0_rp
+  complex(cp) function zm_atand(z)
+    complex(cp),intent(in)::z
+    zm_atand=atan(z)/pi*180.0_rp
   end function zm_atand
 
-  complex(cp) function zm_sinh(z1)
-    complex(cp),intent(in)::z1
-    zm_sinh=sinh(z1)
+  complex(cp) function zm_sinh(z)
+    complex(cp),intent(in)::z
+    zm_sinh=sinh(z)
   end function zm_sinh
 
-  complex(cp) function zm_cosh(z1)
-    complex(cp),intent(in)::z1
-    zm_cosh=cosh(z1)
+  complex(cp) function zm_cosh(z)
+    complex(cp),intent(in)::z
+    zm_cosh=cosh(z)
   end function zm_cosh
 
-  complex(cp) function zm_tanh(z1)
-    complex(cp),intent(in)::z1
-    zm_tanh=tanh(z1)
+  complex(cp) function zm_tanh(z)
+    complex(cp),intent(in)::z
+    zm_tanh=tanh(z)
   end function zm_tanh
 
-  complex(cp) function zm_asinh(z1)
-    complex(cp),intent(in)::z1
-    zm_asinh=log(z1+sqrt(z1*z1+1.0_rp))
+  complex(cp) function zm_asinh(z)
+    complex(cp),intent(in)::z
+    zm_asinh=log(z+sqrt(z*z+1.0_rp))
   end function zm_asinh
 
-  complex(cp) function zm_acosh(z1)
-    complex(cp),intent(in)::z1
-    zm_acosh=log(z1+sqrt(z1*z1-1.0_rp))
+  complex(cp) function zm_acosh(z)
+    complex(cp),intent(in)::z
+    zm_acosh=log(z+sqrt(z*z-1.0_rp))
   end function zm_acosh
 
-  complex(cp) function zm_atanh(z1)
-    complex(cp),intent(in)::z1
-    zm_atanh=log((1.0_rp+z1)/(1.0_rp-z1))/2.0_rp
+  complex(cp) function zm_atanh(z)
+    complex(cp),intent(in)::z
+    zm_atanh=log((1.0_rp+z)/(1.0_rp-z))/2.0_rp
   end function zm_atanh
 
-  complex(cp) function zm_exp(z1)
-    complex(cp),intent(in)::z1
-    zm_exp=exp(z1)
+  complex(cp) function zm_exp(z)
+    complex(cp),intent(in)::z
+    zm_exp=exp(z)
   end function zm_exp
 
-  complex(cp) function zm_log(z1)
-    complex(cp),intent(in)::z1
-    zm_log=log(z1)
+  complex(cp) function zm_log(z)
+    complex(cp),intent(in)::z
+    zm_log=log(z)
   end function zm_log
 
-  complex(cp) function zm_log10(z1)
-    complex(cp),intent(in)::z1
-    zm_log10=log(z1)/log(10.0_rp)
+  complex(cp) function zm_log10(z)
+    complex(cp),intent(in)::z
+    zm_log10=log(z)/log(10.0_rp)
   end function zm_log10
 
-  complex(cp) function zm_sqrt(z1)
-    complex(cp),intent(in)::z1
-    zm_sqrt=sqrt(z1)
+  complex(cp) function zm_sqrt(z)
+    complex(cp),intent(in)::z
+    zm_sqrt=sqrt(z)
   end function zm_sqrt
 
-  complex(cp) function zm_cbrt(z1)
-    complex(cp),intent(in)::z1
-    zm_cbrt=(z1)**(1.0_rp/3.0_rp)
+  complex(cp) function zm_cbrt(z)
+    complex(cp),intent(in)::z
+    zm_cbrt=(z)**(1.0_rp/3.0_rp)
   end function zm_cbrt
 
-  complex(cp) function zm_abs(z1)
-    complex(cp),intent(in)::z1
-    zm_abs=abs(z1)
+  complex(cp) function zm_abs(z)
+    complex(cp),intent(in)::z
+    zm_abs=abs(z)
   end function zm_abs
   
-  complex(cp) function zm_int(z1)
-    complex(cp),intent(in)::z1
-    zm_int=int(z1)
+  complex(cp) function zm_int(z)
+    complex(cp),intent(in)::z
+    if(abs(realpart(z))>int_max) then
+       zm_int=nan()
+    else
+       zm_int=int(z,kind=8)
+    end if
   end function zm_int
 
-  complex(cp) function zm_frac(z1)
-    complex(cp),intent(in)::z1
-    zm_frac=z1-int(z1)
+  complex(cp) function zm_frac(z)
+    complex(cp),intent(in)::z
+    if(abs(realpart(z))>int_max) then
+       zm_frac=nan()
+    else
+       zm_frac=z-int(z,kind=8)
+    end if
   end function zm_frac
 
-  complex(cp) function zm_nint(z1)
-    complex(cp),intent(in)::z1
-    zm_nint=int(z1+0.5_rp)
+  complex(cp) function zm_nint(z)
+    complex(cp),intent(in)::z
+    zm_nint=int(z+0.5_rp,kind=8)
   end function zm_nint
 
-  complex(cp) function zm_conjg(z1)
-    complex(cp),intent(in)::z1
-    zm_conjg=conjg(z1)
+  complex(cp) function zm_conjg(z)
+    complex(cp),intent(in)::z
+    zm_conjg=conjg(z)
     if(abs(imagpart(zm_conjg))==rzero)  then
        zm_conjg=complex(realpart(zm_conjg),rzero)
     end if
   end function zm_conjg
 
-  complex(cp) function zm_re(z1)
-    complex(cp),intent(in)::z1
-    zm_re=realpart(z1)
+  complex(cp) function zm_re(z)
+    complex(cp),intent(in)::z
+    zm_re=realpart(z)
   end function zm_re
 
-  complex(cp) function zm_im(z1)
-    complex(cp),intent(in)::z1
-    zm_im=imagpart(z1)
+  complex(cp) function zm_im(z)
+    complex(cp),intent(in)::z
+    zm_im=imagpart(z)
   end function zm_im
 
-  complex(cp) function zm_mag(z1)
-    complex(cp),intent(in)::z1
-    zm_mag=sqrt(realpart(z1)**2.0_rp+imagpart(z1)**2.0_rp)
+  complex(cp) function zm_mag(z)
+    complex(cp),intent(in)::z
+    zm_mag=sqrt(realpart(z)**2.0_rp+imagpart(z)**2.0_rp)
   end function zm_mag
   
-  complex(cp) function zm_arg(z1)
-    complex(cp),intent(in)::z1
-    zm_arg=atan(imagpart(z1),realpart(z1))
+  complex(cp) function zm_arg(z)
+    complex(cp),intent(in)::z
+    zm_arg=atan(imagpart(z),realpart(z))
   end function zm_arg
 
-  complex(cp) function zm_mod(z1,z2)
-    complex(cp),intent(in)::z1,z2
-    zm_mod=mod(int(z1),int(z2))
+  complex(cp) function zm_mod(z,z2)
+    complex(cp),intent(in)::z,z2
+    zm_mod=mod(int(z),int(z2))
   end function zm_mod
 
   complex(cp) function zm_inc_f(z)
@@ -1017,9 +1071,9 @@ contains
 
   end function zm_lgamma
   
-  complex(cp) function zm_gamma(z1)
-    complex(cp),intent(in)::z1
-    zm_gamma=exp(zm_lgamma(z1))
+  complex(cp) function zm_gamma(z)
+    complex(cp),intent(in)::z
+    zm_gamma=exp(zm_lgamma(z))
   end function zm_gamma
 
   complex(cp) function zm_deint(a,b,ptr_integrand)
