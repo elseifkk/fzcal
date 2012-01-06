@@ -22,6 +22,7 @@ class MainWindowImpl : public QMainWindow, public Ui::MainWindow
   void enableStaButs(bool on);
   void tryClear();
   void setEngBut();
+  void initButIcon();
 
  private:
   size_t pfzc;
