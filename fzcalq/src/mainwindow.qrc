@@ -7,5 +7,21 @@
   <file>../pix/x2.png</file>
   <file>../pix/xrt.png</file>
   <file>../pix/xy.png</file>
+  <file>../pix/xbar.png</file>
+  <file>../pix/sigmax.png</file>
+  <file>../pix/ux.png</file>
+  <file>../pix/sumx.png</file>
+  <file>../pix/sumx2.png</file>
+  <file>../pix/ybar.png</file>
+  <file>../pix/sigmay.png</file>
+  <file>../pix/uy.png</file>
+  <file>../pix/sumy.png</file>
+  <file>../pix/sumy2.png</file>
+  <file>../pix/sumxy.png</file>
+  <file>../pix/npr.png</file>
+  <file>../pix/ncr.png</file>
+  <file>../pix/xinv.png</file>
+  <file>../pix/xfac.png</file>
+  <file>../pix/intabdx.png</file>
 </qresource>
 </RCC>
