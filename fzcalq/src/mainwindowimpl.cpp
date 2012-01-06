@@ -14,6 +14,7 @@ MainWindowImpl::MainWindowImpl( QWidget * parent, Qt::WFlags f)
 {
   setupUi(this);
   pfzc=fzc_init();
+  initButIcon();
   shiftSlot();//<<< to set icons
   resultSet=false;
 
@@ -250,6 +251,21 @@ void MainWindowImpl::setButIcon(QPushButton *b, QString r)
   b->setIconSize(QSize(24,24));
 }
 
+void MainWindowImpl::initButIcon()
+{
+  setButIcon(aveBut,":/pix/xbar.png");
+  setButIcon(varBut,":/pix/sigmax.png");
+  setButIcon(uvarBut,":/pix/ux.png");
+  setButIcon(sumBut,":/pix/sumx.png");
+  setButIcon(sum2But,":/pix/sumx2.png");
+  setButIcon(aveyBut,":/pix/ybar.png");
+  setButIcon(varyBut,":/pix/sigmay.png");
+  setButIcon(uvaryBut,":/pix/uy.png");
+  setButIcon(sumyBut,":/pix/sumy.png");
+  setButIcon(sumy2But,":/pix/sumy2.png");
+  setButIcon(sumxyBut,":/pix/sumxy.png");
+}
+
 void MainWindowImpl::shiftSlot()
 {
   QIcon ic;
@@ -267,6 +283,20 @@ void MainWindowImpl::shiftSlot()
 
     minusBut->setText("");
     setButIcon(minusBut,":/pix/cbrt.png");
+    
+    stoBut->setText("Int");
+
+    rclBut->setText("Frac");
+
+    braBut->setText("");
+    setButIcon(braBut,":/pix/xinv.png");
+
+    ketBut->setText("");
+    setButIcon(ketBut,":/pix/xfac.png");
+
+    commaBut->setText(":");
+    mpBut->setText("M-");
+
   }else{
     sqrtBut->setText("");
     setButIcon(sqrtBut,":/pix/sqrt.png");
@@ -282,6 +312,19 @@ void MainWindowImpl::shiftSlot()
 
     minusBut->setIconSize(QSize(0,0));
     minusBut->setText("-");
+
+    stoBut->setText("STO");
+
+    rclBut->setText("RCL");
+
+    braBut->setText("(");
+    braBut->setIconSize(QSize(0,0));
+
+    ketBut->setText(")");
+    ketBut->setIconSize(QSize(0,0));
+
+    commaBut->setText(",");
+    mpBut->setText("M+");
   }
   setTriFncBut();
   setEngBut();
@@ -427,6 +470,12 @@ void MainWindowImpl::enableStaButs(bool on)
   varBut->setEnabled(on);
   uvarBut->setEnabled(on);
   aveBut->setEnabled(on);
+  sumyBut->setEnabled(on);
+  sumy2But->setEnabled(on);
+  varyBut->setEnabled(on);
+  uvaryBut->setEnabled(on);
+  aveyBut->setEnabled(on);
+  sumxyBut->setEnabled(on);
 }
 
 void MainWindowImpl::nSlot()
