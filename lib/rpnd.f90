@@ -7,33 +7,35 @@ module rpnd
   integer,parameter::RPNSTA_FNCSET = -1
   integer,parameter::RPNSTA_OK     =  0
 
-  integer,parameter::RPNERR_NOENT  =  1
-  integer,parameter::RPNERR_NOOP   =  2
-  integer,parameter::RPNERR_NOPAR  =  3
-  integer,parameter::RPNERR_NOFNC  =  4
-  integer,parameter::RPNERR_ADDPAR =  5
-  integer,parameter::RPNERR_INVASN =  6
-  integer,parameter::RPNERR_INVOP  =  7
-  integer,parameter::RPNERR_INVFNC =  8
-  integer,parameter::RPNERR_PARSER =  9
-  integer,parameter::RPNERR_ADDSTR = 10
-  integer,parameter::RPNERR_MEMOV  = 11
-  integer,parameter::RPNERR_RECOV  = 12
-  integer,parameter::RPNERR_NARG   = 13
-  integer,parameter::RPNERR_GETPAR = 14
-  integer,parameter::RPNERR_TOO_MANY_ARG = 14
-  integer,parameter::RPNERR_TOO_FEW_ARG  = 15
-  integer,parameter::RPNERR_NO_ARG       = 16
-  integer,parameter::RPNCERR_INVARG = 17
-  integer,parameter::RPNCERR_INVFIG = 18
+  integer,parameter::RPNCERR_NOENT        =  1
+  integer,parameter::RPNCERR_NOOP         =  2
+  integer,parameter::RPNCERR_NOPAR        =  3
+  integer,parameter::RPNCERR_NOFNC        =  4
+  integer,parameter::RPNCERR_ADDPAR       =  5
+  integer,parameter::RPNCERR_INVASN       =  6
+  integer,parameter::RPNCERR_INVOP        =  7
+  integer,parameter::RPNCERR_INVFNC       =  8
+  integer,parameter::RPNCERR_PARSER       =  9
+  integer,parameter::RPNCERR_ADDSTR       = 10
+  integer,parameter::RPNCERR_MEMOV        = 11
+  integer,parameter::RPNCERR_RECOV        = 12
+  integer,parameter::RPNCERR_NARG         = 13
+  integer,parameter::RPNCERR_GETPAR       = 14
+  integer,parameter::RPNCERR_TOO_MANY_ARG = 15
+  integer,parameter::RPNCERR_TOO_FEW_ARG  = 16
+  integer,parameter::RPNCERR_NO_ARG       = 17
+  integer,parameter::RPNCERR_INVARG       = 18
+  integer,parameter::RPNCERR_INVFIG       = 19
 
-  integer,parameter::RPN_REC_MAX   =  256
-  integer,parameter::NUM_VBUF_MIN  =   32
-  integer,parameter::NUM_PBUF_MIN  =   32
-  integer,parameter::NUM_RPNM_MIN  =    8
-  integer,parameter::LEN_PLIST_MIN = 1024
-  integer,parameter::LEN_RLIST_MIN = 1024
-  integer,parameter::NUM_VS_MIN    =   32
+  integer,parameter::RPN_REC_MAX     =  256
+  integer,parameter::NUM_VBUF_MIN    =   32
+  integer,parameter::NUM_PBUF_MIN    =   32
+  integer,parameter::NUM_RPNM_MIN    =    8
+  integer,parameter::LEN_PLIST_MIN   = 1024
+  integer,parameter::LEN_RLIST_MIN   = 1024
+  integer,parameter::NUM_VS_MIN      =   32
+  integer,parameter::LEN_STR_MAX     = 1024
+  integer,parameter::LEN_FORMULA_MAX = LEN_STR_MAX
 
   ! meta tid
   integer,parameter::TID_FIN   =   999
@@ -115,9 +117,6 @@ module rpnd
   integer,parameter::LOID_OR  = 3
   integer,parameter::LOID_EQ  = 4
   integer,parameter::LOID_NEQ = 5
-
-  integer,parameter::LEN_STR_MAX=1024
-  integer,parameter::LEN_FORMULA_MAX=LEN_STR_MAX
 
   type t_rrpnq
      integer tid

@@ -48,18 +48,19 @@ contains
 #define cle_disp_opt(x) rpnc%opt=iand(rpnc%opt,not(ishft((x),32)))
 #define put_disp_digit(x) rpnc%opt=ior(iand(rpnc%opt,digit_mask),ishft((x),32))
 
-  integer function parse_command(rpnc,a,p1arg,p2arg)
+  integer function parse_command(rpnc,a,p1arg,p2arg,b)
     use fpio
     ! a must not include dup white and must be left adjusted
     type(t_rpnc),intent(inout)::rpnc
-    character*(*),intent(inout)::a
-    integer,intent(out)::p1arg,p2arg
+    character*(*),intent(in)::a
+    integer,intent(out),optional::p1arg,p2arg
+    character*(*),intent(inout),optional::b
     integer p1,p2
     integer*8 n
 
     parse_command=CID_NOP
-    p1arg=0
-    p2arg=0
+    if(present(p1arg)) p1arg=0
+    if(present(p2arg)) p2arg=0
     if(len_trim(a)<=1) return
     if(a(1:1)/=".") return
     p2=1
@@ -236,20 +237,20 @@ contains
              exit
           end select
        case(-CID_WRITE)
-          p1arg=p1
-          p2arg=len_trim(a)
+          if(present(p1arg)) p1arg=p1
+          if(present(p2arg)) p2arg=len_trim(a)
           parse_command=CID_WRITE
        case(-CID_PRI_PAR,-CID_PRI_FNC,-CID_PRI_MAC,-CID_LOAD,-CID_SET_PROMPT)
-          p1arg=p1
-          p2arg=p2
+          if(present(p1arg)) p1arg=p1
+          if(present(p2arg)) p2arg=p2
           parse_command=-parse_command
        case(-CID_DEL_PAR,-CID_DEL_FNC,-CID_DEL_MAC)
           parse_command=-parse_command
           if(get_ak(a(p1:p2))==AK_ALL) then
              parse_command=3+parse_command ! <<<
           else
-             p1arg=p1
-             p2arg=p2
+             if(present(p1arg)) p1arg=p1
+             if(present(p1arg)) p2arg=p2
           end if
        case default
           stop "internal error"
@@ -319,7 +320,8 @@ contains
     subroutine read_arg()
       integer kk,jj
       character*128 ans ! <<<<<<<<<<
-      character*1024 str ! <<<<<<<<<<
+      character(LEN_FORMULA_MAX) str
+      if(.not.present(b)) return
       write(*,"(a)") "Input: "//trim(adjustl(a(p2+1:len_trim(a))))
       jj=0
       do kk=p2+1,len_trim(a)
@@ -333,7 +335,7 @@ contains
             str(jj:jj)=a(kk:kk)
          end select
       end do
-      a=trim(str)
+      b=trim(str)
     end subroutine read_arg
 
   end function parse_command

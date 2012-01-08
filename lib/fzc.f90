@@ -42,6 +42,17 @@ contains
     fzc_set_formula=int(parse_formula(rpnc,f),kind=C_INT)
   end function fzc_set_formula
 
+  retint function fzc_proc_com(ptr_rpnc,ptr_com)
+    use com
+    size_t,intent(in),value::ptr_rpnc,ptr_com
+    character(LEN_FORMULA_MAX) c
+    type(t_rpnc) rpnc
+    pointer(pr,rpnc)
+    pr=ptr_rpnc
+    call c2fstr(ptr_com,c)
+    fzc_proc_com=int(parse_command(rpnc,c),kind=C_INT)
+  end function fzc_proc_com
+
   retint function fzc_eval(ptr_rpnc)
     size_t,intent(in),value::ptr_rpnc
     type(t_rpnc) rpnc
@@ -119,7 +130,7 @@ contains
     type(t_rpnc) rpnc
     pointer(pr,rpnc)
     pr=ptr_rpnc
-    call reset_dat(rpnc)
+    call reset_sd(rpnc%sd)
   end subroutine fzc_cle_dat
 
 end module fzc
