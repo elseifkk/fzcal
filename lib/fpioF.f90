@@ -224,60 +224,83 @@ contains
 #define is_set(x) (iand(opt,(x))/=0)
 #define is_uset(x) (iand(opt,(x))==0)
 
+  character(LEN_STR_ANS_MAX) function xtos(x,e,dot)
+    real(rp),intent(in)::x
+    integer,intent(out),optional::e
+    logical,intent(in),optional::dot
+    real(rp) xx
+    logical neg
+    integer istat
+    ! 12345..
+    ! +x.xx..E+xxxx
+    xtos=""
+    if(x>=rzero) then
+       xx=x
+       neg=.false.
+    else
+       xx=-x
+       neg=.true.
+    end if
+    write(xtos(2:),cfmt,iostat=istat) xx
+    if(istat/=0) return
+    if(xtos(2:2)=="*") then
+       write(xtos(2:),*,iostat=istat) xx
+       if(istat/=0) return
+    end if
+    xtos(2:)=adjustl(xtos(2:))
+    if(.not.neg) then
+       xtos(1:1)="+"
+    else
+       xtos(1:1)="-"
+    end if
+    if(present(e)) call get_exp()
+    if(present(dot).and..not.dot) xtos=xtos(1:2)//xtos(4:len_trim(xtos))
+
+  contains
+
+    subroutine get_exp()
+      integer k
+      e=0
+      k=index(xtos(2:),"E")
+      if(k==0) return
+      read(xtos(k+1+1:),*,iostat=istat) e
+      if(istat==0) xtos(k+1:)=" "
+    end subroutine get_exp
+
+  end function xtos
+
   character(LEN_STR_ANS_MAX) function xtoa(x,opt)
     real(rp),intent(in)::x
     integer,intent(in)::opt
-    real(rp) xx
     integer sd
     character(LEN_STR_ANS_MAX) ns
-    integer istat
     integer p1,p2
     integer k,d,dd
     logical cr
     integer*1 c
     integer e,ee,r
     integer len,len0
-    logical neg
     pointer(pc,c)
-
     if(x==rzero.and.is_set(X2A_ALLOW_ORDINARY)) then
        xtoa="0"
        return
     end if
-    if(x>rzero) then
-       xx=x
-       neg=.false.
-       p1=1
-    else
-       xx=-x
-       neg=.true.
-       p1=2
-    end if
     xtoa=""
-    write(xtoa,cfmt,iostat=istat) xx
-    if(istat/=0) return
-    if(xtoa(1:1)=="*") then
-       write(xtoa,*,iostat=istat) xx
-       if(istat/=0) return
-    end if
-    xtoa=adjustl(xtoa)
-! x.xxxx...xE+xxxx
-    p2=index(xtoa,"E")
-    if(p2>0) then
-       read(xtoa(p2+1:),*,iostat=istat) e
-       if(istat/=0) return
+    ns=xtos(x,e,.false.)
+    if(ns(1:1)=="-") then
+       p1=2
+       xtoa(1:1)="-"
     else
-       e=0
+       p1=1
     end if
-    p2=p2-1
-    len=(p2-p1+1)-1 ! digits excluding .
-    ns=xtoa(1:1)//xtoa(3:p2)
-    if(neg) xtoa(1:1)="-"
-    len0=len_trim0(ns)
+    p2=len_trim(ns)
+! x.xxxx...xE+xxxx
+    len=len_trim(ns)-1   ! digits excluding sign
+    len0=len_trim0(ns)-1 ! excluding sign
     if(is_set(X2A_ALLOW_ORDINARY).and.e>=0.and.e<max_digit) then
        if(e>=len0-1) then
           ! integer
-          xtoa(p1:)=ns(1:1+e)
+          xtoa(p1:)=ns(2:2+e)
           return 
        end if
     end if
@@ -378,18 +401,6 @@ contains
 
     contains
 
-      integer function len_trim0(a)
-        character*(*),intent(in)::a
-        integer ii
-        do ii=len_trim(a),1,-1
-           if(a(ii:ii)/="0") then
-              len_trim0=ii
-              return
-           end if
-        end do
-        len_trim0=0
-      end function len_trim0
-
       subroutine trimz
         integer ii
         do ii=len_trim(xtoa),1,-1
@@ -407,5 +418,40 @@ contains
       end subroutine trimz
 
   end function xtoa
+
+  integer function len_trim0(a)
+    character*(*),intent(in)::a
+    integer i
+    do i=len_trim(a),1,-1
+       if(a(i:i)/="0") then
+          len_trim0=i
+          return
+       end if
+    end do
+    len_trim0=0
+  end function len_trim0
+
+!!$  subroutine to_intfrac(x,i,f)
+!!$    real(rp),intent(in)::x
+!!$    real(rp),intent(out),optional::i
+!!$    real(rp),intent(out),optional::f
+!!$    character(LEN_STR_ANS_MAX) s
+!!$    integer d,e,istat
+!!$    s=xtos(x,e,.false.)
+!!$    d=len_trim0(s)-1 ! excluding sign
+!!$    ! 123.456789
+!!$    ! +1234567890... 
+!!$    ! e=2
+!!$    ! d=9
+!!$    if(present(i)) then
+!!$       if(e>=0) then
+!!$          read(s(2:e+2),*,iostat=istat) i
+!!$          f=x-i
+!!$       else
+!!$          i=rzero
+!!$          f=x
+!!$       end if
+!!$    end if
+!!$  end subroutine to_intfrac
 
 end module fpio

@@ -57,11 +57,13 @@ contains
     character*(*),intent(inout),optional::b
     integer p1,p2
     integer*8 n
+    integer lencom
 
     parse_command=CID_NOP
     if(present(p1arg)) p1arg=0
     if(present(p2arg)) p2arg=0
-    if(len_trim(a)<=1) return
+    lencom=str_len_trim(a)
+    if(lencom<=1) return
     if(a(1:1)/=".") return
     p2=1
     p1=get_arg(p2)
@@ -238,7 +240,7 @@ contains
           end select
        case(-CID_WRITE)
           if(present(p1arg)) p1arg=p1
-          if(present(p2arg)) p2arg=len_trim(a)
+          if(present(p2arg)) p2arg=lencom
           parse_command=CID_WRITE
        case(-CID_PRI_PAR,-CID_PRI_FNC,-CID_PRI_MAC,-CID_LOAD,-CID_SET_PROMPT)
           if(present(p1arg)) p1arg=p1
@@ -277,14 +279,14 @@ contains
     integer function get_arg(pp2)
       integer,intent(out)::pp2
       integer kk
-      do kk=p2+1,len_trim(a)
+      do kk=p2+1,lencom
          select case(a(kk:kk))
          case(" ","\t")
          case default
             get_arg=kk
             pp2=index(a(kk:)," ")
             if(pp2==0) then
-               pp2=len_trim(a)
+               pp2=lencom
             else
                pp2=pp2-1+kk-1
             end if
@@ -322,9 +324,9 @@ contains
       character*128 ans ! <<<<<<<<<<
       character(LEN_FORMULA_MAX) str
       if(.not.present(b)) return
-      write(*,"(a)") "Input: "//trim(adjustl(a(p2+1:len_trim(a))))
+      write(*,"(a)") "Input: "//trim(adjustl(a(p2+1:lencom)))
       jj=0
-      do kk=p2+1,len_trim(a)
+      do kk=p2+1,lencom
          select case(a(kk:kk))
          case("?")
             read(*,"(a)") ans
