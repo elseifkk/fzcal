@@ -46,10 +46,11 @@ contains
     use com
     size_t,intent(in),value::ptr_rpnc,ptr_com
     character(LEN_FORMULA_MAX) c
+    pointer(pc,c)
     type(t_rpnc) rpnc
     pointer(pr,rpnc)
     pr=ptr_rpnc
-    call c2fstr(ptr_com,c)
+    pc=ptr_com
     fzc_proc_com=int(parse_command(rpnc,c),kind=C_INT)
   end function fzc_proc_com
 
