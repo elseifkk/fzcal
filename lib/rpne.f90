@@ -77,7 +77,7 @@ contains
     od1=get_operand(rpnc,i-1)
 
     if(od1==0) then
-       eval_c=RPNERR_NOOP
+       eval_c=RPNCERR_NOOP
        return
     end if
     select case(rpnc%que(od1)%tid)
@@ -236,7 +236,7 @@ contains
     do j=n,1,-1
        k=get_operand(rpnc,k)
        if(k<=j-1) then
-          get_operands=RPNERR_NOOP
+          get_operands=RPNCERR_NOOP
           return
        end if
        if(present(ps)) ps(j)=rpnc%que(k)%cid
@@ -369,7 +369,7 @@ contains
 
     na=get_up32(rpnc%que(i)%tid)
     if(i-1<na) then
-       istat=RPNERR_NOOP
+       istat=RPNCERR_NOOP
        return
     end if
     
@@ -473,7 +473,7 @@ contains
     tid=get_lo32(rpnc%que(i)%tid)
 
     if(i-1<na) then
-       istat=RPNERR_NOOP
+       istat=RPNCERR_NOOP
        return
     end if
     
@@ -522,7 +522,7 @@ contains
     rpnm=>rpnc%rl%rpnm(rpnc%que(i)%cid)
 
     if(i-1<rpnm%na) then
-       istat=RPNERR_NOOP
+       istat=RPNCERR_NOOP
        return
     end if
 
@@ -669,7 +669,7 @@ contains
       istat=find_par(mac%pars,trim(cpstr(ptr,len)),ent=ent)
       if(istat/=0) then
          write(*,*) "*** No such parameter: "//trim(cpstr(ptr,len))
-         istat=RPNERR_NOPAR
+         istat=RPNCERR_NOPAR
       end if
     end subroutine set_par_ptr
 
@@ -684,7 +684,7 @@ contains
     istat=0
     ec=0
     if(rpnc%rc>RPN_REC_MAX) then
-       istat=RPNERR_RECOV
+       istat=RPNCERR_RECOV
        return
     end if
     ansset=.false.

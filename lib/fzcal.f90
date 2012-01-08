@@ -9,7 +9,7 @@ program fzcal
   implicit none
   type(t_rpnc) rpnc
   pointer(p,rpnc)
-  character*16384 str
+  character(LEN_FORMULA_MAX) str
   integer istat
   integer ka,n,kb
   integer cid
@@ -37,7 +37,7 @@ program fzcal
      end if
      if(str=="") cycle
      str=adjustl(str)
-     cid=parse_command(rpnc,str,ka,kb)
+     cid=parse_command(rpnc,str,ka,kb,str)
      if(ka/=0) then
         n=atoi(str(ka:kb),n,ist=istat)
         if(istat/=0) then

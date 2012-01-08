@@ -608,13 +608,13 @@ contains
     if(istat==0) then
        if(k>size(rpnc%rl%rpnm)) then
           write(*,*) "add_rpnm_entry faild: buffer overflow"
-          istat=RPNERR_MEMOV
+          istat=RPNCERR_MEMOV
        else
           rpnc%que(i)%cid=k
        end if
     else
        write(*,*) "*** try_add_str failed: code = ",istat
-       istat=RPNERR_ADDSTR
+       istat=RPNCERR_ADDSTR
     end if
     add_rpnm_entry=istat
   end function add_rpnm_entry
@@ -959,7 +959,7 @@ contains
           select case(get_up32(qq%p2))
           case(0)
              q%tid=TID_OP
-             if(get_up32(qq%p1)/=0) istat=RPNERR_NARG
+             if(get_up32(qq%p1)/=0) istat=RPNCERR_NARG
              cycle
           case(1) 
              q%tid=get_i32(TID_OP,1)
@@ -971,11 +971,11 @@ contains
              q%tid=get_i32(TID_OPN,narg_max-get_up32(qq%p1))
              cycle
           end select
-          if(get_up32(qq%p1)/=0) istat=RPNERR_NARG ! <<<<<<<<<
+          if(get_up32(qq%p1)/=0) istat=RPNCERR_NARG ! <<<<<<<<<
        case(TID_UFNC)
           q%tid=TID_UFNC
           q%cid=get_up32(qq%tid)
-          if(get_up32(qq%p1)/=0) istat=RPNERR_NARG ! <<<<<<<<<
+          if(get_up32(qq%p1)/=0) istat=RPNCERR_NARG ! <<<<<<<<<
        case(TID_APAR) ! asign a parameter.
           q%tid=TID_PAR
           istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
@@ -987,7 +987,7 @@ contains
              else
                 write(*,*) "*** add_par_by_entry failed: code = ",istat
              end if
-             istat=RPNERR_ADDPAR
+             istat=RPNCERR_ADDPAR
           end if
           !
           ! operands
@@ -1024,7 +1024,7 @@ contains
              istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
              if(istat/=0) then
                 write(*,*) "*** add_par_by_entry failed: code = ",istat
-                istat=RPNERR_ADDPAR
+                istat=RPNCERR_ADDPAR
              end if
           end if
           if(istat==0) then
@@ -1032,13 +1032,13 @@ contains
              q%cid=get_par_loc(rpnc%pars,k,dup)
              if(q%cid==0) then
                 write(*,*) "*** get_par failed: code = ",istat
-                istat=RPNERR_GETPAR
+                istat=RPNCERR_GETPAR
              else
                 if(dup) q%tid=TID_CPAR
              end if
           else
              write(*,*) "*** No such parameter: "//_EXPR_(i)
-             istat=RPNERR_NOPAR
+             istat=RPNCERR_NOPAR
           end if
           !
           ! Non-evaluatable TID
@@ -1139,7 +1139,7 @@ contains
             return
          end if
       end do
-      istat=RPNERR_PARSER
+      istat=RPNCERR_PARSER
     end subroutine find_delim
 
     integer function get_sid(sid)
@@ -1579,7 +1579,7 @@ contains
     type(t_rrpnq),pointer::q
     q => rpnb%que(rpnb%p_que)
     if(q%tid/=TID_PAR) then
-       set_tid_par=RPNERR_PARSER
+       set_tid_par=RPNCERR_PARSER
        return
     end if
     q%tid=tid
@@ -1618,7 +1618,7 @@ contains
           cycle
        case(TID_FIN,TID_SCL)
           if(.not.was_operand().or.(tc/=clc.and.is_uset(RPNCOPT_DAT))) then
-             istat=RPNERR_PARSER
+             istat=RPNCERR_PARSER
              exit
           else
              if(.not.check_narg_all()) exit
@@ -1638,7 +1638,7 @@ contains
              cycle
           end if
        case(TID_INV,TID_UNDEF)
-          istat=RPNERR_PARSER
+          istat=RPNCERR_PARSER
        case(TID_PAR)
           pc=pc+1
           call set_arg_read()
@@ -1660,7 +1660,7 @@ contains
             TID_ROP) 
           oc=oc+1
           if(.not.was_operand()) then
-             istat=RPNERR_PARSER        
+             istat=RPNCERR_PARSER        
           else if(t==TID_TOP1) then
              tc=tc+1
              call rpn_try_push(rpnb,t,p1,bc-kc)
@@ -1674,7 +1674,7 @@ contains
           case(TID_FIG,TID_PAR,TID_KET)
              call rpn_try_push(rpnb,t,p1,p2)
           case default
-             istat=RPNERR_PARSER
+             istat=RPNCERR_PARSER
           end select
        case(TID_UOP1,TID_LOP1)
           oc=oc+1
@@ -1686,7 +1686,7 @@ contains
           case(TID_SCL,TID_BOP1,TID_BOP2,TID_BOP3,TID_BRA,TID_UNDEF)
              t=TID_UOP1
           case default
-             istat=RPNERR_PARSER
+             istat=RPNCERR_PARSER
           end select
           if(istat==0) call rpn_try_push(rpnb,t,p1,p2)
        case(TID_BRA)
@@ -1698,7 +1698,7 @@ contains
           call rpn_push(rpnb,t,p1,p2)
       case(TID_HKET)
           if(.not.was_operand()) then
-             istat=RPNERR_PARSER
+             istat=RPNCERR_PARSER
           else
              if(.not.check_narg_all()) exit ! not checked 
              call rpn_pop_all_bra(rpnb)
@@ -1706,7 +1706,7 @@ contains
           kc=bc
        case(TID_KET)
           if(.not.was_operand()) then
-             istat=RPNERR_PARSER
+             istat=RPNCERR_PARSER
           else
              call rpn_try_pop(rpnb,TID_BRA,bc-kc,p1)
              if(.not.check_narg(0,.true.,terr)) then
@@ -1726,7 +1726,7 @@ contains
              istat=set_tid_par(rpnb,TID_APAR)
              call rpn_try_push(rpnb,t,p1,p2)
           else
-             istat=RPNERR_PARSER
+             istat=RPNCERR_PARSER
           end if
        case(TID_ASN)
           ac=ac+1
@@ -1736,7 +1736,7 @@ contains
              if(check_assignable()) then
                 istat=set_tid_par(rpnb,TID_APAR)
              else
-                istat=RPNERR_PARSER
+                istat=RPNCERR_PARSER
              end if
           end if
           if(istat==0) then
@@ -1748,7 +1748,7 @@ contains
           if(and(qc,1)/=0) then
              ! the first "
              if(told/=TID_ASN) then
-                istat=RPNERR_PARSER
+                istat=RPNCERR_PARSER
              else
                 ! m="
                 ! q   s      q     s
@@ -1761,7 +1761,7 @@ contains
              end if
           else
              if(.not.was_operand()) then
-                istat=RPNERR_PARSER
+                istat=RPNCERR_PARSER
              else
                 if(.not.check_narg_all(TID_QSTA)) exit ! check unclosed ket of fnc 
                 call rpn_try_pop(rpnb,TID_QSTA)
@@ -1772,7 +1772,7 @@ contains
        case(TID_COMA)
           cc=cc+1
           if(.not.was_operand()) then
-             istat=RPNERR_PARSER
+             istat=RPNCERR_PARSER
           else
              call rpn_pop_until(rpnb,TID_BRA,.true.)
              if(.not.check_narg(1,.false.,terr)) then
@@ -1796,7 +1796,7 @@ contains
              if(clc<=1) then
                 call rpn_put(rpnb,t,p1,p2)
              else
-                istat=RPNERR_PARSER
+                istat=RPNCERR_PARSER
              end if
           end if
        case(TID_IFNC,TID_UFNC)
@@ -1888,17 +1888,17 @@ contains
                   b%p1=get_i32(get_lo32(b%p1),na-1)
                   if(close) then
                      if(na/=1.and.namax/=narg_max) then
-                        istat=RPNERR_TOO_FEW_ARG
+                        istat=RPNCERR_TOO_FEW_ARG
                      end if
                      b%p2=get_i32(get_lo32(b%p2),namax)
                   else if(na==1) then
-                     istat=RPNERR_TOO_MANY_ARG
+                     istat=RPNCERR_TOO_MANY_ARG
                   end if
                else if(namax/=0) then
-                  istat=RPNERR_TOO_MANY_ARG
+                  istat=RPNCERR_TOO_MANY_ARG
                end if
             else
-               istat=RPNERR_NO_ARG
+               istat=RPNCERR_NO_ARG
             end if
          end if
       case(TID_BOP4) 
@@ -1948,7 +1948,7 @@ contains
     logical function check_end()
       check_end=(kc-bc<=0)
       if(.not.check_end) then
-         istat=RPNERR_PARSER
+         istat=RPNCERR_PARSER
       else if(pfasn/=0) then
          call set_par_dummy()
       end if
@@ -1985,7 +1985,7 @@ contains
       pfasn=rpnb%p_que
       if(pc-1/=cc.or.set_dummy_par()==0) then
          is_fnc_asn=.false.
-         istat=RPNERR_PARSER
+         istat=RPNCERR_PARSER
       else
          if(p_q1==1) then
             ii=1
