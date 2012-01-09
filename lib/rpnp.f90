@@ -1578,14 +1578,15 @@ contains
     integer,intent(in),optional::p1,p2
     type(t_rrpnq),pointer::q
     q => rpnb%que(rpnb%p_que)
-    if(q%tid/=TID_PAR) then
+    select case(q%tid)
+    case(TID_PAR,TID_APAR)
+       q%tid=tid
+       if(present(p1)) q%p1=ior(q%p1,ishft(p1,16))
+       if(present(p2)) q%p2=ior(q%p2,ishft(p2,16))
+       set_tid_par=0
+    case default
        set_tid_par=RPNCERR_PARSER
-       return
-    end if
-    q%tid=tid
-    if(present(p1)) q%p1=ior(q%p1,ishft(p1,16))
-    if(present(p2)) q%p2=ior(q%p2,ishft(p2,16))
-    set_tid_par=0
+    end select
   end function set_tid_par
 
   integer function parse_formula(rpnc,formula)
@@ -1751,8 +1752,8 @@ contains
                 istat=RPNCERR_PARSER
              else
                 ! m="
-                ! q   s      q     s
-                ! PAR =  ->  AMAC  MASN
+                ! q    s      q     s
+                ! APAR =  ->  AMAC  MASN
                 !                  QSTA
                 istat=set_tid_par(rpnb,TID_AMAC,p1,find_chr(rpnb%expr(p1+1:rpnb%len_expr),"""")+p1)
                 rpnb%buf(rpnb%p_buf)%tid=TID_MASN ! it must be TID_ASN
