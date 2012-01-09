@@ -148,9 +148,10 @@ contains
     integer i
     integer*1 c
     pointer(pc,c)
-    pc=loc(str)+len(str)
-    do i=len(str),1,-1
-       pc=pc-1
+    str_len_trim=0
+    pc=loc(str)-1
+    do i=1,len(str)
+       pc=pc+1
        select case(c)
        case(0)
           str_len_trim=i-1
@@ -158,7 +159,6 @@ contains
        case(32,9)
        case default
           str_len_trim=i
-          return
        end select
     end do
   end function str_len_trim

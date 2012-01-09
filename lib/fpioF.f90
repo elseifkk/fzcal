@@ -22,9 +22,9 @@ module fpio
 #define _RP_IS_DP_
   integer,parameter::rp=dp
   integer,parameter::cp=dp
-  integer,parameter::max_digit=18 !15
+  integer,parameter::max_digit=17 !15
   real(rp),parameter::int_max=2.0_rp**31_rp-1.0_rp
-  character*(*),parameter::cfmt="(ES26.18e4)" !"(ES23.15e4)"
+  character*(*),parameter::cfmt="(ES25.16e4)" !"(ES23.15e4)"
 #endif
   integer,parameter::min_digit=3
 
@@ -46,12 +46,32 @@ module fpio
   integer*8,parameter:: X2A_ENG            = Z"1000"
   integer*8,parameter:: X2A_DEFAULT        = max_digit
 
+  character*(*),parameter,private::NAN_STR="NaN"
+
   interface is_integer
      module procedure is_integer_z
      module procedure is_integer_x
   end interface
 
 contains
+
+  ! workaround
+  real(rp) function nan()
+    real(rp) a,b
+    a=rzero
+    b=rzero
+    nan=a/b
+  end function nan
+
+  ! workaround
+  logical function is_nan(x)
+    real(rp),intent(in)::x
+    if(x*rzero/=rzero) then
+       is_nan=.true.
+    else
+       is_nan=.false.
+    end if
+  end function is_nan
 
   logical function is_integer_z(z,n)
     complex(cp),intent(in)::z
@@ -224,47 +244,63 @@ contains
 #define is_set(x) (iand(opt,(x))/=0)
 #define is_uset(x) (iand(opt,(x))==0)
 
-  character(LEN_STR_ANS_MAX) function xtos(x,e,dot)
+  character(LEN_STR_ANS_MAX) function xtos(x,e,dot,neg)
     real(rp),intent(in)::x
     integer,intent(out),optional::e
     logical,intent(in),optional::dot
+    logical,intent(out),optional::neg
+    logical s
     real(rp) xx
-    logical neg
     integer istat
+    integer p1
     ! 12345..
     ! +x.xx..E+xxxx
+    if(is_nan(x)) then
+       xtos=NAN_STR
+       return
+    end if
     xtos=""
+    p1=2
     if(x>=rzero) then
        xx=x
-       neg=.false.
+       s=.false.
     else
        xx=-x
-       neg=.true.
+       s=.true.
     end if
-    write(xtos(2:),cfmt,iostat=istat) xx
+    if(present(neg)) then
+       p1=1
+       neg=s
+    else
+       p1=2
+    end if
+
+    write(xtos(p1:),cfmt,iostat=istat) xx
     if(istat/=0) return
-    if(xtos(2:2)=="*") then
-       write(xtos(2:),*,iostat=istat) xx
+    if(xtos(p1:p1)=="*") then
+       write(xtos(p1:),*,iostat=istat) xx
        if(istat/=0) return
     end if
-    xtos(2:)=adjustl(xtos(2:))
-    if(.not.neg) then
-       xtos(1:1)="+"
-    else
-       xtos(1:1)="-"
+    xtos(p1:)=adjustl(xtos(p1:))
+    if(p1==2) then
+       if(.not.s) then
+          xtos(1:1)="+"
+       else
+          xtos(1:1)="-"
+       end if
     end if
     if(present(e)) call get_exp()
-    if(present(dot).and..not.dot) xtos=xtos(1:2)//xtos(4:len_trim(xtos))
+    if(present(dot).and..not.dot) xtos=xtos(1:p1)//xtos(p1+2:len_trim(xtos))
 
   contains
 
     subroutine get_exp()
       integer k
       e=0
-      k=index(xtos(2:),"E")
+      k=index(xtos(p1:),"E")
       if(k==0) return
-      read(xtos(k+1+1:),*,iostat=istat) e
-      if(istat==0) xtos(k+1:)=" "
+      read(xtos(k+p1-1+1:),*,iostat=istat) e
+      if(istat==0) xtos(k+p1-1:)=" "
     end subroutine get_exp
 
   end function xtos
@@ -276,7 +312,7 @@ contains
     character(LEN_STR_ANS_MAX) ns
     integer p1,p2
     integer k,d,dd
-    logical cr
+    logical cr,neg
     integer*1 c
     integer e,ee,r
     integer len,len0
@@ -286,8 +322,12 @@ contains
        return
     end if
     xtoa=""
-    ns=xtos(x,e,.false.)
-    if(ns(1:1)=="-") then
+    ns=xtos(x,e,.false.,neg)
+    if(ns==NAN_STR) then
+       xtoa=NAN_STR
+       return
+    end if
+    if(neg) then
        p1=2
        xtoa(1:1)="-"
     else
@@ -295,12 +335,12 @@ contains
     end if
     p2=len_trim(ns)
 ! x.xxxx...xE+xxxx
-    len=len_trim(ns)-1   ! digits excluding sign
-    len0=len_trim0(ns)-1 ! excluding sign
+    len=len_trim(ns)  
+    len0=len_trim0(ns)
     if(is_set(X2A_ALLOW_ORDINARY).and.e>=0.and.e<max_digit) then
        if(e>=len0-1) then
           ! integer
-          xtoa(p1:)=ns(2:2+e)
+          xtoa(p1:)=ns(1:1+e)
           return 
        end if
     end if
