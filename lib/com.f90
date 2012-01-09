@@ -65,6 +65,7 @@ contains
     lencom=str_len_trim(a)
     if(lencom<=1) return
     if(a(1:1)/=".") return
+
     p2=1
     p1=get_arg(p2)
 
@@ -284,7 +285,7 @@ contains
          case(" ","\t")
          case default
             get_arg=kk
-            pp2=index(a(kk:)," ")
+            pp2=index(a(kk:lencom)," ")
             if(pp2==0) then
                pp2=lencom
             else
