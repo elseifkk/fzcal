@@ -10,9 +10,9 @@ BINDIR = /usr/local/bin
 INCDIR = /usr/local/include
 
 #
-FC  = /usr/local/bin/gfortran
-CC  = /usr/local/bin/gcc
-LD  = /usr/local/bin/gfortran
+FC  = /usr/local/bin/gfortran46
+CC  = /usr/local/bin/gcc46
+LD  = /usr/local/bin/gfortran46
 ASM = yasm
 AR  = ar
 
@@ -90,8 +90,9 @@ test: test_fzcal.o libfzcal.a
 install: install-lib install-bin
 
 install-lib: $(ALIBTARG) $(SOLIBTARG) 
-	ln -sf $(SOLIBTARG) $(SOFILE)
 	cp -pf $(.ALLSRC) $(SOFILE) $(LIBDIR) 
+	ln -sf $(LIBDIR)/$(SOLIBTARG) $(LIBDIR)/$(SOFILE)
+	ln -sf $(LIBDIR)/$(SOLIBTARG) $(LIBDIR)/$(SONAME)
 	cp -pf fzc.h $(INCDIR)
 
 install-bin: $(BINTARG)
