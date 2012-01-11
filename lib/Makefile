@@ -1,6 +1,6 @@
 BINTARG   = fzcal
 ALIBTARG  = libfzcal.a 
-SOLIBTARG = libfzcal.so.0.0.1
+SOLIBTARG = libfzcal.so.0.0.2
 SONAME    = libfzcal.so.0
 SOFILE    = libfzcal.so
 

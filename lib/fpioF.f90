@@ -345,8 +345,9 @@ contains
        end if
     end if
 
-    sd=min(max(iand(opt,int(Z"FF")),min_digit),len)
+    sd=iand(opt,int(Z"FF"))
     if(is_uset(X2A_FIX)) then
+       sd=min(max(sd,min_digit),len)
        d=sd
     else
        d=e+1+sd
@@ -354,7 +355,8 @@ contains
           xtoa(p1:)="0."//repeat("0",sd)
           return
        end if
-    end if        
+   end if        
+
     if(d<len) then
        pc=loc(ns)+d
        cr=.false.
