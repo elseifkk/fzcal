@@ -352,7 +352,12 @@ contains
     else
        d=e+1+sd
        if(d<1) then
-          xtoa(p1:)="0."//repeat("0",sd)
+          if(d==0.and.ichar(ns(1:1))>=z"35") then
+             ! 0.09 => 0.1
+             xtoa(p1:)="0."//repeat("0",sd-1)//"1"
+          else
+             xtoa(p1:)="0."//repeat("0",sd)
+          end if
           return
        end if
    end if        
