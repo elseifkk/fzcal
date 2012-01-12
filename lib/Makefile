@@ -90,7 +90,7 @@ test: test_fzcal.o libfzcal.a
 install: install-lib install-bin
 
 install-lib: $(ALIBTARG) $(SOLIBTARG) 
-	cp -pf $(.ALLSRC) $(SOFILE) $(LIBDIR) 
+	cp -pf $(.ALLSRC) $(LIBDIR) 
 	ln -sf $(LIBDIR)/$(SOLIBTARG) $(LIBDIR)/$(SOFILE)
 	ln -sf $(LIBDIR)/$(SOLIBTARG) $(LIBDIR)/$(SONAME)
 	cp -pf fzc.h $(INCDIR)
