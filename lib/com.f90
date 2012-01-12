@@ -63,8 +63,10 @@ contains
     if(present(p1arg)) p1arg=0
     if(present(p2arg)) p2arg=0
     lencom=str_len_trim(a)
+
     if(lencom<=1) return
-    if(a(1:1)/=".") return
+    ! a(2:2) >= A?
+    if(a(1:1)/=".".or.ichar(a(2:2))<65) return
 
     p2=1
     p1=get_arg(p2)
