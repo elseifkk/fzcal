@@ -1,7 +1,7 @@
 BINTARG   = fzcal
 ALIBTARG  = libfzcal.a 
-SOLIBTARG = libfzcal.so.0.0.2
-SONAME    = libfzcal.so.0
+SOLIBTARG = libfzcal.so.2
+SONAME    = libfzcal.so.2
 SOFILE    = libfzcal.so
 
 #
@@ -26,8 +26,8 @@ ARFLAGS = rv
 LDFLAGS = -L/usr/local/lib -L/usr/local/lib/gcc46
 SOFLAGS = -shared -Wl,-soname,$(SONAME)
 
-LD_RUN_PATH     = /usr/local/lib:/usr/local/lib/gcc
-LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc
+LD_RUN_PATH     = /usr/local/lib:/usr/local/lib/gcc46
+LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
 
 #
 .ifdef _NETWALKER_
@@ -88,9 +88,9 @@ install: install-lib install-bin
 
 install-lib: $(ALIBTARG) $(SOLIBTARG) 
 	cp -pf $(.ALLSRC) $(LIBDIR) 
-	ln -sf $(LIBDIR)/$(SOLIBTARG) $(LIBDIR)/$(SOFILE)
-	ln -sf $(LIBDIR)/$(SOLIBTARG) $(LIBDIR)/$(SONAME)
 	cp -pf fzc.h $(INCDIR)
+	ln -sf $(SOLIBTARG) $(SOFILE)
+	cp -p $(SOFILE) $(LIBDIR)
 
 install-bin: $(BINTARG)
 	cp -pf $(.ALLSRC) $(BINDIR)
