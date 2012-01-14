@@ -96,4 +96,4 @@ install-bin: $(BINTARG)
 	cp -pf $(.ALLSRC) $(BINDIR)
 
 clean:
-	rm -f *.o *.mod $(BINTARG) $(ALIBTARG) $(SOLIBTARG) $(SOFILE) test
+	rm -f *.o *.mod $(BINTARG) $(ALIBTARG) $(SOLIBTARG) $(SOFILE)
