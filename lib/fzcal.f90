@@ -20,6 +20,7 @@ program fzcal
   p=init_rpnc()
 
   fu=0
+  echo=.false.
   prompt=">"
   main: do
      calc=.false.
