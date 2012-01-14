@@ -84,9 +84,6 @@ $(SOLIBTARG): $(SOLIBOBJ)
 fzcal: $(BINOBJ)
 	$(FC) $(LDFLAGS) $(.ALLSRC) -o $@
 
-test: test_fzcal.o libfzcal.a
-	gcc -g -Wall -L./ -L/usr/local/lib/gcc46 -lgfortran $(.ALLSRC) -o $@ libfzcal.a
-
 install: install-lib install-bin
 
 install-lib: $(ALIBTARG) $(SOLIBTARG) 
