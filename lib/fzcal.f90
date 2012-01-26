@@ -25,6 +25,7 @@ program fzcal
   use rpnd
   use rpne
   use rpnp
+  use integral ! for test
   implicit none
   type(t_rpnc) rpnc
   pointer(p,rpnc)
@@ -35,6 +36,11 @@ program fzcal
   logical calc,echo
   integer fu
   character*32 prompt
+
+!!$REAL(rp) ans
+!!$  istat=deSdx(loc(integrand),0.0_rp,1.0_rp,1.0e-9_rp,ans)
+!!$WRITE(*,*) ISTAT,ANS
+!!$stop
 
   p=init_rpnc()
 
@@ -155,6 +161,11 @@ program fzcal
   
 contains
   
+!!$  real(rp) function integrand(x)
+!!$    real(rp),intent(in)::x
+!!$    integrand=exp(x)
+!!$  end function integrand
+
   character*4 function log2str(log)
     logical,intent(in)::log
     if(log) then

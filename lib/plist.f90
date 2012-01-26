@@ -845,7 +845,7 @@ contains
     pointer(pz,z)
     pointer(px,x)
     integer i
-    real x_in
+    real(rp) x_in
     ! reallocate p with PK_REAL if z is real
     do i=1,pl%s%n
        v => pl%v(i)

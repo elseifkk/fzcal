@@ -127,11 +127,6 @@ module zmath
 
   public zm_deint
 
-  real(rp),parameter::pi =4.0_rp*atan(1.0_rp)
-  real(rp),parameter::pi2=2.0_rp*pi
-  complex,public,parameter::ztrue=complex(1.0_rp,rzero)
-  complex,public,parameter::zfalse=czero
-
   logical::random_seed_init=.false.
 
 contains
@@ -1077,19 +1072,23 @@ contains
     zm_gamma=exp(zm_lgamma(z))
   end function zm_gamma
 
-  complex(cp) function zm_deint(a,b,ptr_integrand)
-    complex(cp),intent(in)::a,b
+  complex(cp) function zm_deint(ptr_integrand,a,b)
+    use integral
     integer,intent(in)::ptr_integrand
-    interface
-       function f(z)
-         use fpio, only: cp
-         complex(cp) f
-         complex(cp) z
-       end function f
-    end interface
-    pointer(pf,f)
-    pf=ptr_integrand
-    zm_deint=(f(a)+f(b))/2.0_rp ! <<<<<< test
+    complex(cp),intent(in)::a,b
+    real(rp) ans
+    integer istat
+!!$    interface
+!!$       function f(z)
+!!$         use fpio, only: cp
+!!$         complex(cp) f
+!!$         complex(cp) z
+!!$       end function f
+!!$    end interface
+!!$    pointer(pf,f)
+!!$    pf=ptr_integrand
+!!$    zm_deint=(f(a)+f(b))/2.0_rp ! <<<<<< test
+    istat=deSdx(ptr_integrand,realpart(a),realpart(b),1.0e-9_rp,ans)
   end function zm_deint
 
 end module zmath
