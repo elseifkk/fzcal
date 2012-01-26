@@ -131,7 +131,6 @@ contains
     pointer(p,b)
     if(present(len)) len=0
     if(sl%n<k.or.k<=0) then
-WRITE(*,*)k,sl%n
        get_str_ptr=SLERR_NOENT
        return
     end if

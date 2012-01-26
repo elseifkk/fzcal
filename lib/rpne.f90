@@ -175,7 +175,6 @@ contains
   end function eval_c
 
   subroutine set_result(rpnc,i,v,n,ks,logical)
-    use zmath, only: zfalse
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     complex(cp),intent(in)::v
@@ -284,7 +283,6 @@ contains
   end function eval_0
 
   recursive function eval_r(rpnc,i) result(istat)
-    use zmath, only: zfalse
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     interface
@@ -375,7 +373,6 @@ contains
   end function eval_p
 
   recursive function eval_l(rpnc,i) result(istat)
-    use zmath, only: ztrue, zfalse
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     integer istat
@@ -524,9 +521,23 @@ contains
 
   end function eval_n
 
+  real(rp) function integrand(x)
+    real(rp),intent(in)::x
+    integer istat
+    istat=eval_uf_d(x=x)
+  end function integrand
+
   recursive function eval_uf(rpnc,i) result(istat)
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
+    integer istat
+    istat=eval_uf_d(rpnc=rpnc,i=i)
+  end function eval_uf
+
+  recursive function eval_uf_d(rpnc,i,x) result(istat)
+    type(t_rpnc),intent(inout),optional,target::rpnc
+    integer,intent(in),optional::i
+    real(rp),intent(in),optional::x
     integer istat
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) fnc
@@ -615,8 +626,8 @@ contains
       end if
     end subroutine set_par_ptr
 
-  end function eval_uf
-
+  end function eval_uf_d
+  
   recursive function eval_m(rpnc,i) result(istat)
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i

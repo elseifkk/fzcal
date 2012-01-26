@@ -51,6 +51,11 @@ module fpio
   real(rp),parameter::pre=precision(0.0_rp)
   real(rp),parameter::rzero=0.0_rp
   complex(cp),parameter::czero=complex(rzero,rzero)
+  real(rp),public,parameter::pi =4.0_rp*atan(1.0_rp)
+  real(rp),public,parameter::pi2=2.0_rp*pi
+  real(rp),public,parameter::pi_2=pi/2.0_rp
+  complex,public,parameter::ztrue=complex(1.0_rp,rzero)
+  complex,public,parameter::zfalse=czero
 
   integer,parameter::si_prefix_off=9
   integer,parameter::si_prefix_max=24
