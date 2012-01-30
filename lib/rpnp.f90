@@ -985,7 +985,11 @@ contains
           case(2)
              q%tid=get_i32(TID_OP,2)
           case(3)
-             q%tid=get_i32(TID_OP,3)
+             if(get_up32(qq%tid)/=FID_DEINT) then
+                q%tid=get_i32(TID_OP,3)
+             else
+                q%tid=TID_IOP
+             end if
           case(narg_max)
              q%tid=get_i32(TID_OPN,narg_max-get_up32(qq%p1))
              cycle
@@ -1070,6 +1074,9 @@ contains
        case(TID_DPAR)
           q%tid=TID_DPAR
           q%cid=get_up32(qq%p1)
+       case(TID_IVAR1)
+          q%tid=qq%tid
+          q%cid=1
           !
           ! macro assignment
           !
@@ -1088,6 +1095,9 @@ contains
           !
           ! special TIDs
           !
+       case(TID_ISTA,TID_IEND)
+          q%tid=qq%tid
+          q%cid=0
        case(TID_DLM1)
           q%tid=TID_DLM1
           q%cid=0 ! will be set later in find_delim
@@ -1616,7 +1626,7 @@ contains
     integer t,told,btold
     integer tid,tidold,btidold
     integer p1,p2
-    integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc
+    integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc,sc
     logical amac
     integer pfasn
     integer p_q1
@@ -1807,6 +1817,11 @@ contains
                 end if
              end if
           end if
+          if(sc/=0.and.rpnb%p_buf>1.and.get_up32(rpnb%buf(rpnb%p_buf-1)%tid)==FID_DEINT) then
+             call rpn_put(rpnb,TID_IEND,0,0)
+             call set_idmy
+             sc=sc-1
+          end if
        case(TID_COL)
           clc=clc+1
           if(is_uset(RPNCOPT_DAT)) then
@@ -1829,7 +1844,15 @@ contains
           call set_narg
           call rpn_try_push(rpnb,tid,p1,p2)
           pfnc_opened=rpnb%p_buf
-       case default
+          if(get_up32(tid)==FID_DEINT) then
+             if(sc/=0) then
+                istat=RPNCERR_PARSER
+                exit
+             end if
+             sc=sc+1
+             call rpn_put(rpnb,TID_ISTA,0,0)
+          end if
+      case default
           stop "*** UNEXPECTED ERROR in parse_formula"
        end select
        if(istat/=0) exit
@@ -1866,12 +1889,26 @@ contains
       pfnc_opened=0
       pfasn=0
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
-      amc=0; clc=0; tc=0
+      amc=0; clc=0; tc=0; sc=0
       p_q1=rpnb%p_que+1
       terr=0
       p1err=0
       p2err=0
     end subroutine init_stat
+
+    subroutine set_idmy()
+      integer ii
+      do ii=rpnb%p_que,1,-1
+         select case(rpnb%que(ii)%TID)
+         case(TID_PAR)
+            if(_EXPR_(ii)=="X") then ! <<<<<<<
+               rpnb%que(ii)%tid=TID_IVAR1
+            end if
+         case(TID_ISTA)
+            exit
+         end select
+      end do
+    end subroutine set_idmy
 
     logical function check_narg_all(tend)
       integer,intent(in),optional::tend
@@ -1955,6 +1992,8 @@ contains
             na=1
          else if(get_up32(tid)<=FID_ARG2_END) then
             na=2
+         else if(get_up32(tid)<=FID_ARG3_END) then
+            na=3
          else
             na=narg_max ! arbitrary
          end if

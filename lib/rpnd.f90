@@ -108,6 +108,8 @@ module rpnd
   integer,parameter::TID_BLK   =  77   ! space and tab
   integer,parameter::TID_HKET  =  78   ! }
   integer,parameter::TID_USCR  =  79   ! _
+  integer,parameter::TID_ISTA  =  80
+  integer,parameter::TID_IEND  =  81
   !                                    
   integer,parameter::TID_PAR   =  32   ! a,b,c,...
   integer,parameter::TID_PARU  = -32   ! a,b,c,...
@@ -130,6 +132,8 @@ module rpnd
   integer,parameter::TID_POP    = 50
   integer,parameter::TID_CPAR   = 51 ! copied par
   integer,parameter::TID_NPAR   = 52 ! just assigned par
+  integer,parameter::TID_IOP    = 53 ! integral
+  integer,parameter::TID_IVAR1  = 54 ! dummy par in integrand
 
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2
@@ -194,6 +198,8 @@ module rpnd
      integer,pointer::pfs(:)
      type(t_sd),pointer::sd 
      integer,pointer::ip
+     type(t_rpnc),pointer::ifnc      ! integrand
+     type(t_rpnq),pointer::ique(:)   ! backup of ifnc%que
   end type t_rpnc
 
   integer*8,parameter::RPNCOPT_NOP             =  0
@@ -329,13 +335,12 @@ contains
     else
        nrpnm=NUM_RPNM_MIN
     end if
-    nullify (rpnc%que)
-    nullify (rpnc%vbuf)
+    nullify(rpnc%que)
+    nullify(rpnc%vbuf)
     allocate(rpnc%vbuf(nvbuf))
     allocate(rpnc%rl)
     allocate(rpnc%tmpans)
     allocate(rpnc%answer)
-    rpnc%answer=czero
     allocate(rpnc%pars)
     allocate(rpnc%p_vbuf)
     allocate(rpnc%rc)
@@ -343,6 +348,9 @@ contains
     allocate(rpnc%sd)
     allocate(rpnc%ip)
     allocate(rpnc%pfs(3))
+    nullify(rpnc%ifnc)
+    nullify(rpnc%ique)
+    rpnc%answer=czero
     rpnc%pfs(1)=loc(zm_f1)
     rpnc%pfs(2)=loc(zm_f2)
     rpnc%pfs(3)=loc(zm_f3)

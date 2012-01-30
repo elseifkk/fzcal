@@ -1072,8 +1072,9 @@ contains
     zm_gamma=exp(zm_lgamma(z))
   end function zm_gamma
 
-  complex(cp) function zm_deint(ptr_integrand,a,b)
+  complex(cp) function zm_deint(ptr_rpnc,ptr_integrand,a,b)
     use integral
+    integer,intent(in)::ptr_rpnc
     integer,intent(in)::ptr_integrand
     complex(cp),intent(in)::a,b
     real(rp) ans
@@ -1088,7 +1089,8 @@ contains
 !!$    pointer(pf,f)
 !!$    pf=ptr_integrand
 !!$    zm_deint=(f(a)+f(b))/2.0_rp ! <<<<<< test
-    istat=deSdx(ptr_integrand,realpart(a),realpart(b),1.0e-9_rp,ans)
+    istat=deSdx(ptr_rpnc,ptr_integrand,realpart(a),realpart(b),1.0e-32_rp,ans)
+    zm_deint=complex(ans,rzero)
   end function zm_deint
 
 end module zmath

@@ -521,23 +521,149 @@ contains
 
   end function eval_n
 
-  real(rp) function integrand(x)
+  recursive function integrand(pc,x) result(s)
+    integer,intent(in)::pc
     real(rp),intent(in)::x
+    real(rp) s
+    type(t_rpnc) rpnc
+    type(t_rpnc),pointer::ifnc
+    pointer(prpnc,rpnc)
     integer istat
-    istat=eval_uf_d(x=x)
+    prpnc=pc
+    ifnc => rpnc%ifnc
+
+    ifnc%que=rpnc%ique
+    ifnc%ip = 1
+    call set_dmy_par
+
+    istat=eval(ifnc)
+    s=realpart((ifnc%answer))
+    
+  contains
+
+    subroutine set_dmy_par()
+      integer i
+      complex(cp) z
+      pointer(pz,z)
+      do i=1,size(ifnc%que)
+         select case(ifnc%que(i)%tid)
+         case(TID_IVAR1)
+            pz=ifnc%que(i)%cid
+            z=complex(x,rzero)
+            ifnc%que(i)%tid=TID_VAR
+         end select
+      end do
+    end subroutine set_dmy_par
+
   end function integrand
+
+  recursive function eval_i(rpnc,i) result(istat)
+    type(t_rpnc),intent(inout),target::rpnc
+    integer,intent(in)::i
+    interface
+       complex(cp) function f(ptr_rpnc,ptr_integrand,a,b)
+         use fpio, only: cp, rp
+         integer,intent(in)::ptr_rpnc
+         integer,intent(in)::ptr_integrand
+         real(rp),intent(in)::a,b
+       end function f
+    end interface
+    pointer(pf,f)
+    integer istat
+    integer pvs(0:2)
+    integer ods(0:2)
+    type(t_rpnc),pointer::ifnc
+    integer i1,i2,nc
+    complex(cp) a,b
+    pointer(pa,a)
+    pointer(pb,b)
+    real(rp) x
+
+    istat=get_operands(rpnc,i,2,ks=ods,ps=pvs)
+    if(istat/=0) return
+
+    call find_code
+    if(i1==0.or.i2==0) then
+       istat=RPNCERR_NOOP
+       return
+    end if
+
+    nc=i2-i1+1
+    allocate(rpnc%ifnc)
+    ifnc => rpnc%ifnc
+    allocate(ifnc%que(nc),rpnc%ique(nc))
+    allocate(ifnc%vbuf(NUM_VBUF_MIN))
+    allocate(ifnc%p_vbuf)
+    allocate(ifnc%ip)
+    ifnc%ip     = 1
+    ifnc%que    = rpnc%que(i1:i2)
+    ifnc%p_vbuf = 0
+
+    ifnc%pars   => rpnc%pars
+    ifnc%answer => rpnc%answer
+    ifnc%tmpans => rpnc%tmpans
+    ifnc%rl     => rpnc%rl
+    ifnc%rc     => rpnc%rc
+    ifnc%pfs    => rpnc%pfs
+    ifnc%opt    => rpnc%opt
+    ifnc%sd     => rpnc%sd
+
+    call set_var
+    call set_idmy
+    rpnc%ique=ifnc%que
+
+    pf=rpnc%que(i)%cid
+    pa=pvs(1)
+    pb=pvs(2)
+    x=f(loc(rpnc),loc(integrand),realpart(a),realpart(b))
+WRITE(*,*) X
+    istat=0
+
+  contains
+    
+    subroutine set_idmy()
+      integer ii
+      do ii=1,nc
+         select case(ifnc%que(ii)%tid)
+         case(TID_IVAR1)
+            call put_vbuf(ifnc,ii,czero,TID_IVAR1)
+         end select
+      end do
+    end subroutine set_idmy
+
+    subroutine set_var()
+      integer ii
+      complex(rp) z
+      pointer(pz,z)
+      do ii=1,nc
+         select case(ifnc%que(ii)%tid)
+         case(TID_VAR)
+            pz=ifnc%que(ii)%cid
+            call put_vbuf(ifnc,ii,z,TID_ROVAR)
+         end select
+      end do
+    end subroutine set_var
+
+    subroutine find_code()
+      integer ii
+      i1=0
+      i2=0
+      do ii=i-1,1,-1
+         select case(rpnc%que(ii)%tid)
+         case(TID_IEND)
+            i2=ii-1
+         case(TID_ISTA)
+            i1=ii+1
+            exit
+         end select
+      end do
+    end subroutine find_code
+
+  end function eval_i
 
   recursive function eval_uf(rpnc,i) result(istat)
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
-    integer istat
-    istat=eval_uf_d(rpnc=rpnc,i=i)
-  end function eval_uf
-
-  recursive function eval_uf_d(rpnc,i,x) result(istat)
-    type(t_rpnc),intent(inout),optional,target::rpnc
-    integer,intent(in),optional::i
-    real(rp),intent(in),optional::x
     integer istat
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) fnc
@@ -626,7 +752,7 @@ contains
       end if
     end subroutine set_par_ptr
 
-  end function eval_uf_d
+  end function eval_uf
   
   recursive function eval_m(rpnc,i) result(istat)
     type(t_rpnc),intent(inout),target::rpnc
@@ -639,7 +765,7 @@ contains
     logical dup
     type(t_rpnq),pointer::q
 
-    rpnm=>rpnc%rl%rpnm(rpnc%que(i)%cid)
+    rpnm => rpnc%rl%rpnm(rpnc%que(i)%cid)
     
     allocate(mac%que(size(rpnm%que)))
     allocate(mac%vbuf(NUM_VBUF_MIN))
@@ -738,6 +864,8 @@ contains
           istat=eval_s(rpnc,i)
        case(TID_POP)
           istat=eval_p(rpnc,i)
+       case(TID_IOP)
+          istat=eval_i(rpnc,i)
        case(TID_END)
           ec=ec-1
           rpnc%rc=rpnc%rc-1
