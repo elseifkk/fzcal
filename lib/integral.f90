@@ -19,13 +19,15 @@ contains
 ! abs(I1-I2)<sqrt(eps). Summation cuts off when the value is less than eps.
 ! Summationn also ends when it is expected to be over 10**308, namely, x>6.1.
 ! It cannot be used for infinite interval integration.
-  integer function deSdx(ptr_f,a,b,eps,ans)
+  integer function deSdx(ptr_c,ptr_f,a,b,eps,ans)
+    integer,intent(in)::ptr_c
     integer,intent(in)::ptr_f
     real(rp),intent(in)::a,b,eps
     real(rp),intent(out)::ans
     interface 
-       real(rp) function f(x)
+       real(rp) function f(c,x)
          use fpio, only: rp
+         integer,intent(in)::c
          real(rp),intent(in)::x
        end function f
     end interface
@@ -67,9 +69,9 @@ contains
        phi=pi*cosh(x)/(cosh(pi*sinh(x))+1.0_rp)
        xx=alpha*tanh(pi_2*sinh(x))
        n=i
-       z1=f(xx+beta)*phi
+       z1=f(ptr_c,xx+beta)*phi
        buffer1(i)=z1
-       z2=f(-xx+beta)*phi
+       z2=f(ptr_c,-xx+beta)*phi
        buffer2(i)=z2
        z1=abs(z1)+abs(z2)
        if(z1<eps) exit
@@ -85,7 +87,7 @@ contains
        s1=s1+buffer1(i)
        s2=s2+buffer2(i)
     end do
-    Ih=(s1+s2+f(beta)*pi_2)*h*alpha
+    Ih=(s1+s2+f(ptr_c,beta)*pi_2)*h*alpha
     k=0
     do
        k=k+1
@@ -100,9 +102,9 @@ contains
           phi=pi*cosh(x)/(cosh(pi*sinh(x))+1.0_rp)
           xx=alpha*tanh(pi_2*sinh(x))
           n=i
-          z1=f(xx+beta)*phi
+          z1=f(ptr_c,xx+beta)*phi
           buffer1(i)=z1
-          z2=f(-xx+beta)*phi
+          z2=f(ptr_c,-xx+beta)*phi
           buffer2(i)=z2
           z1=abs(z1)+abs(z2)
           if(z1<eps) exit
