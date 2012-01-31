@@ -69,6 +69,11 @@ module rpnp
   integer,parameter::SID_B       = 14
 
   integer,parameter::int_fncs_max_len=5
+  character*(*),parameter::ffncs3= & ! function of function with 3 args
+       achar(6)//"deint_"//&
+       achar(6)//"reint_"//&
+       achar(6)//"siint_"//&
+       achar(0)
   character*(*),parameter::int_fncs=&
        achar(3)//"ran"//&
        achar(3)//"sin"//&
@@ -102,7 +107,6 @@ module rpnp
        achar(3)//"psy"//&
        achar(3)//"mod"//&
        achar(4)//"gami"//&
-       achar(5)//"deint"//&
        achar(3)//"min"//&
        achar(3)//"max"//&
        achar(3)//"sum"//&
@@ -111,50 +115,56 @@ module rpnp
        achar(4)//"uvar"//&
        achar(4)//"sum2"//&
        achar(0)
-  integer,parameter::FID_RAN       =  1
-  integer,parameter::FID_ARG0_END  =  1 !<<<<<<<<
-  integer,parameter::FID_SIN       =  2
-  integer,parameter::FID_COS       =  3
-  integer,parameter::FID_TAN       =  4
-  integer,parameter::FID_SINH      =  5
-  integer,parameter::FID_COSH      =  6
-  integer,parameter::FID_TANH      =  7
-  integer,parameter::FID_ASIN      =  8
-  integer,parameter::FID_ACOS      =  9
-  integer,parameter::FID_ATAN      = 10
-  integer,parameter::FID_ASINH     = 11
-  integer,parameter::FID_ACOSH     = 12
-  integer,parameter::FID_ATANH     = 13
-  integer,parameter::FID_EXP       = 14
-  integer,parameter::FID_LOG       = 15
-  integer,parameter::FID_LN        = 16
-  integer,parameter::FID_SQRT      = 17
-  integer,parameter::FID_CBRT      = 18
-  integer,parameter::FID_ABS       = 19
-  integer,parameter::FID_INT       = 20
-  integer,parameter::FID_FRAC      = 21
-  integer,parameter::FID_CONJG     = 22
-  integer,parameter::FID_NINT      = 23
-  integer,parameter::FID_RE        = 24
-  integer,parameter::FID_IM        = 25
-  integer,parameter::FID_MAG       = 26
-  integer,parameter::FID_ARG       = 27
-  integer,parameter::FID_GAMMA     = 28
-  integer,parameter::FID_LGAMMA    = 29
-  integer,parameter::FID_PSY       = 30
-  integer,parameter::FID_ARG1_END  = 30 !<<<<<<<<
-  integer,parameter::FID_MOD       = 31
-  integer,parameter::FID_GAMI      = 32
-  integer,parameter::FID_ARG2_END  = 32 !<<<<<<<<
-  integer,parameter::FID_DEINT     = 33
-  integer,parameter::FID_ARG3_END  = 33 !<<<<<<<<
-  integer,parameter::FID_MIN       = 34
-  integer,parameter::FID_MAX       = 35
-  integer,parameter::FID_SUM       = 36
-  integer,parameter::FID_AVE       = 37
-  integer,parameter::FID_VAR       = 38
-  integer,parameter::FID_UVAR      = 39
-  integer,parameter::FID_SUM2      = 40
+  integer,parameter::FID_RAN        =  1
+  integer,parameter::FID_ARG0_END   =  1 !<<<<<<<<
+  integer,parameter::FID_SIN        =  2
+  integer,parameter::FID_COS        =  3
+  integer,parameter::FID_TAN        =  4
+  integer,parameter::FID_SINH       =  5
+  integer,parameter::FID_COSH       =  6
+  integer,parameter::FID_TANH       =  7
+  integer,parameter::FID_ASIN       =  8
+  integer,parameter::FID_ACOS       =  9
+  integer,parameter::FID_ATAN       = 10
+  integer,parameter::FID_ASINH      = 11
+  integer,parameter::FID_ACOSH      = 12
+  integer,parameter::FID_ATANH      = 13
+  integer,parameter::FID_EXP        = 14
+  integer,parameter::FID_LOG        = 15
+  integer,parameter::FID_LN         = 16
+  integer,parameter::FID_SQRT       = 17
+  integer,parameter::FID_CBRT       = 18
+  integer,parameter::FID_ABS        = 19
+  integer,parameter::FID_INT        = 20
+  integer,parameter::FID_FRAC       = 21
+  integer,parameter::FID_CONJG      = 22
+  integer,parameter::FID_NINT       = 23
+  integer,parameter::FID_RE         = 24
+  integer,parameter::FID_IM         = 25
+  integer,parameter::FID_MAG        = 26
+  integer,parameter::FID_ARG        = 27
+  integer,parameter::FID_GAMMA      = 28
+  integer,parameter::FID_LGAMMA     = 29
+  integer,parameter::FID_PSY        = 30
+  integer,parameter::FID_ARG1_END   = 30 !<<<<<<<<
+  integer,parameter::FID_MOD        = 31
+  integer,parameter::FID_GAMI       = 32
+  integer,parameter::FID_ARG2_END   = 32 !<<<<<<<<
+  integer,parameter::FID_ARG3_END   = 32 !<<<<<<<<
+  integer,parameter::FID_MIN        = 33
+  integer,parameter::FID_MAX        = 34
+  integer,parameter::FID_SUM        = 35
+  integer,parameter::FID_AVE        = 36
+  integer,parameter::FID_VAR        = 37
+  integer,parameter::FID_UVAR       = 38
+  integer,parameter::FID_SUM2       = 39
+  integer,parameter::FID_END        = 39
+  integer,parameter::FFID_ARG1_END  = 39
+  integer,parameter::FFID_ARG2_END  = 39
+  integer,parameter::FFID_DEINT     = 1 +FID_END
+  integer,parameter::FFID_REINT     = 2 +FID_END
+  integer,parameter::FFID_SIINT     = 3 +FID_END
+  integer,parameter::FFID_ARG3_END  = 3 +FID_END
 
 contains
   
@@ -347,6 +357,10 @@ contains
     integer,intent(out),optional::ent
     integer k
     k=get_index(int_fncs,a)
+    if(k==0) then
+       k=get_index(ffncs3,a,.true.)
+       if(k/=0) k=k+FID_END
+    end if
     if(k/=0) then
        if(present(ent)) ent=k
        is_int_fnc=.true.
@@ -355,10 +369,13 @@ contains
     end if
   end function is_int_fnc
 
-  integer function get_index(sl,a)
+  integer function get_index(sl,a,fp)
     character*(*),intent(in)::sl,a
+    logical,intent(in),optional::fp
     integer len,lenf
     integer i,k,j
+    logical part
+    part=(present(fp).and.fp)
     len=len_trim(a)
     k=1
     i=0
@@ -367,9 +384,10 @@ contains
        i=i+1
        lenf=ichar(sl(k:k))
        if(lenf==0) exit
-       if(lenf==len) then
+       if(lenf==len.or.part) then
           j=k+1
-          if(sl(j:j+len-1)==a(1:len)) then
+          if(part.and.index(a(1:len),sl(j:j+lenf-1))==1 &
+               .or.sl(j:j+len-1)==a(1:len)) then
              get_index=i
              return
           end if
@@ -974,27 +992,7 @@ contains
           q%tid=get_i32(TID_AOP,2)
           q%cid=get_aid()
        case(TID_IFNC)
-          q%cid=get_fid(get_up32(qq%tid))
-          select case(get_up32(qq%p2))
-          case(0)
-             q%tid=TID_OP
-             if(get_up32(qq%p1)/=0) istat=RPNCERR_NARG
-             cycle
-          case(1) 
-             q%tid=get_i32(TID_OP,1)
-          case(2)
-             q%tid=get_i32(TID_OP,2)
-          case(3)
-             if(get_up32(qq%tid)/=FID_DEINT) then
-                q%tid=get_i32(TID_OP,3)
-             else
-                q%tid=TID_IOP
-             end if
-          case(narg_max)
-             q%tid=get_i32(TID_OPN,narg_max-get_up32(qq%p1))
-             cycle
-          end select
-          if(get_up32(qq%p1)/=0) istat=RPNCERR_NARG ! <<<<<<<<<
+          call set_fnc_op
        case(TID_UFNC)
           q%tid=TID_UFNC
           q%cid=get_up32(qq%tid)
@@ -1096,8 +1094,8 @@ contains
           ! special TIDs
           !
        case(TID_ISTA,TID_IEND)
-          q%tid=qq%tid
-          q%cid=0
+          q%tid=get_lo32(qq%tid)
+          q%cid=get_up32(qq%tid)
        case(TID_DLM1)
           q%tid=TID_DLM1
           q%cid=0 ! will be set later in find_delim
@@ -1140,6 +1138,26 @@ contains
 
   contains
 
+    subroutine set_fnc_op()
+      integer m,op
+      m=get_up32(qq%p2)
+      if(m/=narg_max) then
+         if(get_up32(qq%p1)/=0) then
+            istat=RPNCERR_NARG
+            return
+         end if
+         if(get_up32(qq%tid)<=FID_END) then
+            op=TID_OP
+         else
+            op=TID_IOP
+         end if
+         q%tid=get_i32(op,m)
+      else
+         q%tid=get_i32(TID_OPN,narg_max-get_up32(qq%p1))
+      end if  
+      q%cid=get_fid(get_up32(qq%tid))
+    end subroutine set_fnc_op
+    
     integer function read_fig()
       integer f
       if(is_uset(RPNCOPT_INM)) then
@@ -1316,7 +1334,7 @@ contains
          get_fid=loc(zm_uvar)
       case(FID_SUM2)
          get_fid=loc(zm_sum2)
-      case(FID_DEINT)
+      case(FFID_DEINT)
          get_fid=loc(zm_deint)
       case default
          STOP "*** UNEXPECTED ERROR in get_fid" 
@@ -1627,7 +1645,7 @@ contains
     integer tid,tidold,btidold
     integer p1,p2
     integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc,sc
-    logical amac
+    logical amac,integ
     integer pfasn
     integer p_q1
     integer pfnc_opened
@@ -1817,9 +1835,9 @@ contains
                 end if
              end if
           end if
-          if(sc/=0.and.rpnb%p_buf>1.and.get_up32(rpnb%buf(rpnb%p_buf-1)%tid)==FID_DEINT) then
+          if(sc/=0.and.rpnb%p_buf>1.and.get_up32(rpnb%buf(rpnb%p_buf-1)%tid)==FFID_DEINT) then
              call rpn_put(rpnb,TID_IEND,0,0)
-             call set_idmy
+             call set_idmy(rpnb%p_que)
              sc=sc-1
           end if
        case(TID_COL)
@@ -1844,12 +1862,13 @@ contains
           call set_narg
           call rpn_try_push(rpnb,tid,p1,p2)
           pfnc_opened=rpnb%p_buf
-          if(get_up32(tid)==FID_DEINT) then
+          if(get_up32(tid)==FFID_DEINT) then
              if(sc/=0) then
                 istat=RPNCERR_PARSER
                 exit
              end if
              sc=sc+1
+             integ=.true.
              call rpn_put(rpnb,TID_ISTA,0,0)
           end if
       case default
@@ -1886,6 +1905,7 @@ contains
       tidold=TID_UNDEF
       btidold=TID_UNDEF
       amac=.false.
+      integ=.false.
       pfnc_opened=0
       pfasn=0
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
@@ -1896,18 +1916,32 @@ contains
       p2err=0
     end subroutine init_stat
 
-    subroutine set_idmy()
+    subroutine set_idmy(iend)
+      integer,intent(in)::iend
       integer ii
-      do ii=rpnb%p_que,1,-1
+      character*32 dmy ! <<<<<<<<<<<<
+      integer ld
+      ! FID_DEINT at p_buf-1
+      ii=index(rpnb%expr(get_lo32(rpnb%buf(rpnb%p_buf-1)%p1):get_lo32(rpnb%buf(rpnb%p_buf-1)%p2)),"_")
+      ld=get_lo32(rpnb%buf(rpnb%p_buf-1)%p2)-(ii+1)+1
+      if(ld==0) then
+         dmy="X" ! <<< default dmy argument
+         ld=1
+      else
+         dmy=rpnb%expr(ii+1:get_lo32(rpnb%buf(rpnb%p_buf-1)%p2))
+      end if
+      do ii=rpnb%p_que-1,p_q1,-1
          select case(rpnb%que(ii)%TID)
          case(TID_PAR)
-            if(_EXPR_(ii)=="X") then ! <<<<<<<
+            if(_EXPR_(ii)==dmy(1:ld)) then ! <<<<<<<
                rpnb%que(ii)%tid=TID_IVAR1
             end if
          case(TID_ISTA)
+            rpnb%que(ii)%tid=get_i32(TID_ISTA,iend)
+            rpnb%que(iend)%tid=get_i32(TID_IEND,ii)
             exit
          end select
-      end do
+      end do      
     end subroutine set_idmy
 
     logical function check_narg_all(tend)
@@ -1984,18 +2018,26 @@ contains
 
     subroutine set_narg()
       integer na
+      integer fid
+      fid=get_up32(tid)
       select case(t)
       case(TID_IFNC)
-         if(get_up32(tid)<=FID_ARG0_END) then
+         if(fid<=FID_ARG0_END) then
             na=0
-         else if(get_up32(tid)<=FID_ARG1_END) then
+         else if(fid<=FID_ARG1_END) then
             na=1
-         else if(get_up32(tid)<=FID_ARG2_END) then
+         else if(fid<=FID_ARG2_END) then
             na=2
-         else if(get_up32(tid)<=FID_ARG3_END) then
+         else if(fid<=FID_ARG3_END) then
             na=3
-         else
+         else if(fid<=FID_END) then
             na=narg_max ! arbitrary
+         else if(fid<=FFID_ARG1_END) then
+            na=1
+         else if(fid<=FFID_ARG2_END) then
+            na=2
+         else if(fid<=FFID_ARG3_END) then
+            na=3
          end if
       case(TID_UFNC)
          na=rpnc%rl%rpnm(get_up32(tid))%na

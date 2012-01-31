@@ -537,7 +537,7 @@ contains
     call set_dmy_par
 
     istat=eval(ifnc)
-    s=realpart((ifnc%answer))
+    s=realpart(ifnc%answer)
     
   contains
 
@@ -571,20 +571,22 @@ contains
     pointer(pf,f)
     integer istat
     integer pvs(0:2)
-    integer ods(0:2)
+    integer ods(2)
     type(t_rpnc),pointer::ifnc
     integer i1,i2,nc
-    complex(cp) a,b
+    complex(cp) a,b,ans
     pointer(pa,a)
     pointer(pb,b)
     real(rp) x
-
+    
     istat=get_operands(rpnc,i,2,ks=ods,ps=pvs)
+WRITE(*,*) ISTAT
     if(istat/=0) return
 
     call find_code
     if(i1==0.or.i2==0) then
        istat=RPNCERR_NOOP
+STOP "HOGE"
        return
     end if
 
@@ -616,7 +618,17 @@ contains
     pa=pvs(1)
     pb=pvs(2)
     x=f(loc(rpnc),loc(integrand),realpart(a),realpart(b))
-WRITE(*,*) X
+    ans=complex(x,rzero)
+
+    call set_result(rpnc,i,ans,2,ods)
+    ! rpnc%que(i1:i2)%tid=TID_NOP ! useless?
+
+    deallocate(ifnc%que,rpnc%ique)
+    deallocate(ifnc%vbuf)
+    deallocate(ifnc%p_vbuf)
+    deallocate(ifnc%ip)
+    deallocate(rpnc%ifnc)
+
     istat=0
 
   contains
@@ -845,7 +857,10 @@ WRITE(*,*) X
     end if
     ansset=.false.
     rpnc%rc=rpnc%rc+1
-    do i=rpnc%ip,size(rpnc%que)
+    i=rpnc%ip-1
+    do 
+       i=i+1
+       if(i>size(rpnc%que)) exit
        ec=ec+1
        select case(get_lo32(rpnc%que(i)%tid))
        case(TID_OP,TID_OPN,TID_AOP)
@@ -866,6 +881,9 @@ WRITE(*,*) X
           istat=eval_p(rpnc,i)
        case(TID_IOP)
           istat=eval_i(rpnc,i)
+       case(TID_ISTA)
+          i=rpnc%que(i)%cid+1 ! <<< to IEND+1
+          ec=ec-1
        case(TID_END)
           ec=ec-1
           rpnc%rc=rpnc%rc-1
