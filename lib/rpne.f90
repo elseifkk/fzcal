@@ -538,7 +538,7 @@ contains
 
     istat=eval(ifnc)
     s=realpart(ifnc%answer)
-    
+
   contains
 
     subroutine set_dmy_par()
@@ -580,13 +580,11 @@ contains
     real(rp) x
     
     istat=get_operands(rpnc,i,2,ks=ods,ps=pvs)
-WRITE(*,*) ISTAT
     if(istat/=0) return
 
     call find_code
     if(i1==0.or.i2==0) then
        istat=RPNCERR_NOOP
-STOP "HOGE"
        return
     end if
 
@@ -621,7 +619,7 @@ STOP "HOGE"
     ans=complex(x,rzero)
 
     call set_result(rpnc,i,ans,2,ods)
-    ! rpnc%que(i1:i2)%tid=TID_NOP ! useless?
+    rpnc%que(i1:i2)%tid=TID_NOP
 
     deallocate(ifnc%que,rpnc%ique)
     deallocate(ifnc%vbuf)
