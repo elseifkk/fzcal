@@ -384,7 +384,7 @@ contains
        i=i+1
        lenf=ichar(sl(k:k))
        if(lenf==0) exit
-       if(lenf==len.or.part) then
+       if(lenf==len.or.(part.and.lenf<=len)) then
           j=k+1
           if(part.and.index(a(1:len),sl(j:j+lenf-1))==1 &
                .or.sl(j:j+len-1)==a(1:len)) then
@@ -518,17 +518,19 @@ contains
              end if
           end select
        end if
-       if(t==TID_BOP2U.and.rpnb%expr(k:k)=="&") then
-          select case(next_char(1))
-          case("P","C")
+       if(t==TID_BOP2U) then
+          if(rpnb%expr(k:k)=="&") then
+             select case(next_char(1))
+             case("P","C")
+                t=TID_BOP2
+                p2=k+1
+                p1=p2
+             case default
+                t=TID_INV
+             end select
+          else
              t=TID_BOP2
-             p2=k+1
-             p1=p2
-          case default
-             t=TID_INV
-          end select
-       else
-          t=TID_BOP2
+          end if
        end if
     case(TID_BOP3U)
        if(k<rpnb%len_expr-1.and.next_char(1)=="=") then
@@ -1920,10 +1922,12 @@ contains
       integer,intent(in)::iend
       integer ii
       character*32 dmy ! <<<<<<<<<<<<
-      integer ld
+      integer ld,p1,p2
       ! FID_DEINT at p_buf-1
-      ii=index(rpnb%expr(get_lo32(rpnb%buf(rpnb%p_buf-1)%p1):get_lo32(rpnb%buf(rpnb%p_buf-1)%p2)),"_")
-      ld=get_lo32(rpnb%buf(rpnb%p_buf-1)%p2)-(ii+1)+1
+      p1=get_lo32(rpnb%buf(rpnb%p_buf-1)%p1)
+      p2=get_lo32(rpnb%buf(rpnb%p_buf-1)%p2)
+      ii=index(rpnb%expr(p1:p2),"_")+p1-1
+      ld=p2-(ii+1)+1
       if(ld==0) then
          dmy="X" ! <<< default dmy argument
          ld=1

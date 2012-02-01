@@ -3,11 +3,8 @@ module integral
   implicit none
   private
   
-  real(rp),parameter::XMAX = 6.0
-  real(rp),parameter::HMAX = XMAX
   integer,parameter::MAXNMAX  = 100000
-  integer,parameter::KMAX  = 10000
-  integer,parameter::SNMAX = 10
+  integer,parameter::KMAX     = 10000
 
   public deSdx
   
@@ -32,6 +29,8 @@ contains
        end function f
     end interface
     pointer(pf,f)
+    real(rp),parameter::XMAX=6!log(log(huge(1.0_rp)))
+    real(rp),parameter::HMAX = XMAX
     integer i
     real(rp) x,s1,s2
     real(rp) alpha,beta
@@ -66,27 +65,9 @@ contains
     do
        i=i+1
        x=real(i,kind=rp)*h
-       phi=pi*cosh(x)/(cosh(pi*sinh(x))+1.0_rp)
-       xx=alpha*tanh(pi_2*sinh(x))
-       n=i
-       z1=f(ptr_c,xx+beta)*phi
-       buffer1(i)=z1
-       z2=f(ptr_c,-xx+beta)*phi
-       buffer2(i)=z2
-       z1=abs(z1)+abs(z2)
-       if(z1<eps) exit
-       if(nmax<=i) then
-          deSdx=1
-          !ErrorHandler(ERRID_DESDX_NMAX_OVER,nmax);
-          exit
-       end if
+       if(.not.do_sum(x)) exit
     end do
-    s1=rzero
-    s2=rzero
-    do i=n,1,-1
-       s1=s1+buffer1(i)
-       s2=s2+buffer2(i)
-    end do
+    call sum_buf
     Ih=(s1+s2+f(ptr_c,beta)*pi_2)*h*alpha
     k=0
     do
@@ -99,27 +80,9 @@ contains
        do
           i=i+1
           x=real(2*i-1,kind=rp)*h
-          phi=pi*cosh(x)/(cosh(pi*sinh(x))+1.0_rp)
-          xx=alpha*tanh(pi_2*sinh(x))
-          n=i
-          z1=f(ptr_c,xx+beta)*phi
-          buffer1(i)=z1
-          z2=f(ptr_c,-xx+beta)*phi
-          buffer2(i)=z2
-          z1=abs(z1)+abs(z2)
-          if(z1<eps) exit
-          if(nmax<=i) then
-             deSdx=1
-             !ErrorHandler(ERRID_DESDX_NMAX_OVER,nmax);
-             exit
-          end if
+          if(.not.do_sum(x)) exit
        end do
-       s1=rzero
-       s2=rzero
-       do i=n,1,-1
-          s1=s1+buffer1(i)
-          s2=s2+buffer2(i)
-       end do
+       call sum_buf
        Ih2=(Ih/2.0_rp+(s1+s2)*h*alpha)
        if(Ih==rzero .and. Ih2==rzero) then
           ans=rzero
@@ -134,6 +97,46 @@ contains
        Ih=Ih2
     end do
     ans=Ih2
+
+  contains
+    
+    logical function do_sum(x)
+      real(rp),intent(in)::x
+      do_sum=.true.
+      phi=de(x)
+      xx=xi(x)
+      n=i
+      z1=f(ptr_c,xx+beta)*phi
+      buffer1(i)=z1
+      z2=f(ptr_c,-xx+beta)*phi
+      buffer2(i)=z2
+      if(abs(z1)+abs(z2)<eps) do_sum=.false.
+      if(nmax<=i) then
+         deSdx=1
+         !ErrorHandler(ERRID_DESDX_NMAX_OVER,nmax);
+         do_sum=.false.
+      end if
+    end function do_sum
+
+    subroutine sum_buf()
+      s1=rzero
+      s2=rzero
+      do i=n,1,-1
+         s1=s1+buffer1(i)
+         s2=s2+buffer2(i)
+      end do
+    end subroutine sum_buf
+
+    real(rp) function de(x)
+      real(rp),intent(in)::x
+      de=pi*cosh(x)/(cosh(pi*sinh(x))+1.0_rp)
+    end function de
+
+    real(rp) function xi(x)
+      real(rp),intent(in)::x
+      xi=alpha*tanh(pi_2*sinh(x))
+    end function xi
+
   end function deSdx
   
 end module integral
