@@ -604,7 +604,7 @@ contains
     complex(cp),intent(in)::v
     integer,intent(in),optional::tid
     integer t
-    if(rpnc%p_vbuf>=size(rpnc%vbuf)) &
+    if(.not.associated(rpnc%vbuf).or.rpnc%p_vbuf>=size(rpnc%vbuf)) &
          STOP "*** put_vbuf_z: INTERNAL ERROR: vbuf overflow"
     rpnc%p_vbuf=rpnc%p_vbuf+1
     rpnc%vbuf(rpnc%p_vbuf)=v
