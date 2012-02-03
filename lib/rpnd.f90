@@ -286,24 +286,8 @@ contains
     if(.not.allocated(rl%rpnm)) return
     call uinit_rpnms(size(rl%rpnm),rl%rpnm)
   end subroutine uinit_rpnlist
-
-  subroutine inc_vbuf(rpnc,n)
-    type(t_rpnc),intent(inout)::rpnc
-    integer,intent(in)::n
-    complex(cp),allocatable::vb(:)
-    if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) then
-       allocate(vb(size(rpnc%vbuf)))
-       vb=rpnc%vbuf
-       deallocate(rpnc%vbuf)
-       allocate(rpnc%vbuf(size(vb)+n))
-       rpnc%vbuf(1:size(vb))=vb
-       deallocate(vb)
-    else
-       allocate(rpnc%vbuf(n))
-    end if
-  end subroutine inc_vbuf
   
-   integer function init_rpnc(nvbuf_,szplist_,npbuf_,szrlist_,nrpnm_)
+  integer function init_rpnc(nvbuf_,szplist_,npbuf_,szrlist_,nrpnm_)
      ! type(t_rpnc) function init_rpnc causes segmentation fault
     use zmath
     type(t_rpnc) rpnc
@@ -337,7 +321,6 @@ contains
     end if
     nullify(rpnc%que)
     nullify(rpnc%vbuf)
-    allocate(rpnc%vbuf(nvbuf))
     allocate(rpnc%rl)
     allocate(rpnc%tmpans)
     allocate(rpnc%answer)
@@ -590,13 +573,39 @@ contains
     call put_vbuf_z(rpnc,i,complex(v,im),TID_VAR)
   end subroutine put_vbuf_r
 
+  integer function count_op(q)
+    type(t_rpnq),intent(in)::q(:)
+    integer i
+    count_op=0
+    do i=1,size(q)
+       select case(get_lo32(q(i)%tid))
+       case(TID_OP,TID_IOP,TID_OPN, &
+            TID_LOP,TID_ROP,TID_COP, &
+            TID_AOP,TID_UFNC)
+          count_op=count_op+1
+       end select
+    end do
+  end function count_op
+
+  integer function count_tid(q,tid)
+    type(t_rpnq),intent(in)::q(:)
+    integer,intent(in)::tid
+    integer i
+    count_tid=0
+    do i=1,size(q)
+       if(get_lo32(q(i)%tid)==tid) &
+            count_tid=count_tid+1
+    end do
+  end function count_tid
+
   subroutine put_vbuf_z(rpnc,i,v,tid)
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     complex(cp),intent(in)::v
     integer,intent(in),optional::tid
     integer t
-    if(rpnc%p_vbuf>=size(rpnc%vbuf)) call inc_vbuf(rpnc,NUM_VBUF_MIN)
+    if(rpnc%p_vbuf>=size(rpnc%vbuf)) &
+         STOP "*** put_vbuf_z: INTERNAL ERROR: vbuf overflow"
     rpnc%p_vbuf=rpnc%p_vbuf+1
     rpnc%vbuf(rpnc%p_vbuf)=v
     rpnc%que(i)%cid=loc(rpnc%vbuf(rpnc%p_vbuf))
