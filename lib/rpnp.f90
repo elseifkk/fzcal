@@ -686,7 +686,7 @@ contains
           ! | k1=i |   |   | ... | km |       | ke |
           ! | f    | x | y | arg | *  | codes | =  |
           km=find_implicit_mul() ! must be found
-          if(km==0) stop "*** UNEXPECTED ERROR in set_function"
+          if(km==0) STOP "*** set_function: UNEXPECTED ERROR: km=0" 
           ac=km-k1+1-2 ! number of arguments
        else
           ! | k1 | ... | km=i |       | ke |
@@ -727,16 +727,14 @@ contains
     end function find_end
 
     subroutine init_pnames()
-      integer istat
       if(allocated(rpnm%pnames)) deallocate(rpnm%pnames)
       allocate(rpnm%pnames)
       plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1&
            +get_up32(rpnb%que(ka)%p2)-get_up32(rpnb%que(ka)%p1)+1
       rpnm%pnames=init_slist(plen+(pc+1)*LEN_SLIST_HDR)
-      istat=add_str(rpnm%pnames,_UEXPR_(i),SC_RO)
-      if(istat/=0) stop "hoge"
-      istat=add_str(rpnm%pnames,_UEXPR_(ka),SC_RO)
-      if(istat/=0) stop "hogehoge"
+      if(add_str(rpnm%pnames,_UEXPR_(i),SC_RO)/=0 &
+           .or.add_str(rpnm%pnames,_UEXPR_(ka),SC_RO)/=0) &
+           STOP "*** init_pnames: UNEXPECTED ERROR: add_str failed."
     end subroutine init_pnames
 
     integer function find_implicit_mul()
@@ -753,7 +751,6 @@ contains
     subroutine cp_vbuf()
       integer ii,jj
       integer kp
-      integer istat
       complex(cp) v
       pointer(pv,v)
       if(.not.allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
@@ -766,8 +763,8 @@ contains
          end select
          jj=ii+km !<<<<<<<<<<<<<<<<
          if(rpnb%que(jj)%tid/=TID_FIG) then ! par
-            istat=try_add_str(rpnm%pnames,_EXPR_(jj),SC_RO,ent=kp)            
-            if(istat/=0) stop "hego"
+            if(try_add_str(rpnm%pnames,_EXPR_(jj),SC_RO,ent=kp)/=0) &            
+                 STOP "*** cp_vbuf: UNEXPECTED ERROR: try_add_str failed"
             rpnm%que(ii)%tid=rpnb%que(jj)%tid
             rpnm%que(ii)%cid=kp
          else
@@ -860,8 +857,8 @@ contains
       allocate(rpnm%pnames)
       plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1
       rpnm%pnames=init_slist(plen+(pc+1)*LEN_SLIST_HDR)
-      istat=add_str(rpnm%pnames,_UEXPR_(i),ior(SC_RO,SC_MAC))
-      if(istat/=0) stop "hogemac" ! <<<<<<<<<<<<<<<<<<
+      if(add_str(rpnm%pnames,_UEXPR_(i),ior(SC_RO,SC_MAC))/=0) &
+           STOP  "*** init_pnames: UNEXPECT3D ERROR: add_str failed"
     end subroutine init_pnames
 
     subroutine cp_vbuf()
@@ -882,8 +879,8 @@ contains
          end select
          jj=ii+i
          if(rpnb%que(jj)%tid/=TID_FIG) then ! par
-            istat=try_add_str(rpnm%pnames,_EXPR_(jj),SC_RO,ent=kp)            
-            if(istat/=0) stop "hego" ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+            if(try_add_str(rpnm%pnames,_EXPR_(jj),SC_RO,ent=kp)/=0) &            
+                 STOP "*** cp_vbuf: UNEXPECTED ERROR: try_add_str failed"
             rpnm%que(ii)%tid=rpnb%que(jj)%tid ! <<< TID_PAR or TID_APAR
             rpnm%que(ii)%cid=kp     ! <<<
          else
@@ -939,9 +936,10 @@ contains
     write(*,*) repeat(" ",p1-1)//repeat("^",abs(p2)-p1+1) ! some return with negative p2
   end subroutine print_error
   
-  integer function build_rpnc(rpnb,rpnc)
+  integer function build_rpnc(rpnb,rpnc,nvbuf)
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
+    integer,intent(in)::nvbuf
     real(rp) x
     integer istat
     integer i,k
@@ -963,6 +961,11 @@ contains
     rpnc%que(:)%tid=TID_UNDEF
     rpnc%que(:)%cid=0 ! dump_rpnc might refer unset cid as a pointer 
     rpnc%p_vbuf=0
+    if(nvbuf>size(rpnc%vbuf)) then
+       if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) deallocate(rpnc%vbuf)
+       allocate(rpnc%vbuf(nvbuf))
+    end if
+
     do i=1,size(rpnc%que)
        istat=0
        q=>rpnc%que(i)
@@ -1119,7 +1122,7 @@ contains
        case default
           CALL DUMP_RPNB(RPNB)
           WRITE(*,*) "que=",i,"tid=",qq%tid
-          STOP "*** UNEXPECTED ERROR in build_rpnc"
+          STOP "*** build_rpnc: UNEXPECTED ERROR: unexpected tid in rpnb"
        end select
        if(istat/=0) then
           if(is_set(RPNCOPT_NO_WARN)) &
@@ -1224,7 +1227,7 @@ contains
       case(SID_B)
          get_sid=loc(zms_b)
       case default
-         STOP "*** UNEXPECTED ERROR in get_sid" 
+         STOP "*** get_sid: UNEXPECTED ERROR: unknown sid" 
       end select
     end function get_sid
 
@@ -1339,7 +1342,7 @@ contains
       case(FFID_DEINT)
          get_fid=loc(zm_deint)
       case default
-         STOP "*** UNEXPECTED ERROR in get_fid" 
+         STOP "*** get_fid: UNEXPECTED ERROR: unknown fid" 
       end select
     end function get_fid
 
@@ -1360,7 +1363,7 @@ contains
       case("^=")
          get_aid=loc(zm_pow) 
       case default
-         STOP "*** UNEXPECTED ERROR in get_aid"
+         STOP "*** get_aid: UNEXPECTED ERROR unknown aid"
       end select
     end function get_aid
 
@@ -1393,7 +1396,7 @@ contains
             get_oid1=loc(zm_dec_f)
          end if
       case default
-         STOP "*** UNEXPECTED ERROR in get_oid1"
+         STOP "*** get_oid1: UNEXPECTED ERROR: unknown oid"
       end select
     end function get_oid1
 
@@ -1403,7 +1406,7 @@ contains
       case("~",LOPS_NOT)
          get_loid1=LOID_NOT
       case default
-         STOP "*** UNEXPECTED ERROR in get_loid1"
+         STOP "*** get_loid1: UNEXPECTED ERROR: unknown loid"
       end select      
     end function get_loid1
 
@@ -1462,7 +1465,7 @@ contains
       case(">=")
          get_oid2=loc(zmr_ge)
       case default
-         STOP "*** UNEXPECTED ERROR in get_oid2"
+         STOP "*** get_oid2: UNEXPECTED ERROR: unknown oid"
       end select
     end function get_oid2
 
@@ -1478,7 +1481,7 @@ contains
       case(LOPS_NEQ)
          get_loid2=LOID_NEQ
       case default
-         STOP "*** UNEXPECTED ERROR in get_loid2"
+         STOP "*** get_loid2: UNEXPECTED ERROR: unknown loid"
       end select
     end function get_loid2
 
@@ -1873,8 +1876,8 @@ contains
              integ=.true.
              call rpn_put(rpnb,TID_ISTA,0,0)
           end if
-      case default
-          stop "*** UNEXPECTED ERROR in parse_formula"
+       case default
+          STOP "*** parse_formula: UNEXPECTED ERROR: unrecognized tid"
        end select
        if(istat/=0) exit
        btidold=tidold
@@ -1892,7 +1895,7 @@ contains
     end if
 
     if(istat==0) then
-       istat=build_rpnc(rpnb,rpnc)       
+       istat=build_rpnc(rpnb,rpnc,fc+oc)       
     else if(.not.is_set(RPNCOPT_NO_WARN)) then
        call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if

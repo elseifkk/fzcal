@@ -247,7 +247,7 @@ contains
   integer function get_operands(rpnc,i,n,ps,ks)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i,n
-    integer,intent(out),optional::ps(0:n) 
+    integer,intent(out),optional::ps(n) 
     integer,intent(out),optional::ks(n)
     integer k,j
     k=i-1
@@ -301,7 +301,7 @@ contains
     pointer(pz2,z2)
     logical ok
     
-    istat=get_operands(rpnc,i,2,ks=ods,ps=pvs)
+    istat=get_operands(rpnc,i,2,ks=ods,ps=pvs(1:narg_max))
     if(istat/=0) return
 
     ! ods(1) may be logical
@@ -377,8 +377,8 @@ contains
     integer,intent(in)::i
     integer istat
     integer na
-    integer ks(1:narg_max)
-    logical ods(1:narg_max)
+    integer ks(narg_max)
+    logical ods(narg_max)
     logical v
     integer j,tid
     complex(cp) z
@@ -493,7 +493,7 @@ contains
        return
     end if
     
-    istat=get_operands(rpnc,i,na,ks=ods,ps=pvs)
+    istat=get_operands(rpnc,i,na,ks=ods,ps=pvs(1:narg_max))
     if(istat/=0) return
 
     pvs(0)=rpnc%que(i)%cid
@@ -529,15 +529,20 @@ contains
     type(t_rpnc),pointer::ifnc
     pointer(prpnc,rpnc)
     integer istat
+    integer p_vbuf_in
+
     prpnc=pc
     ifnc => rpnc%ifnc
 
+    p_vbuf_in=ifnc%p_vbuf
     ifnc%que=rpnc%ique
     ifnc%ip = 1
     call set_dmy_par
 
     istat=eval(ifnc)
     s=realpart(ifnc%answer)
+
+    ifnc%p_vbuf=p_vbuf_in
 
   contains
 
@@ -579,7 +584,7 @@ contains
     pointer(pb,b)
     real(rp) x
     
-    istat=get_operands(rpnc,i,2,ks=ods,ps=pvs)
+    istat=get_operands(rpnc,i,2,ks=ods,ps=pvs(1:2))
     if(istat/=0) return
 
     call find_code
@@ -592,7 +597,6 @@ contains
     allocate(rpnc%ifnc)
     ifnc => rpnc%ifnc
     allocate(ifnc%que(nc),rpnc%ique(nc))
-    allocate(ifnc%vbuf(NUM_VBUF_MIN))
     allocate(ifnc%p_vbuf)
     allocate(ifnc%ip)
     ifnc%ip     = 1
@@ -608,6 +612,7 @@ contains
     ifnc%opt    => rpnc%opt
     ifnc%sd     => rpnc%sd
 
+    call alloc_vbuf
     call set_var
     call set_idmy
     rpnc%ique=ifnc%que
@@ -622,7 +627,8 @@ contains
     rpnc%que(i1:i2)%tid=TID_NOP
 
     deallocate(ifnc%que,rpnc%ique)
-    deallocate(ifnc%vbuf)
+    if(associated(ifnc%vbuf).and.size(ifnc%vbuf)>0) &
+         deallocate(ifnc%vbuf)
     deallocate(ifnc%p_vbuf)
     deallocate(ifnc%ip)
     deallocate(rpnc%ifnc)
@@ -631,6 +637,14 @@ contains
 
   contains
     
+    subroutine alloc_vbuf()
+      integer oc,vc
+      oc=count_op(ifnc%que)
+      vc=count_tid(ifnc%que,TID_IVAR1) &
+           +count_tid(ifnc%que,TID_VAR)
+      if(vc+oc>0) allocate(ifnc%vbuf(vc+oc))
+    end subroutine alloc_vbuf
+
     subroutine set_idmy()
       integer ii
       do ii=1,nc
@@ -677,9 +691,9 @@ contains
     integer istat
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) fnc
-    integer j
+    Integer j
     integer kp
-    integer,allocatable::ods(:)
+    integer ods(narg_max)
     complex(cp) v
     pointer(pv,v)
     logical dup
@@ -692,20 +706,16 @@ contains
        return
     end if
 
-    allocate(ods(rpnm%na))
     istat=get_operands(rpnc,i,rpnm%na,ks=ods)
-    if(istat/=0) then
-       deallocate(ods)
-       return
-    end if
+    if(istat/=0) return
 
     allocate(fnc%que(size(rpnm%que)))
-    allocate(fnc%vbuf(NUM_VBUF_MIN))
     allocate(fnc%p_vbuf)
     allocate(fnc%ip)
     fnc%ip     = 1
     fnc%que    = rpnm%que
     fnc%p_vbuf = 0
+    call alloc_vbuf
 
     fnc%pars   => rpnc%pars
     fnc%answer => rpnc%answer
@@ -743,14 +753,21 @@ contains
     if(istat==0)&
        call set_result(rpnc,i,fnc%answer,rpnm%na,ods)
 
-    deallocate(ods)
     deallocate(fnc%que)
-    deallocate(fnc%vbuf)
+    if(associated(fnc%vbuf).and.size(fnc%vbuf)>0) &
+         deallocate(fnc%vbuf)
     deallocate(fnc%p_vbuf)
     deallocate(fnc%ip)
 
   contains
     
+    subroutine alloc_vbuf()
+      integer oc,vc
+      oc=count_op(fnc%que)
+      vc=count_tid(fnc%que,TID_DPAR)
+      if(oc+vc>0) allocate(fnc%vbuf(oc+vc))
+    end subroutine alloc_vbuf
+
     subroutine set_par_ptr(ent) 
       integer,intent(out)::ent
       integer ptr,len      
@@ -778,12 +795,12 @@ contains
     rpnm => rpnc%rl%rpnm(rpnc%que(i)%cid)
     
     allocate(mac%que(size(rpnm%que)))
-    allocate(mac%vbuf(NUM_VBUF_MIN))
     allocate(mac%p_vbuf)
     allocate(mac%ip)
     mac%ip     = 1
     mac%que    = rpnm%que
     mac%p_vbuf = 0
+    call alloc_vbuf
 
     mac%pars   => rpnc%pars
     mac%answer => rpnc%answer
@@ -821,11 +838,18 @@ contains
     end if
 
     deallocate(mac%que)
-    deallocate(mac%vbuf)
+    if(associated(mac%vbuf).and.size(mac%vbuf)>0) &
+         deallocate(mac%vbuf)
     deallocate(mac%p_vbuf)
     deallocate(mac%ip)
 
   contains
+
+    subroutine alloc_vbuf()
+      integer oc
+      oc=count_op(mac%que)
+      if(oc>0) allocate(mac%vbuf(oc))
+    end subroutine alloc_vbuf
 
     subroutine set_par_ptr(ent)
       integer,intent(out)::ent
