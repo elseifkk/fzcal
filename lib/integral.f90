@@ -67,6 +67,7 @@ contains
        x=real(i,kind=rp)*h
        if(.not.do_sum(x)) exit
     end do
+    if(deSdx/=0) return
     call sum_buf
     Ih=(s1+s2+f(ptr_c,beta)*pi_2)*h*alpha
     k=0
@@ -82,6 +83,7 @@ contains
           x=real(2*i-1,kind=rp)*h
           if(.not.do_sum(x)) exit
        end do
+       if(deSdx/=0) return
        call sum_buf
        Ih2=(Ih/2.0_rp+(s1+s2)*h*alpha)
        if(Ih==rzero .and. Ih2==rzero) then
@@ -102,6 +104,7 @@ contains
     
     logical function do_sum(x)
       real(rp),intent(in)::x
+      real(rp) az12
       do_sum=.true.
       phi=de(x)
       xx=xi(x)
@@ -110,7 +113,12 @@ contains
       buffer1(i)=z1
       z2=f(ptr_c,-xx+beta)*phi
       buffer2(i)=z2
-      if(abs(z1)+abs(z2)<eps) do_sum=.false.
+      az12=abs(z1)+abs(z2)
+      if(is_nan(az12)) then
+         deSdx=1
+         do_sum=.false.
+      end if
+      if(az12<eps) do_sum=.false.
       if(nmax<=i) then
          deSdx=1
          !ErrorHandler(ERRID_DESDX_NMAX_OVER,nmax);

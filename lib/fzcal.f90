@@ -37,11 +37,6 @@ program fzcal
   integer fu
   character*32 prompt
 
-!!$REAL(rp) ans
-!!$  istat=deSdx(loc(integrand),0.0_rp,1.0_rp,1.0e-9_rp,ans)
-!!$WRITE(*,*) ISTAT,ANS
-!!$stop
-
   p=init_rpnc()
 
   fu=0

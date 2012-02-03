@@ -1080,6 +1080,7 @@ contains
     real(rp) ans
     integer istat
     istat=deSdx(ptr_rpnc,ptr_integrand,realpart(a),realpart(b),epsilon(rzero),ans)
+    if(istat/=0) WRITE(*,*) "*** deSdx failed"
     zm_deint=complex(ans,rzero)
   end function zm_deint
 

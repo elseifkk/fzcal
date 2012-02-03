@@ -583,7 +583,7 @@ contains
     pointer(pa,a)
     pointer(pb,b)
     real(rp) x
-    
+
     istat=get_operands(rpnc,i,2,ks=ods,ps=pvs(1:2))
     if(istat/=0) return
 
@@ -904,7 +904,11 @@ contains
        case(TID_IOP)
           istat=eval_i(rpnc,i)
        case(TID_ISTA)
-          i=rpnc%que(i)%cid+1 ! <<< to IEND+1
+          i=find_iend()
+          if(i==0) then
+             istat=RPNCERR_NOENT
+             exit
+          end if
           ec=ec-1
        case(TID_END)
           ec=ec-1
@@ -944,6 +948,17 @@ contains
 
   contains
     
+    integer function find_iend()
+      integer ii
+      find_iend=0
+      do ii=i+1,size(rpnc%que)
+         if(rpnc%que(ii)%tid==TID_IEND) then
+            find_iend=ii+1
+            exit
+         end if
+      end do
+    end function find_iend
+
     subroutine set_newpar
       integer ii
       do ii=1,size(rpnc%que)

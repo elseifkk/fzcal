@@ -961,8 +961,10 @@ contains
     rpnc%que(:)%tid=TID_UNDEF
     rpnc%que(:)%cid=0 ! dump_rpnc might refer unset cid as a pointer 
     rpnc%p_vbuf=0
-    if(nvbuf>size(rpnc%vbuf)) then
-       if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) deallocate(rpnc%vbuf)
+    if(.not.associated(rpnc%vbuf)) then
+       allocate(rpnc%vbuf(nvbuf))
+    else if(nvbuf>size(rpnc%vbuf)) then
+       deallocate(rpnc%vbuf)
        allocate(rpnc%vbuf(nvbuf))
     end if
 
@@ -1099,8 +1101,8 @@ contains
           ! special TIDs
           !
        case(TID_ISTA,TID_IEND)
-          q%tid=get_lo32(qq%tid)
-          q%cid=get_up32(qq%tid)
+          q%tid=qq%tid
+          q%cid=0
        case(TID_DLM1)
           q%tid=TID_DLM1
           q%cid=0 ! will be set later in find_delim
@@ -1943,10 +1945,6 @@ contains
             if(_EXPR_(ii)==dmy(1:ld)) then ! <<<<<<<
                rpnb%que(ii)%tid=TID_IVAR1
             end if
-         case(TID_ISTA)
-            rpnb%que(ii)%tid=get_i32(TID_ISTA,iend)
-            rpnb%que(iend)%tid=get_i32(TID_IEND,ii)
-            exit
          end select
       end do      
     end subroutine set_idmy
