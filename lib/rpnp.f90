@@ -1079,7 +1079,7 @@ contains
        case(TID_DPAR)
           q%tid=TID_DPAR
           q%cid=get_up32(qq%p1)
-       case(TID_IVAR1)
+       case(TID_IVAR1,TID_IVAR1L,TID_IVAR1U)
           q%tid=qq%tid
           q%cid=1
           !
@@ -1101,8 +1101,8 @@ contains
           ! special TIDs
           !
        case(TID_ISTA,TID_IEND)
-          q%tid=qq%tid
-          q%cid=0
+          q%tid=get_lo32(qq%tid)
+          q%cid=get_up32(qq%tid) ! len code
        case(TID_DLM1)
           q%tid=TID_DLM1
           q%cid=0 ! will be set later in find_delim
@@ -1897,7 +1897,7 @@ contains
     end if
 
     if(istat==0) then
-       istat=build_rpnc(rpnb,rpnc,fc+oc)       
+       istat=build_rpnc(rpnb,rpnc,fc+oc+fnc)       
     else if(.not.is_set(RPNCOPT_NO_WARN)) then
        call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if
@@ -1926,8 +1926,8 @@ contains
     subroutine set_idmy(iend)
       integer,intent(in)::iend
       integer ii
-      character*32 dmy ! <<<<<<<<<<<<
-      integer ld,p1,p2
+      character*32 dmy,dmy_lo,dmy_up
+      integer ld,p1,p2,lc,ld_b
       ! FID_DEINT at p_buf-1
       p1=get_lo32(rpnb%buf(rpnb%p_buf-1)%p1)
       p2=get_lo32(rpnb%buf(rpnb%p_buf-1)%p2)
@@ -1939,12 +1939,24 @@ contains
       else
          dmy=rpnb%expr(ii+1:get_lo32(rpnb%buf(rpnb%p_buf-1)%p2))
       end if
+      dmy_lo=trim(dmy)//"_lo"
+      dmy_up=trim(dmy)//"_up"
+      ld_b=ld+3
       do ii=rpnb%p_que-1,p_q1,-1
          select case(rpnb%que(ii)%TID)
          case(TID_PAR)
-            if(_EXPR_(ii)==dmy(1:ld)) then ! <<<<<<<
+            if(_EXPR_(ii)==dmy(1:ld)) then
                rpnb%que(ii)%tid=TID_IVAR1
+            else if(_EXPR_(ii)==dmy_lo(1:ld_b)) then
+               rpnb%que(ii)%tid=TID_IVAR1L
+            else if(_EXPR_(ii)==dmy_up(1:ld_b)) then
+               rpnb%que(ii)%tid=TID_IVAR1U
             end if
+         case(TID_ISTA)
+            lc=(iend+1)-(ii+1)-1
+            rpnb%que(ii)%tid  =get_i32(TID_ISTA,lc)
+            rpnb%que(iend)%tid=get_i32(TID_IEND,lc)
+            exit
          end select
       end do      
     end subroutine set_idmy

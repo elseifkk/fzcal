@@ -36,18 +36,29 @@ program fzcal
   logical calc,echo
   integer fu
   character*32 prompt
-
+  integer i
+  
   p=init_rpnc()
 
   fu=0
   echo=.false.
   prompt=">"
+  i=0
   main: do
      calc=.false.
      if(fu==0) then
-        write(*,10) trim(prompt)//" "
-10      format(x,a,$)
-        read(*,"(a)") str
+        if(command_argument_count()==0) then
+           write(*,10) trim(prompt)//" "
+10         format(x,a,$)
+           read(*,"(a)") str
+        else
+           i=i+1
+           if(i>command_argument_count()) exit
+           call get_command_argument(i,str)
+           if(trim(adjustl(str))=="-") then
+              read(*,"(a)") str
+           end if
+        end if
      else
         call read_line()
         if(istat/=0) then
