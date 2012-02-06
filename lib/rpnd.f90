@@ -133,7 +133,9 @@ module rpnd
   integer,parameter::TID_CPAR   = 51 ! copied par
   integer,parameter::TID_NPAR   = 52 ! just assigned par
   integer,parameter::TID_IOP    = 53 ! integral
-  integer,parameter::TID_IVAR1  = 54 ! dummy par in integrand
+  integer,parameter::TID_IVAR1  = 54 ! dummy par in integrand x
+  integer,parameter::TID_IVAR1L = 55 ! dummy par in integrand b-x
+  integer,parameter::TID_IVAR1U = 56 ! dummy par in integrand x-a
 
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2

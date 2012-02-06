@@ -521,9 +521,10 @@ contains
 
   end function eval_n
 
-  recursive function integrand(pc,x) result(s)
+  recursive function integrand(pc,n,x) result(s)
     integer,intent(in)::pc
-    real(rp),intent(in)::x
+    integer,intent(in)::n
+    real(rp),intent(in)::x(n)
     real(rp) s
     type(t_rpnc) rpnc
     type(t_rpnc),pointer::ifnc
@@ -548,17 +549,26 @@ contains
 
     subroutine set_dmy_par()
       integer i
-      complex(cp) z
-      pointer(pz,z)
       do i=1,size(ifnc%que)
          select case(ifnc%que(i)%tid)
-         case(TID_IVAR1)
-            pz=ifnc%que(i)%cid
-            z=complex(x,rzero)
-            ifnc%que(i)%tid=TID_VAR
+         case(TID_IVAR1)  ! X
+            call put_dmy_par(i,1)
+         case(TID_IVAR1L) ! b-X
+            call put_dmy_par(i,2)
+         case(TID_IVAR1U) ! X-a
+            call put_dmy_par(i,3)
          end select
       end do
     end subroutine set_dmy_par
+
+    subroutine put_dmy_par(i,j)
+      integer,intent(in)::i,j
+      complex(cp) z
+      pointer(pz,z)
+      pz=ifnc%que(i)%cid
+      z=complex(x(j),rzero)
+      ifnc%que(i)%tid=TID_VAR      
+    end subroutine put_dmy_par
 
   end function integrand
 
@@ -641,6 +651,8 @@ contains
       integer oc,vc
       oc=count_op(ifnc%que)
       vc=count_tid(ifnc%que,TID_IVAR1) &
+           +count_tid(ifnc%que,TID_IVAR1L) &
+           +count_tid(ifnc%que,TID_IVAR1U) &
            +count_tid(ifnc%que,TID_VAR)
       if(vc+oc>0) allocate(ifnc%vbuf(vc+oc))
     end subroutine alloc_vbuf
@@ -649,8 +661,8 @@ contains
       integer ii
       do ii=1,nc
          select case(ifnc%que(ii)%tid)
-         case(TID_IVAR1)
-            call put_vbuf(ifnc,ii,czero,TID_IVAR1)
+         case(TID_IVAR1,TID_IVAR1L,TID_IVAR1U)
+            call put_vbuf(ifnc,ii,czero,ifnc%que(ii)%tid)
          end select
       end do
     end subroutine set_idmy
@@ -675,8 +687,10 @@ contains
       do ii=i-1,1,-1
          select case(rpnc%que(ii)%tid)
          case(TID_IEND)
+            rpnc%que(ii)%tid=TID_NOP
             i2=ii-1
          case(TID_ISTA)
+            rpnc%que(ii)%tid=TID_NOP
             i1=ii+1
             exit
          end select
@@ -880,6 +894,7 @@ contains
     ansset=.false.
     rpnc%rc=rpnc%rc+1
     i=rpnc%ip-1
+
     do 
        i=i+1
        if(i>size(rpnc%que)) exit
@@ -904,12 +919,7 @@ contains
        case(TID_IOP)
           istat=eval_i(rpnc,i)
        case(TID_ISTA)
-          i=find_iend()
-          if(i==0) then
-             istat=RPNCERR_NOENT
-             exit
-          end if
-          ec=ec-1
+          i=i+rpnc%que(i)%cid+1
        case(TID_END)
           ec=ec-1
           rpnc%rc=rpnc%rc-1
@@ -948,17 +958,6 @@ contains
 
   contains
     
-    integer function find_iend()
-      integer ii
-      find_iend=0
-      do ii=i+1,size(rpnc%que)
-         if(rpnc%que(ii)%tid==TID_IEND) then
-            find_iend=ii+1
-            exit
-         end if
-      end do
-    end function find_iend
-
     subroutine set_newpar
       integer ii
       do ii=1,size(rpnc%que)
