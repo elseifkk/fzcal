@@ -243,11 +243,14 @@ contains
     
   end function get_end_of_fig
   
-  integer function get_end_of_par(rpnb,k_)
+  integer function get_end_of_par(rpnb,k_,force_alpha)
     type(t_rpnb),intent(in)::rpnb
     integer,intent(in)::k_
+    logical,intent(in),optional::force_alpha
     integer a,k
+    logical alpha
     k=k_
+    alpha=present(force_alpha).and.force_alpha
     do
        if(k>=rpnb%len_expr) then
           get_end_of_par=k
@@ -255,9 +258,11 @@ contains
        end if
        k=k+1
        a=ichar(rpnb%expr(k:k))
-       if(.not.is_alpha(a).and..not.is_number(a).and..not.is_symbol(a)) then
-          get_end_of_par=k-1
-          return
+       if(.not.is_alpha(a)) then
+          if(alpha.or.(.not.is_number(a).and..not.is_symbol(a))) then
+             get_end_of_par=k-1
+             return
+          end if
        end if
     end do
   end function get_end_of_par
@@ -434,6 +439,8 @@ contains
        get_tid=TID_ROP
     case("_")
        get_tid=TID_USCR
+    case("@")
+       get_tid=TID_AT
     case default
        get_tid=TID_UNDEF
     end select
@@ -546,6 +553,13 @@ contains
           if(p1+1==p2.and.is_ppar(rpnb%expr(p2:p2),k)) then
              t=get_i32(TID_PAR,k)
           end if
+       end if
+    case(TID_AT)
+       p2=get_end_of_par(rpnb,p1,.true.)
+       if(p1==p2) then
+          t=TID_INV
+       else
+          t=get_i32(TID_PAR,PID_END+1) !<<<<<<<<<<<<<
        end if
     case(TID_PARU)
        if(rpnb%old_tid==TID_FIG.and.rpnb%expr(k:k)=="e") then
@@ -801,7 +815,7 @@ contains
   end function set_function
 
   integer function set_macro(rpnb,rpnc,k1)
-    type(t_rpnb),intent(in)::rpnb
+    type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
     type(t_rpnm),pointer::rpnm
@@ -866,7 +880,8 @@ contains
       ! FIG and PAR will have pointer to vbuf
       ! APAR will have pointer to pars%v
       integer ii,jj
-      integer kp
+      integer kp,asis
+      type(t_rrpnq),pointer::qq
       complex(cp) v
       pointer(pv,v)
       if(.not.allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
@@ -878,10 +893,17 @@ contains
             cycle
          end select
          jj=ii+i
-         if(rpnb%que(jj)%tid/=TID_FIG) then ! par
+         qq => rpnb%que(jj)
+         if(qq%tid/=TID_FIG) then ! par
+            asis=get_up32(qq%tid)
+            if(asis/=0) qq%p1=qq%p1+1
             if(try_add_str(rpnm%pnames,_EXPR_(jj),SC_RO,ent=kp)/=0) &            
                  STOP "*** cp_vbuf: UNEXPECTED ERROR: try_add_str failed"
-            rpnm%que(ii)%tid=rpnb%que(jj)%tid ! <<< TID_PAR or TID_APAR
+            rpnm%que(ii)%tid=get_lo32(qq%tid) ! <<< TID_PAR or TID_APAR
+            if(asis/=0) then
+               qq%p1=qq%p1+1
+               kp=-kp
+            end if
             rpnm%que(ii)%cid=kp     ! <<<
          else
             pv=rpnm%que(ii)%cid
@@ -937,7 +959,7 @@ contains
   end subroutine print_error
   
   integer function build_rpnc(rpnb,rpnc,nvbuf)
-    type(t_rpnb),intent(in),target::rpnb
+    type(t_rpnb),intent(in),target::rpnb ! only temporarly modified
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::nvbuf
     real(rp) x
@@ -947,7 +969,6 @@ contains
     integer p_q1
     type(t_rpnq),pointer::q
     type(t_rrpnq),pointer::qq
-    logical dup
 
     p_q1=1
     amac=.false.
@@ -1022,52 +1043,22 @@ contains
           !
        case(TID_FIG)
           q%tid=TID_VAR
-          istat=read_fig()
-          if(istat/=0) istat=RPNCERR_INVFIG
-          call put_vbuf(rpnc,i,x)
+          if(qq%p1==qq%p2.and._EXPR_(i)=="@") then
+             call put_vbuf(rpnc,i,czero)
+             q%cid=-q%cid !<<<<<<<<<<<<<<<<<<<<<<<<<
+          else
+             istat=read_fig()
+             if(istat/=0) istat=RPNCERR_INVFIG
+             call put_vbuf(rpnc,i,x)
+          end if
        case(TID_PAR)
           k=get_up32(qq%tid)
-          if(k/=0) then
-             q%tid=TID_POP
-             q%cid=k
-             cycle
+          if(k<PID_END) then
+             if(check_pop(k)) cycle
+             if(check_sop()) cycle
+             if(check_mac()) cycle
           end if
-          if(is_set(RPNCOPT_STA).and.is_spar(_EXPR_(i),k)) then
-             q%tid=TID_SOP
-             q%cid=get_sid(k)
-             cycle
-          end if
-          if(rpnc%rl%s%n>0) then
-             ! find the macro first
-             k=find_str(rpnc%rl%s,_EXPR_(i))
-             if(k>0) then
-                q%tid=TID_MAC
-                q%cid=k
-                cycle
-             end if
-          end if
-          istat=find_par(rpnc%pars,_EXPR_(i),ent=k)
-          if(amac.and.istat/=0.and.is_uset(RPNCOPT_NO_AUTO_ADD_PAR)) then
-             ! par may not already exist
-             istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
-             if(istat/=0) then
-                write(*,*) "*** add_par_by_entry failed: code = ",istat
-                istat=RPNCERR_ADDPAR
-             end if
-          end if
-          if(istat==0) then
-             q%tid=TID_PAR
-             q%cid=get_par_loc(rpnc%pars,k,dup)
-             if(q%cid==0) then
-                write(*,*) "*** get_par failed: code = ",istat
-                istat=RPNCERR_GETPAR
-             else
-                if(dup) q%tid=TID_CPAR
-             end if
-          else
-             write(*,*) "*** No such parameter: "//_EXPR_(i)
-             istat=RPNCERR_NOPAR
-          end if
+          call set_par(k)
           !
           ! Non-evaluatable TID
           ! function assignment
@@ -1144,6 +1135,71 @@ contains
     build_rpnc=istat
 
   contains
+
+    logical function check_pop(kk)
+      integer,intent(in)::kk
+      check_pop=.false.
+      if(kk/=0.and.kk<=PID_END) then
+         q%tid=TID_POP
+         q%cid=kk
+         check_pop=.true.
+      end if
+    end function check_pop
+
+    logical function check_sop()
+      integer kk
+      check_sop=.false.
+      if(is_set(RPNCOPT_STA).and.is_spar(_EXPR_(i),kk)) then
+         q%tid=TID_SOP
+         q%cid=get_sid(kk)
+         check_sop=.true.
+      end if
+    end function check_sop
+ 
+    logical function check_mac()
+      integer kk
+      check_mac=.false.
+      if(rpnc%rl%s%n>0) then
+         ! find the macro first
+         kk=find_str(rpnc%rl%s,_EXPR_(i))
+         if(k>0) then
+            q%tid=TID_MAC
+            q%cid=kk
+            check_mac=.true.
+         end if
+      end if
+    end function check_mac
+       
+    subroutine set_par(asis)
+      integer,intent(in)::asis
+      integer kk
+      logical dup
+
+      if(asis/=0) qq%p1=qq%p1+1 ! skip @ (modifying intent in var)
+      istat=find_par(rpnc%pars,_EXPR_(i),ent=kk)
+      if(asis/=0.or.amac.and.istat/=0.and.is_uset(RPNCOPT_NO_AUTO_ADD_PAR)) then
+         ! par may not already exist
+         istat=add_par_by_entry(rpnc%pars,_EXPR_(i),kk)
+         if(istat/=0) then
+            write(*,*) "*** add_par_by_entry failed: code = ",istat
+            istat=RPNCERR_ADDPAR
+         end if
+      end if
+      if(istat==0) then
+         q%tid=TID_PAR
+         q%cid=get_par_loc(rpnc%pars,kk,dup)
+         if(q%cid==0) then
+            write(*,*) "*** get_par failed: code = ",istat
+            istat=RPNCERR_GETPAR
+         else
+            if(dup) q%tid=TID_CPAR
+         end if
+      else
+         write(*,*) "*** No such parameter: "//_EXPR_(i)
+         istat=RPNCERR_NOPAR
+      end if
+      if(asis/=0) qq%p1=qq%p1-1
+    end subroutine set_par
 
     subroutine set_fnc_op()
       integer m,op
@@ -1702,6 +1758,8 @@ contains
              call push_implicit_mul()
           end select
           call rpn_put(rpnb,tid,p1,p2)
+          if(get_up32(tid)>PID_END.and.iand(qc,1)==0) &
+             istat=RPNCERR_PARSER ! @ outside macro
        case(TID_FIG)
           fc=fc+1
           call set_arg_read()

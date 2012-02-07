@@ -136,6 +136,7 @@ module rpnd
   integer,parameter::TID_IVAR1  = 54 ! dummy par in integrand x
   integer,parameter::TID_IVAR1L = 55 ! dummy par in integrand b-x
   integer,parameter::TID_IVAR1U = 56 ! dummy par in integrand x-a
+  integer,parameter::TID_AT     = 57 ! @
 
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2
@@ -244,6 +245,7 @@ module rpnd
   integer,parameter::PID_E   = 15
   integer,parameter::PID_Z   = 16
   integer,parameter::PID_Y   = 17
+  integer,parameter::PID_END = 17
 
   integer,parameter::SC_RO  = 1
   integer,parameter::SC_MAC = 2
