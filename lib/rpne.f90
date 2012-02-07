@@ -69,6 +69,18 @@ contains
     rpn_dans=real(realpart(rpnc%answer),kind=dp)
   end function rpn_dans
 
+!!$  integer function read_expr(rpnc,i)
+!!$    type(t_rpnc),intent(in)::rpnc
+!!$    integer,intent(in)::i
+!!$    character(LEN_FORMULA_MAX) str
+!!$    type(t_rpnc) tmpc
+!!$    integer istat
+!!$    read(*,"(a)",iostat=istat) str
+!!$    str=adjustl(str)
+!!$
+!!$    istat=parse_formula(tmpc,str)
+!!$  end function read_expr
+
   integer function get_operand(rpnc,i)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i
@@ -78,7 +90,7 @@ contains
        select case(rpnc%que(j)%tid)
        case(TID_VAR,TID_PAR,TID_ROVAR,TID_LVAR_T,TID_LVAR_F,TID_CPAR)
           get_operand=j
-          return
+          exit
        end select
     end do
   end function get_operand
@@ -867,13 +879,20 @@ contains
 
     subroutine set_par_ptr(ent)
       integer,intent(out)::ent
-      integer ptr,len
-      istat=get_str_ptr(rpnm%pnames,mac%que(j)%cid,ptr,len)
+      integer ptr,len,cid
+      cid=mac%que(j)%cid
+      if(cid<0) cid=-cid
+      istat=get_str_ptr(rpnm%pnames,cid,ptr,len)
       if(istat/=0) stop "*** UNEXPECTED ERROR in load_par: get_str_ptr"
       istat=find_par(mac%pars,trim(cpstr(ptr,len)),ent=ent)
       if(istat/=0) then
          write(*,*) "*** No such parameter: "//trim(cpstr(ptr,len))
          istat=RPNCERR_NOPAR
+         return
+      end if
+      if(mac%que(j)%cid<0) then
+         ! istat=input()
+         ! ...
       end if
     end subroutine set_par_ptr
 
