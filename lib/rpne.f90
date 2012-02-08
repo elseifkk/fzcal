@@ -880,6 +880,7 @@ contains
     subroutine set_par_ptr(ent)
       integer,intent(out)::ent
       integer ptr,len,cid
+      complex(cp) z
       cid=mac%que(j)%cid
       if(cid<0) cid=-cid
       istat=get_str_ptr(rpnm%pnames,cid,ptr,len)
@@ -891,12 +892,65 @@ contains
          return
       end if
       if(mac%que(j)%cid<0) then
-         ! istat=input()
+         istat=input(rpnc,cpstr(ptr,len),z)
          ! ...
       end if
     end subroutine set_par_ptr
 
   end function eval_m
+
+  recursive function input(rpnc,s,z) result(istat)
+    use rpnp, only: parse_formula
+    type(t_rpnc),intent(in),target::rpnc
+    character*(*),intent(in)::s
+    complex(cp),intent(out)::z
+    character(LEN_FORMULA_MAX) expr
+    integer istat
+    type(t_rpnc) tmpc
+
+    z=czero
+    write(*,10) trim(s)//"? > "
+10  format(x,a,$)
+    read(*,20,iostat=istat) expr
+20  format(a)
+    if(istat/=0) then
+       istat=RPNCERR_READ
+       return
+    end if
+    if(len_trim(expr)==0) then
+       istat=RPNCERR_NOENT
+       return
+    end if
+    expr=adjustl(expr)
+
+    nullify(tmpc%que)
+    nullify(tmpc%vbuf)
+    tmpc%rl     => rpnc%rl
+    tmpc%tmpans => rpnc%tmpans
+    tmpc%answer => rpnc%answer
+    tmpc%pars   => rpnc%pars
+    allocate(tmpc%p_vbuf)
+    tmpc%rc     => rpnc%rc
+    tmpc%opt    => rpnc%opt
+    tmpc%sd     => rpnc%sd
+    allocate(tmpc%ip)
+    tmpc%pfs    => rpnc%pfs
+    tmpc%ifnc   => rpnc%ifnc
+    tmpc%ique   => rpnc%ique
+    
+    istat=parse_formula(tmpc,expr)
+    if(istat==0) then
+       istat=eval(tmpc) 
+       if(istat==0) then
+          z=tmpc%answer
+       end if
+    end if
+    deallocate(tmpc%ip)
+    deallocate(tmpc%p_vbuf)
+    if(associated(tmpc%que).and.size(tmpc%que)>0) deallocate(tmpc%que)
+    if(associated(tmpc%vbuf).and.size(tmpc%vbuf)>0) deallocate(tmpc%vbuf)
+
+  end function input
 
   recursive function eval(rpnc) result(istat)
     type(t_rpnc),intent(inout),target::rpnc
@@ -987,15 +1041,19 @@ contains
 
     subroutine set_ans(end)
       logical,intent(in)::end
-      integer k
+      integer k1,kk
       if(ec==0) then ! only fig or par
          if(end) then
-            k=i-1
+            k1=i-1
          else
-            k=size(rpnc%que)
+            k1=size(rpnc%que)
          end if
-         pv=rpnc%que(k)%cid
-         rpnc%answer=v
+         do kk=k1,1,-1                          ! <<<<<<<<<<<<<<<<<<<<<<,         
+            if(rpnc%que(kk)%tid/=TID_NOP) then  ! <<<<<<<<<<<<<<<<<<<<<<,             
+               pv=rpnc%que(kk)%cid              ! <<<<<<<<<<<<<<<<<<<<<<,         
+               rpnc%answer=v                    ! <<<<<<<<<<<<<<<<<<<<<<,         
+            end if                              ! <<<<<<<<<<<<<<<<<<<<<<,         
+         end do                                 ! <<<<<<<<<<<<<<<<<<<<<<,   
       else
          rpnc%answer=rpnc%tmpans
       end if
