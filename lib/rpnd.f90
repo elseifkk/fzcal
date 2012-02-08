@@ -45,6 +45,7 @@ module rpnd
   integer,parameter::RPNCERR_NO_ARG       = 17
   integer,parameter::RPNCERR_INVARG       = 18
   integer,parameter::RPNCERR_INVFIG       = 19
+  integer,parameter::RPNCERR_READ         = 20
 
   integer,parameter::RPN_REC_MAX     =  256
   integer,parameter::NUM_VBUF_MIN    =   32
@@ -291,18 +292,14 @@ contains
     call uinit_rpnms(size(rl%rpnm),rl%rpnm)
   end subroutine uinit_rpnlist
   
-  integer function init_rpnc(nvbuf_,szplist_,npbuf_,szrlist_,nrpnm_)
+  integer function init_rpnc(szplist_,npbuf_,szrlist_,nrpnm_)
      ! type(t_rpnc) function init_rpnc causes segmentation fault
     use zmath
     type(t_rpnc) rpnc
     pointer(p,rpnc)
-    integer,intent(in),optional::nvbuf_,szplist_,npbuf_,szrlist_,nrpnm_
-    integer nvbuf,szplist,npbuf,szrlist,nrpnm
+    integer,intent(in),optional::szplist_,npbuf_,szrlist_,nrpnm_
+    integer szplist,npbuf,szrlist,nrpnm
     p=malloc(sizeof(rpnc))
-    nvbuf=NUM_VBUF_MIN
-    if(present(nvbuf_).and.nvbuf>0) then
-       nvbuf=nvbuf_
-    end if
     if(present(szplist_)) then
        szplist=szplist_
     else
@@ -386,7 +383,7 @@ contains
     type(t_rpnc) rpnc
     integer istat
     pointer(p,rpnc)
-    p=init_rpnc(size(rpnc_in%vbuf),0,0,0,0)
+    p=init_rpnc(size(rpnc_in%vbuf),0,0,0)
     call min_cp_rpnlist(rpnc_in%rl,rpnc%rl)
     call min_cp_plist(rpnc_in%pars,rpnc%pars)
     istat=add_par_by_reference(rpnc%pars,"tmp",loc(rpnc%tmpans),.true.)
@@ -585,7 +582,7 @@ contains
        select case(get_lo32(q(i)%tid))
        case(TID_OP,TID_IOP,TID_OPN, &
             TID_LOP,TID_ROP,TID_COP, &
-            TID_AOP,TID_UFNC)
+            TID_AOP,TID_UFNC,TID_MAC)
           count_op=count_op+1
        end select
     end do

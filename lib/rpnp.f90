@@ -823,10 +823,13 @@ contains
     integer i
     integer tc,vc,plen,pc
     integer istat
+
     ke=find_end()
     do i=k1,ke
        if(rpnc%que(i)%tid/=TID_AMAC) cycle
        k=find_qend() 
+! | k1   |      | k |   | ke |
+! | AMAC | code | " | = | ;  |
        istat=add_rpnm_entry(rpnc,rpnb,i,SC_MAC,km)
        if(istat/=0) then
           set_macro=istat
@@ -847,10 +850,12 @@ contains
        rpnm%que(1:tc)=rpnc%que(i+1:i+1+tc-1)
        if(vc>0) allocate(rpnm%vbuf(vc))
        call cp_vbuf()
-       rpnc%que(i+1:k)%tid=TID_NOP
-       rpnc%que(i)%tid=TID_MAC
        call trim_slist(rpnm%pnames)
+       exit
     end do
+
+    rpnc%que(k1)%tid   = TID_NOP
+    rpnc%que(k:ke)%tid = TID_NOP
 
     set_macro=0
 
@@ -945,6 +950,7 @@ contains
             return
          end if
       end do
+      STOP "*** find_qend: UNEXPECTED ERROR: TID_QEND not found"
     end function find_qend
     
   end function set_macro
@@ -1162,7 +1168,7 @@ contains
       if(rpnc%rl%s%n>0) then
          ! find the macro first
          kk=find_str(rpnc%rl%s,_EXPR_(i))
-         if(k>0) then
+         if(kk>0) then
             q%tid=TID_MAC
             q%cid=kk
             check_mac=.true.
@@ -1955,7 +1961,8 @@ contains
     end if
 
     if(istat==0) then
-       istat=build_rpnc(rpnb,rpnc,fc+oc+fnc)       
+       istat=build_rpnc(rpnb,rpnc,fc+oc+fnc+pc) ! pc includes macro which needs vbuf       
+!       istat=build_rpnc(rpnb,rpnc,fc+oc+fnc)       
     else if(.not.is_set(RPNCOPT_NO_WARN)) then
        call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if
