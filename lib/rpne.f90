@@ -31,6 +31,11 @@ module rpne
 
 contains
 
+  subroutine init_rpne()
+    use rpnp, only: init_rpnp
+    call init_rpnp(loc(input))
+  end subroutine init_rpne
+
   character(LEN_STR_ANS_MAX) function rpn_sans(rpnc)
     use memio
     type(t_rpnc),intent(in)::rpnc
@@ -68,19 +73,7 @@ contains
     type(t_rpnc),intent(in)::rpnc
     rpn_dans=real(realpart(rpnc%answer),kind=dp)
   end function rpn_dans
-
-!!$  integer function read_expr(rpnc,i)
-!!$    type(t_rpnc),intent(in)::rpnc
-!!$    integer,intent(in)::i
-!!$    character(LEN_FORMULA_MAX) str
-!!$    type(t_rpnc) tmpc
-!!$    integer istat
-!!$    read(*,"(a)",iostat=istat) str
-!!$    str=adjustl(str)
-!!$
-!!$    istat=parse_formula(tmpc,str)
-!!$  end function read_expr
-
+  
   integer function get_operand(rpnc,i)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i
@@ -624,6 +617,7 @@ contains
     ifnc%ip     = 1
     ifnc%que    = rpnc%que(i1:i2)
     ifnc%p_vbuf = 0
+    nullify(ifnc%vbuf)
 
     ifnc%pars   => rpnc%pars
     ifnc%answer => rpnc%answer
@@ -741,6 +735,7 @@ contains
     fnc%ip     = 1
     fnc%que    = rpnm%que
     fnc%p_vbuf = 0
+    nullify(fnc%vbuf)
     call alloc_vbuf
 
     fnc%pars   => rpnc%pars
@@ -796,12 +791,27 @@ contains
 
     subroutine set_par_ptr(ent) 
       integer,intent(out)::ent
-      integer ptr,len      
-      istat=get_str_ptr(rpnm%pnames,fnc%que(j)%cid,ptr,len)
-      if(istat/=0) stop "*** UNEXPECTED ERROR in set_par_ptr"
+      integer ptr,len,cid
+      integer ptr0,len0
+      complex(cp) z
+      pointer(pz,z)
+
+      cid=fnc%que(j)%cid
+      if(cid<0) cid=-cid
+      istat=get_str_ptr(rpnm%pnames,cid,ptr,len)
+      if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
       istat=find_par(fnc%pars,trim(cpstr(ptr,len)),ent=ent)
       if(istat/=0) then
          write(*,*) "*** No such parameter: "//trim(cpstr(ptr,len))
+      end if
+      if(fnc%que(j)%cid<0) then
+         pz=get_par_loc(fnc%pars,ent)
+         if(pz/=0) then
+            istat=get_str_ptr(rpnm%pnames,1,ptr0,len0)
+            istat=input(rpnc,cpstr(ptr0,len0),cpstr(ptr,len),z)
+         else
+            stop "*** set_par_ptr: UNEXPETED ERROR: get_par_loc failed"   
+         end if
       end if
     end subroutine set_par_ptr
 
@@ -826,6 +836,7 @@ contains
     mac%ip     = 1
     mac%que    = rpnm%que
     mac%p_vbuf = 0
+    nullify(mac%vbuf)
     call alloc_vbuf
 
     mac%pars   => rpnc%pars
@@ -856,11 +867,12 @@ contains
        end select
     end do
 
-    if(istat==0) istat=eval(mac)
-
     if(istat==0) then
-       rpnc%tmpans=mac%answer
-       call put_vbuf(rpnc,i,mac%answer)
+       istat=eval(mac)
+       if(istat==0) then
+          rpnc%tmpans=mac%answer
+          call put_vbuf(rpnc,i,mac%answer)
+       end if
     end if
 
     deallocate(mac%que)
@@ -880,11 +892,14 @@ contains
     subroutine set_par_ptr(ent)
       integer,intent(out)::ent
       integer ptr,len,cid
+      integer ptr0,len0
       complex(cp) z
+      pointer(pz,z)
+
       cid=mac%que(j)%cid
       if(cid<0) cid=-cid
       istat=get_str_ptr(rpnm%pnames,cid,ptr,len)
-      if(istat/=0) stop "*** UNEXPECTED ERROR in load_par: get_str_ptr"
+      if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
       istat=find_par(mac%pars,trim(cpstr(ptr,len)),ent=ent)
       if(istat/=0) then
          write(*,*) "*** No such parameter: "//trim(cpstr(ptr,len))
@@ -892,23 +907,29 @@ contains
          return
       end if
       if(mac%que(j)%cid<0) then
-         istat=input(rpnc,cpstr(ptr,len),z)
-         ! ...
+         pz=get_par_loc(mac%pars,ent)
+         if(pz/=0) then
+            istat=get_str_ptr(rpnm%pnames,1,ptr0,len0)
+            istat=input(rpnc,cpstr(ptr0,len0),cpstr(ptr,len),z)
+         else
+            stop "*** set_par_ptr: UNEXPETED ERROR: get_par_loc failed"
+         end if
       end if
     end subroutine set_par_ptr
 
   end function eval_m
 
-  recursive function input(rpnc,s,z) result(istat)
+  recursive function input(rpnc,p,s,z) result(istat)
     use rpnp, only: parse_formula
     type(t_rpnc),intent(in),target::rpnc
+    character*(*),intent(in)::p
     character*(*),intent(in)::s
-    complex(cp),intent(out)::z
+    complex(cp),intent(inout)::z
     character(LEN_FORMULA_MAX) expr
     integer istat
     type(t_rpnc) tmpc
 
-    z=czero
+    write(*,*) "Input pending for: "//trim(p)
     write(*,10) trim(s)//"? > "
 10  format(x,a,$)
     read(*,20,iostat=istat) expr
@@ -958,19 +979,20 @@ contains
     logical ansset
     complex(cp) v
     pointer(pv,v)
+
     istat=0
     ec=0
     if(rpnc%rc>RPN_REC_MAX) then
        istat=RPNCERR_RECOV
        return
     end if
+
     ansset=.false.
     rpnc%rc=rpnc%rc+1
     i=rpnc%ip-1
 
     do 
        i=i+1
-       if(i>size(rpnc%que)) exit
        ec=ec+1
        select case(get_lo32(rpnc%que(i)%tid))
        case(TID_OP,TID_OPN,TID_AOP)
@@ -995,31 +1017,32 @@ contains
           i=i+rpnc%que(i)%cid+1
        case(TID_END)
           ec=ec-1
-          rpnc%rc=rpnc%rc-1
+          rpnc%que(i)%tid=TID_NOP
           call set_ans(.true.)
-          if(rpnc%rc==0.and.rpnc%que(i)%cid/=0) then
-             rpnc%que(i)%tid=TID_NOP
+          if(rpnc%rc==1.and.rpnc%que(i)%cid/=0) then
+             ! multiple ";"  will exit the loop
              rpnc%ip=i+1 ! the next code
              exit
           end if
-          rpnc%rc=rpnc%rc+1
           ec=0
        case default
           ec=ec-1
        end select
-
-       if(i==size(rpnc%que)) then
-          rpnc%ip=0
-          call set_ans(.false.)
-          rpnc%rc=rpnc%rc-1       
-       end if
 
        if(istat/=0) then
           write(*,*) "*** Error in eval at que = ", i
           exit
        end if
 
+       if(i==size(rpnc%que)) then
+          rpnc%ip=0
+          call set_ans(.false.)
+          exit
+       end if
+
     end do
+
+    rpnc%rc=rpnc%rc-1
 
     if(istat/=0) return
     if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
@@ -1048,12 +1071,13 @@ contains
          else
             k1=size(rpnc%que)
          end if
-         do kk=k1,1,-1                          ! <<<<<<<<<<<<<<<<<<<<<<,         
-            if(rpnc%que(kk)%tid/=TID_NOP) then  ! <<<<<<<<<<<<<<<<<<<<<<,             
-               pv=rpnc%que(kk)%cid              ! <<<<<<<<<<<<<<<<<<<<<<,         
-               rpnc%answer=v                    ! <<<<<<<<<<<<<<<<<<<<<<,         
-            end if                              ! <<<<<<<<<<<<<<<<<<<<<<,         
-         end do                                 ! <<<<<<<<<<<<<<<<<<<<<<,   
+         do kk=k1,1,-1                          ! <<<<<<<<<<<<<<<<<<<<<<,
+            if(rpnc%que(kk)%tid/=TID_NOP) then  ! <<<<<<<<<<<<<<<<<<<<<<,
+               pv=rpnc%que(kk)%cid              ! <<<<<<<<<<<<<<<<<<<<<<,
+               rpnc%answer=v                    ! <<<<<<<<<<<<<<<<<<<<<<,
+               exit                             ! <<<<<<<<<<<<<<<<<<<<<<,
+            end if                              ! <<<<<<<<<<<<<<<<<<<<<<,
+         end do                                 ! <<<<<<<<<<<<<<<<<<<<<<,
       else
          rpnc%answer=rpnc%tmpans
       end if

@@ -735,6 +735,11 @@ contains
     get_par_loc=0
     if(k>pl%s%n.or.k<=0) return
     v => pl%v(k)
+    if(is_duplicated(v%sta)) then
+       get_par_loc=v%pz ! must not be zero
+       if(present(dup)) dup=.true.
+       return
+    end if
     pk=get_pkind(v%sta)
     select case(pk)
     case(PK_COMP)
@@ -815,7 +820,7 @@ contains
     ! move value from pz to p 
     do i=1,pl%s%n
        v => pl%v(i)
-       if(.not.is_duplicated(v%sta)) cycle
+       if(is_single(v%sta)) cycle
        pz=v%pz
        select case(get_pkind(v%sta)) 
        case(PK_REAL)
