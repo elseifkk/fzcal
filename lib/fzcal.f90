@@ -39,6 +39,7 @@ program fzcal
   integer i
   
   p=init_rpnc()
+  call init_rpne
 
   fu=0
   echo=.false.
@@ -167,11 +168,6 @@ program fzcal
   
 contains
   
-!!$  real(rp) function integrand(x)
-!!$    real(rp),intent(in)::x
-!!$    integrand=exp(x)
-!!$  end function integrand
-
   character*4 function log2str(log)
     logical,intent(in)::log
     if(log) then

@@ -31,6 +31,7 @@ module fzc
 contains
 
   size_t function fzc_init()
+    call init_rpne
     fzc_init=init_rpnc()
   end function fzc_init
 

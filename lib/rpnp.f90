@@ -166,8 +166,15 @@ module rpnp
   integer,parameter::FFID_SIINT     = 3 +FID_END
   integer,parameter::FFID_ARG3_END  = 3 +FID_END
 
+  integer ptr_input
+
 contains
   
+  subroutine init_rpnp(pinput)
+    integer,intent(in)::pinput
+    ptr_input=pinput
+  end subroutine init_rpnp
+
   integer function strip(s)
     character*(*),intent(inout)::s
     integer i,k,wc
@@ -673,7 +680,7 @@ contains
   end function add_rpnm_entry
     
   integer function set_function(rpnb,rpnc,k1)
-    type(t_rpnb),intent(in)::rpnb
+    type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
     type(t_rpnm),pointer::rpnm
@@ -764,7 +771,8 @@ contains
 
     subroutine cp_vbuf()
       integer ii,jj
-      integer kp
+      integer kp,asis
+      type(t_rrpnq),pointer::qq
       complex(cp) v
       pointer(pv,v)
       if(.not.allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
@@ -776,10 +784,17 @@ contains
             cycle
          end select
          jj=ii+km !<<<<<<<<<<<<<<<<
-         if(rpnb%que(jj)%tid/=TID_FIG) then ! par
+         qq => rpnb%que(jj)
+         if(qq%tid/=TID_FIG) then ! par
+            asis=get_up32(qq%tid)
+            if(asis/=0) qq%p1=qq%p1+1
             if(try_add_str(rpnm%pnames,_EXPR_(jj),SC_RO,ent=kp)/=0) &            
                  STOP "*** cp_vbuf: UNEXPECTED ERROR: try_add_str failed"
-            rpnm%que(ii)%tid=rpnb%que(jj)%tid
+            rpnm%que(ii)%tid=get_lo32(qq%tid)
+            if(asis/=0) then
+               qq%p1=qq%p1-1
+               kp=-kp
+            end if
             rpnm%que(ii)%cid=kp
          else
             pv=rpnm%que(ii)%cid
@@ -854,8 +869,8 @@ contains
        exit
     end do
 
-    rpnc%que(k1)%tid   = TID_NOP
-    rpnc%que(k:ke)%tid = TID_NOP
+    rpnc%que(k1)%tid=TID_MAC
+    rpnc%que(k1+1:ke)%tid = TID_NOP
 
     set_macro=0
 
@@ -975,11 +990,16 @@ contains
     integer p_q1
     type(t_rpnq),pointer::q
     type(t_rrpnq),pointer::qq
+    integer inpt
+    integer p1,p2
 
     p_q1=1
     amac=.false.
     afnc=.false.
+    inpt=0
     istat=0
+    p1=1
+    p2=rpnb%len_expr
 
     if(associated(rpnc%que).and.size(rpnc%que)>0) deallocate(rpnc%que)
     allocate(rpnc%que(rpnb%p_que))
@@ -997,8 +1017,8 @@ contains
 
     do i=1,size(rpnc%que)
        istat=0
-       q=>rpnc%que(i)
-       qq=>rpnb%que(i)
+       q  => rpnc%que(i)
+       qq => rpnb%que(i)
        select case(get_lo32(qq%tid))
           !
           ! operators 
@@ -1108,13 +1128,18 @@ contains
           q%cid=qq%p2 ! bc-kc 
        case(TID_SCL)
           q%tid=TID_END
-          q%cid=qq%p2-qq%p1
+          q%cid=qq%p2-qq%p1 ! count of ;
+          p2=qq%p1
           if(amac) istat=set_macro(rpnb,rpnc,p_q1)
           if(afnc) istat=set_function(rpnb,rpnc,p_q1)
-          ! istat=RPNSTA_FNCSET
+          ! istat=RPNSTA_FNCSET<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
           amac=.false.
           afnc=.false.
+          if(inpt>0) istat=proc_input(i)
+          inpt=0
           p_q1=i+1
+          p1=qq%p2+1
+          p2=rpnb%len_expr
        case(TID_COL) ! only for dat mode
           q%tid=TID_COL
           q%cid=0
@@ -1124,7 +1149,7 @@ contains
           STOP "*** build_rpnc: UNEXPECTED ERROR: unexpected tid in rpnb"
        end select
        if(istat/=0) then
-          if(is_set(RPNCOPT_NO_WARN)) &
+          if(.not.is_set(RPNCOPT_NO_WARN)) &
                call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(qq%p1),get_lo32(qq%p2)) 
           exit
        end if
@@ -1133,6 +1158,7 @@ contains
     if(istat==0) then
        if(amac) istat=set_macro(rpnb,rpnc,p_q1)
        if(afnc) istat=set_function(rpnb,rpnc,p_q1)
+       if(inpt>0) istat=proc_input(size(rpnc%que))
     end if
 
     if(afnc.and.istat==0) istat=RPNSTA_FNCSET
@@ -1141,6 +1167,51 @@ contains
     build_rpnc=istat
 
   contains
+
+    integer function proc_input(ii2)
+      integer,intent(in)::ii2
+      integer ii,kk,ke
+      type(t_rrpnq),pointer::qqq
+      complex(cp) zz
+      pointer(pzz,zz)
+      interface 
+         recursive integer function fnc_input(rpnc,p,s,z) result(istat)
+           use rpnd, only: t_rpnc
+           use fpio, only: cp
+           type(t_rpnc),intent(in)::rpnc
+           character*(*),intent(in)::p,s
+           complex(cp),intent(inout)::z
+         end function fnc_input
+      end interface
+      pointer(pfnc_input,fnc_input)
+      proc_input=0
+      if(ii2==size(rpnc%que)) then
+         ke=rpnb%len_expr
+      else
+         ke=rpnb%que(ii2)%p1-1
+      end if
+      do ii=p_q1,ii2
+         qqq => rpnb%que(ii)
+         if(get_lo32(qqq%tid)==TID_PAR &
+              .and.get_up32(qqq%tid)>PID_END) then
+            qqq%p1=qqq%p1+1
+            istat=find_par(rpnc%pars,_EXPR_(ii),ent=kk)
+            if(istat/=0) stop "proc_input: UNEXPECTED ERROR: find_par failed"
+            pzz=get_par_loc(rpnc%pars,kk)
+            if(pzz==0) stop "proc_input: UNEXPECTED ERROR: get_par_loc failed"
+            qqq%p1=qqq%p1-1
+            pfnc_input=ptr_input
+            istat=fnc_input(rpnc,&
+                 rpnb%expr(p1:p2),&
+                 rpnb%expr(get_lo32(qqq%p1):get_lo32(qqq%p2)),&
+                 zz)
+            if(istat/=0) then
+               proc_input=RPNCERR_READ
+               exit
+            end if
+         end if
+      end do
+    end function proc_input
 
     logical function check_pop(kk)
       integer,intent(in)::kk
@@ -1166,7 +1237,6 @@ contains
       integer kk
       check_mac=.false.
       if(rpnc%rl%s%n>0) then
-         ! find the macro first
          kk=find_str(rpnc%rl%s,_EXPR_(i))
          if(kk>0) then
             q%tid=TID_MAC
@@ -1180,16 +1250,25 @@ contains
       integer,intent(in)::asis
       integer kk
       logical dup
-
-      if(asis/=0) qq%p1=qq%p1+1 ! skip @ (modifying intent in var)
+      if(asis/=0) then
+         qq%p1=qq%p1+1 ! skip @ (modifying intent in var)
+         if(.not.amac.and..not.afnc) inpt=inpt+1
+      end if
       istat=find_par(rpnc%pars,_EXPR_(i),ent=kk)
       if(asis/=0.or.amac.and.istat/=0.and.is_uset(RPNCOPT_NO_AUTO_ADD_PAR)) then
          ! par may not already exist
          istat=add_par_by_entry(rpnc%pars,_EXPR_(i),kk)
          if(istat/=0) then
-            write(*,*) "*** add_par_by_entry failed: code = ",istat
+            if(istat==PLERR_RDONL) then
+               write(*,*) "*** Parameter is read-only: "//_EXPR_(i)
+            else
+               write(*,*) "*** add_par_by_entry failed: code = ",istat
+            end if
             istat=RPNCERR_ADDPAR
          end if
+      else if(istat/=0) then
+         write(*,*) "*** No such parameter: "//_EXPR_(i)
+         istat=RPNCERR_NOPAR
       end if
       if(istat==0) then
          q%tid=TID_PAR
@@ -1200,9 +1279,6 @@ contains
          else
             if(dup) q%tid=TID_CPAR
          end if
-      else
-         write(*,*) "*** No such parameter: "//_EXPR_(i)
-         istat=RPNCERR_NOPAR
       end if
       if(asis/=0) qq%p1=qq%p1-1
     end subroutine set_par
@@ -1571,7 +1647,8 @@ contains
 
   subroutine rpn_pop(rpnb)
     type(t_rpnb),intent(inout)::rpnb
-    if(rpnb%p_buf<0) return
+CALL DUMP_RPNB(RPNB)
+    if(rpnb%p_buf<=0) return
     rpnb%p_que=rpnb%p_que+1
     rpnb%que(rpnb%p_que)=rpnb%buf(rpnb%p_buf)
     rpnb%p_buf=rpnb%p_buf-1
@@ -1719,11 +1796,13 @@ contains
     integer p_q1
     integer pfnc_opened
     integer terr,p1err,p2err
+    integer nvbuf
 
     call init_rpnb(formula)
 
     cle_opt(RPNCOPT_READY)
 
+    nvbuf=0
     call init_stat()
     istat=0
 
@@ -1734,12 +1813,13 @@ contains
        case(TID_BLK)
           cycle
        case(TID_FIN,TID_SCL)
+          nvbuf=nvbuf+fc+oc+fnc+pc ! pc includes macro which needs vbuf       
           if(.not.was_operand().or.(tc/=clc.and.is_uset(RPNCOPT_DAT))) then
              istat=RPNCERR_PARSER
              exit
           else
              if(.not.check_narg_all()) exit
-             if(iand(qc,1)==1) then
+             if(iand(qc,1)==1.and..not.amac) then
                 ! close "
                 call rpn_try_pop(rpnb,TID_QSTA)
                 call rpn_put(rpnb,TID_QEND,0,0)
@@ -1751,8 +1831,10 @@ contains
              exit
           else
              call rpn_put(rpnb,TID_SCL,p1,p2) ! <<<<<<<<<<<<
-             call init_stat
-             cycle
+             if(.not.amac) then
+                call init_stat
+                cycle
+             end if
           end if
        case(TID_INV,TID_UNDEF)
           istat=RPNCERR_PARSER
@@ -1764,8 +1846,8 @@ contains
              call push_implicit_mul()
           end select
           call rpn_put(rpnb,tid,p1,p2)
-          if(get_up32(tid)>PID_END.and.iand(qc,1)==0) &
-             istat=RPNCERR_PARSER ! @ outside macro
+!!$          if(get_up32(tid)>PID_END.and.iand(qc,1)==0) &
+!!$             istat=RPNCERR_PARSER ! @ outside macro
        case(TID_FIG)
           fc=fc+1
           call set_arg_read()
@@ -1864,6 +1946,7 @@ contains
           end if
        case(TID_QTN)
           qc=qc+1
+          ! macro definition cannot have macro definition inside!
           if(and(qc,1)/=0) then
              ! the first "
              if(told/=TID_ASN) then
@@ -1886,6 +1969,7 @@ contains
                 call rpn_try_pop(rpnb,TID_QSTA)
                 call rpn_put(rpnb,TID_QEND,p1,p2)
                 call rpn_pop(rpnb) ! pop MASN
+                amac=.false.
              end if
           end if
        case(TID_COMA)
@@ -1961,8 +2045,7 @@ contains
     end if
 
     if(istat==0) then
-       istat=build_rpnc(rpnb,rpnc,fc+oc+fnc+pc) ! pc includes macro which needs vbuf       
-!       istat=build_rpnc(rpnb,rpnc,fc+oc+fnc)       
+       istat=build_rpnc(rpnb,rpnc,nvbuf)
     else if(.not.is_set(RPNCOPT_NO_WARN)) then
        call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if
@@ -2140,8 +2223,9 @@ contains
     logical function is_fnc_asn()
       integer ii
       type(t_rrpnq),pointer::q
+      logical first
       is_fnc_asn=.false.
-      if(ac==1.and.bc==1.and.kc==1.and.pc>=1.and.fc==0) then
+      if(ac==1.and.bc==1.and.kc==1.and.pc>=0.and.fc==0) then
          ii=index(rpnb%expr(p1+1:rpnb%len_expr),";")
          if(ii==0) then
             ii=rpnb%len_expr
@@ -2155,6 +2239,7 @@ contains
             q%p2=get_i32(get_lo32(q%p2),ii)
             call rpn_pop(rpnb)
             is_fnc_asn=.true.
+            first=.false.
          else if(rpnb%que(p_q1)%tid==TID_PAR) then ! exclude TID_POP
             q => rpnb%que(p_q1)
             q%tid=TID_AFNC
@@ -2162,11 +2247,12 @@ contains
             q%p2=get_i32(q%p2,ii)
             pc=pc-1
             is_fnc_asn=.true.
+            first=.true.
          end if
       end if
       if(.not.is_fnc_asn) return
       pfasn=rpnb%p_que
-      if(pc-1/=cc.or.set_dummy_par()==0) then
+      if(pc-1/=cc.or.set_dummy_par(first)<0) then
          is_fnc_asn=.false.
          istat=RPNCERR_PARSER
       else
@@ -2219,14 +2305,25 @@ contains
       end do
     end subroutine set_par_dummy
     
-    integer function set_dummy_par()
-      integer ii
+    integer function set_dummy_par(first)
+      logical,intent(in)::first
+      integer ii,ii1,ii2
       integer dummy_count
       dummy_count=0
-      do ii=p_q1,rpnb%p_que
+      if(first) then
+         ii1=p_q1+1
+         ii2=rpnb%p_que
+      else
+         ii1=p_q1
+         ii2=rpnb%p_que-1
+      end if
+      do ii=ii1,ii2
          if(rpnb%que(ii)%tid==TID_PAR) then
             rpnb%que(ii)%tid=TID_DPAR
             dummy_count=dummy_count+1
+         else
+            set_dummy_par=-1
+            return
          end if
       end do
       set_dummy_par=dummy_count
@@ -2245,6 +2342,7 @@ contains
            TID_ASN,TID_COMA,TID_TOP1,TID_COL,TID_SCL)
          was_operand=.false.
       case(TID_BRA)
+         ! empty () comes here
          select case(btold)
          case(TID_UFNC,TID_IFNC)
             was_operand=.true.
