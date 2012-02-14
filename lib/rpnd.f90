@@ -23,6 +23,7 @@ module rpnd
   use fpio
   implicit none
 
+  integer,parameter::RPNSTA_EMPTY  = -2
   integer,parameter::RPNSTA_FNCSET = -1
   integer,parameter::RPNSTA_OK     =  0
 
@@ -138,6 +139,9 @@ module rpnd
   integer,parameter::TID_IVAR1L = 55 ! dummy par in integrand b-x
   integer,parameter::TID_IVAR1U = 56 ! dummy par in integrand x-a
   integer,parameter::TID_AT     = 57 ! @
+  integer,parameter::TID_MSCL   = 58 ! ; in macro definition
+  integer,parameter::TID_SHRP   = 59 ! #
+  integer,parameter::TID_IGNORE = 60 
 
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2
@@ -506,6 +510,7 @@ contains
   subroutine dump_sd(rpnc)
     type(t_rpnc),intent(in)::rpnc
     integer i,f
+    if(.not.allocated(rpnc%sd%vs)) return
     f=ishft(rpnc%opt,-32)
     do i=1,rpnc%sd%p_vs
        write(*,*) trim(itoa(i))//": "//trim(ztoa(rpnc%sd%vs(i,1),f)) &

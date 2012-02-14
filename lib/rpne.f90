@@ -993,6 +993,11 @@ contains
 
     do 
        i=i+1
+       if(i>size(rpnc%que)) then
+          rpnc%ip=0
+          call set_ans(.false.)
+          exit
+       end if
        ec=ec+1
        select case(get_lo32(rpnc%que(i)%tid))
        case(TID_OP,TID_OPN,TID_AOP)
@@ -1034,17 +1039,12 @@ contains
           exit
        end if
 
-       if(i==size(rpnc%que)) then
-          rpnc%ip=0
-          call set_ans(.false.)
-          exit
-       end if
-
     end do
 
     rpnc%rc=rpnc%rc-1
 
     if(istat/=0) return
+
     if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
          call set_sd(rpnc%ip,rpnc)
 
