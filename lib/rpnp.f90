@@ -448,6 +448,8 @@ contains
        get_tid=TID_USCR
     case("@")
        get_tid=TID_AT
+    case("#")
+       get_tid=TID_SHRP
     case default
        get_tid=TID_UNDEF
     end select
@@ -623,8 +625,18 @@ contains
           t=TID_ASN
        end if
     case(TID_SCL)
-       call skip_tid(t)
-       if(p2==rpnb%len_expr) t=TID_FIN
+       if(p1==1) then
+          t=TID_IGNORE
+       else
+          call skip_tid(t)
+          if(p2==rpnb%len_expr) t=TID_FIN
+       end if
+    case(TID_SHRP)
+       if(p1==1.and.p2<rpnb%len_expr.and.next_char(1)=="$") then
+          ! meta command
+       else
+          t=TID_FIN
+       end if
     end select
     
     rpnb%old_tid=t
@@ -866,7 +878,7 @@ contains
        if(vc>0) allocate(rpnm%vbuf(vc))
        call cp_vbuf()
        call trim_slist(rpnm%pnames)
-       exit
+       call check_mscl()
     end do
 
     rpnc%que(k1)%tid=TID_MAC
@@ -876,12 +888,21 @@ contains
 
   contains
     
+    subroutine check_mscl()
+      integer ii
+      do ii=1,tc
+         if(rpnm%que(ii)%tid==TID_MSCL) &
+              rpnm%que(ii)%tid=TID_END
+      end do
+    end subroutine check_mscl
+
     integer function find_end()
       integer ii
       find_end=size(rpnc%que)
       do ii=k1,size(rpnc%que)
          if(rpnc%que(ii)%tid==TID_END) then
             find_end=ii-1
+            return
          end if
       end do
     end function find_end
@@ -1140,11 +1161,13 @@ contains
           p_q1=i+1
           p1=qq%p2+1
           p2=rpnb%len_expr
+       case(TID_MSCL)
+          q%tid=TID_MSCL
+          q%cid=qq%p2-qq%p1 ! count of ;
        case(TID_COL) ! only for dat mode
           q%tid=TID_COL
           q%cid=0
        case default
-          CALL DUMP_RPNB(RPNB)
           WRITE(*,*) "que=",i,"tid=",qq%tid
           STOP "*** build_rpnc: UNEXPECTED ERROR: unexpected tid in rpnb"
        end select
@@ -1647,12 +1670,29 @@ contains
 
   subroutine rpn_pop(rpnb)
     type(t_rpnb),intent(inout)::rpnb
-CALL DUMP_RPNB(RPNB)
     if(rpnb%p_buf<=0) return
     rpnb%p_que=rpnb%p_que+1
     rpnb%que(rpnb%p_que)=rpnb%buf(rpnb%p_buf)
     rpnb%p_buf=rpnb%p_buf-1
   end subroutine rpn_pop
+
+  subroutine rpn_pop_to(rpnb,tid)
+    type(t_rpnb),intent(inout)::rpnb
+    integer,intent(in)::tid
+    integer i
+    i=rpnb%p_buf+1
+    do 
+       i=i-1
+       if(i==0.or.rpnb%buf(i)%tid==tid) exit
+       select case(rpnb%buf(i)%tid)
+       case(TID_BRA,TID_QSTA,TID_IBRA,TID_COL)
+          cycle ! skip unclosed bra
+       end select
+       rpnb%p_que=rpnb%p_que+1
+       rpnb%que(rpnb%p_que)=rpnb%buf(i)
+    end do
+    rpnb%p_buf=i
+  end subroutine rpn_pop_to
 
   subroutine rpn_pop_until(rpnb,tid,fnc)
     type(t_rpnb),intent(inout)::rpnb
@@ -1810,12 +1850,17 @@ CALL DUMP_RPNB(RPNB)
        tid=get_next(rpnb,p1,p2,rpnc%rl%s)
        t=get_lo32(tid)
        select case(t)
-       case(TID_BLK)
+       case(TID_BLK,TID_IGNORE)
           cycle
        case(TID_FIN,TID_SCL)
           nvbuf=nvbuf+fc+oc+fnc+pc ! pc includes macro which needs vbuf       
           if(.not.was_operand().or.(tc/=clc.and.is_uset(RPNCOPT_DAT))) then
-             istat=RPNCERR_PARSER
+             if(nvbuf==0) then
+                istat=RPNSTA_EMPTY
+             else if(told/=TID_UNDEF) then
+                ! if TID_UNDEF ;#
+                istat=RPNCERR_PARSER
+             end if
              exit
           else
              if(.not.check_narg_all()) exit
@@ -1824,13 +1869,21 @@ CALL DUMP_RPNB(RPNB)
                 call rpn_try_pop(rpnb,TID_QSTA)
                 call rpn_put(rpnb,TID_QEND,0,0)
              end if
-             call rpn_pop_all(rpnb)
+             if(amac) then
+                call rpn_pop_to(rpnb,TID_QSTA)
+             else
+                call rpn_pop_all(rpnb)
+             end if
           end if
           if(.not.check_end()) exit
           if(t==TID_FIN) then
              exit
           else
-             call rpn_put(rpnb,TID_SCL,p1,p2) ! <<<<<<<<<<<<
+             if(.not.amac) then
+                call rpn_put(rpnb,TID_SCL,p1,p2) ! <<<<<<<<<<<<
+             else
+                call rpn_put(rpnb,TID_MSCL,p1,p2) ! <<<<<<<<<<<<
+             end if
              if(.not.amac) then
                 call init_stat
                 cycle
@@ -1846,8 +1899,6 @@ CALL DUMP_RPNB(RPNB)
              call push_implicit_mul()
           end select
           call rpn_put(rpnb,tid,p1,p2)
-!!$          if(get_up32(tid)>PID_END.and.iand(qc,1)==0) &
-!!$             istat=RPNCERR_PARSER ! @ outside macro
        case(TID_FIG)
           fc=fc+1
           call set_arg_read()
@@ -2046,7 +2097,7 @@ CALL DUMP_RPNB(RPNB)
 
     if(istat==0) then
        istat=build_rpnc(rpnb,rpnc,nvbuf)
-    else if(.not.is_set(RPNCOPT_NO_WARN)) then
+    else if(.not.is_set(RPNCOPT_NO_WARN).and.istat>0) then
        call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if
 
@@ -2225,6 +2276,7 @@ CALL DUMP_RPNB(RPNB)
       type(t_rrpnq),pointer::q
       logical first
       is_fnc_asn=.false.
+      if(amac) return !<<<<<<<<<<<<<<<<<<<<<<
       if(ac==1.and.bc==1.and.kc==1.and.pc>=0.and.fc==0) then
          ii=index(rpnb%expr(p1+1:rpnb%len_expr),";")
          if(ii==0) then
@@ -2271,6 +2323,8 @@ CALL DUMP_RPNB(RPNB)
       if(tidold/=TID_PAR) return ! exclude TID_POP
       select case(btold) 
       case(TID_UNDEF,TID_BRA,TID_ASN)
+      case(TID_SCL)
+         ! it only happens in macro def
       case(TID_QTN)
          if(iand(qc,1)==0) return ! second "
       case default
