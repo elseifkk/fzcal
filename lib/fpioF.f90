@@ -68,6 +68,7 @@ module fpio
   integer*8,parameter:: X2A_SHOW_E0        = Z"0400"
   integer*8,parameter:: X2A_FIX            = Z"0800"
   integer*8,parameter:: X2A_ENG            = Z"1000"
+  integer*8,parameter:: X2A_DMS            = Z"2000"
   integer*8,parameter:: X2A_DEFAULT        = max_digit
 
   character*(*),parameter,private::NAN_STR="NaN"
@@ -187,10 +188,15 @@ contains
   character(LEN_STR_ANS_MAX) function ztoa(z,fmt)
     complex(cp),intent(in)::z
     integer,intent(in),optional::fmt
-    if(present(fmt).and.fmt==DISP_FMT_RAW) then
-       ztoa="( "//trim(rtoa(realpart(z),fmt))//", "&
-            //trim(rtoa(imagpart(z),fmt))//" )"
-       return
+    if(present(fmt)) then
+       if(fmt==DISP_FMT_RAW) then
+          ztoa="( "//trim(rtoa(realpart(z),fmt))//", "&
+               //trim(rtoa(imagpart(z),fmt))//" )"
+          return
+       else if(iand(fmt,X2A_DMS)/=0) then
+          call todms
+          return
+       end if
     end if
     if(imagpart(z)/=rzero) then
        ztoa=trim(rtoa(imagpart(z),fmt))//" i"
@@ -209,6 +215,20 @@ contains
        ztoa=""
     end if
     ztoa=trim(rtoa(realpart(z),fmt))//trim(ztoa)
+
+    contains
+      
+      subroutine todms
+        integer d,m
+        real(rp) x,s
+        character*(*),parameter::ifmt="(i2.2)"
+        x=realpart(z)
+        d=x/(60.0_rp*60.0_rp)
+        m=(x-(d*60.0_rp*60._rp))/60.0_rp
+        s=x-60.0_rp*(m+d*60.0_rp)
+        ztoa=trim(itoa(d))//":"//trim(itoa(m))//":"//trim(rtoa(s,fmt))
+      end subroutine todms
+
   end function ztoa
 
   subroutine rmzero(s)

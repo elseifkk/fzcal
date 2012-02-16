@@ -64,7 +64,6 @@ contains
 #define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
 #define set_disp_opt(x) rpnc%opt=ior(rpnc%opt,ishft((x),32))
 #define cle_disp_opt(x) rpnc%opt=iand(rpnc%opt,not(ishft((x),32)))
-#define cle_disp_opt(x) rpnc%opt=iand(rpnc%opt,not(ishft((x),32)))
 #define put_disp_digit(x) rpnc%opt=ior(iand(rpnc%opt,digit_mask),ishft((x),32))
 
   integer function parse_command(rpnc,a,p1arg,p2arg,b)
@@ -110,25 +109,35 @@ contains
              parse_command=CID_DONE
           case("q","quit")
              parse_command=CID_EXIT
+          case("nodms")
+             cle_opt(RPNCOPT_OUTM)
+             cle_disp_opt(X2A_DMS)            
+             parse_command=CID_DONE
+          case("dms") ! degree minute second
+             cle_opt(RPNCOPT_OUTM)
+             set_disp_opt(X2A_DMS)
+             cle_disp_opt(X2A_ENG)            
+             call set_disp_digit()
+             parse_command=CID_DONE
           case("eng")
-             cle_opt((RPNCOPT_OUTM))
+             cle_opt(RPNCOPT_OUTM)
              set_disp_opt(ior(X2A_ENG,X2A_TRIM_ZERO))
              cle_disp_opt(ior(X2A_FIX,ior(X2A_SHOW_E0,X2A_ALLOW_ORDINARY)))
              call set_disp_digit()
              parse_command=CID_DONE
           case("fix")
-             cle_opt((RPNCOPT_OUTM))
+             cle_opt(RPNCOPT_OUTM)
              set_disp_opt(X2A_FIX)
              cle_disp_opt(ior(X2A_ENG,X2A_SHOW_E0))
              call set_disp_digit()
              parse_command=CID_DONE
           case("exp")
-             cle_opt((RPNCOPT_OUTM))
+             cle_opt(RPNCOPT_OUTM)
              cle_disp_opt(ior(X2A_FIX,ior(X2A_ENG,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))))
              call set_disp_digit()
              parse_command=CID_DONE
           case("fig")
-             cle_opt((RPNCOPT_OUTM))
+             cle_opt(RPNCOPT_OUTM)
              set_disp_opt(ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))
              cle_disp_opt(ior(X2A_FIX,ior(X2A_ENG,X2A_SHOW_E0)))
              n=max_digit
