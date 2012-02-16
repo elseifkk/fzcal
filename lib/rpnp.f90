@@ -175,6 +175,25 @@ contains
     ptr_input=pinput
   end subroutine init_rpnp
 
+  integer function replace(s1,p,ln,s2,ln2)
+    character*(*),intent(inout)::s1
+    character*(*),intent(in)::s2
+    integer,intent(in),optional::ln2
+    integer ls2,ls1
+    integer,intent(in)::p,ln ! p > 0, len >= 0
+    replace=0
+    if(p<=0.or.ln<0) return
+    if(present(ln2)) then
+       ls2=ln2
+    else
+       ls2=len_trim(s2)
+    end if
+    if(p+ls2-ln>len(s1)) return
+    ls1=len_trim(s1)
+    s1(p:)=s2(1:ls2)//s1(p+ln:ls1)
+    replace=ls2+ls1-ln
+  end function replace
+
   integer function strip(s)
     character*(*),intent(inout)::s
     integer i,k,wc
@@ -450,6 +469,8 @@ contains
        get_tid=TID_AT
     case("#")
        get_tid=TID_SHRP
+    case("$")
+       get_tid=TID_EMAC
     case default
        get_tid=TID_UNDEF
     end select
@@ -558,7 +579,7 @@ contains
     case(TID_USCR)
        t=TID_INV ! no par start with _
        if(p1<rpnb%len_expr) then
-          p2=get_end_of_par(rpnb,p1+1)
+          p2=get_end_of_par(rpnb,p1+1,force_alpha=.true.)
           if(p1+1==p2.and.is_ppar(rpnb%expr(p2:p2),k)) then
              t=get_i32(TID_PAR,k)
           end if
@@ -568,7 +589,7 @@ contains
        if(p1==p2) then
           t=TID_INV
        else
-          t=get_i32(TID_PAR,PID_END+1) !<<<<<<<<<<<<<
+          t=get_i32(TID_PAR,PID_INPUT)
        end if
     case(TID_PARU)
        if(rpnb%old_tid==TID_FIG.and.rpnb%expr(k:k)=="e") then
@@ -636,6 +657,15 @@ contains
           ! meta command
        else
           t=TID_FIN
+       end if
+    case(TID_EMAC)
+       t=TID_INV
+       if(p1<rpnb%len_expr) then
+          p2=get_end_of_par(rpnb,p1,force_alpha=.true.)
+          if(p2>p1) then
+             t=get_i32(TID_PAR,PID_EMAC)
+             p1=p1+1
+          end if
        end if
     end select
     
@@ -1216,7 +1246,7 @@ contains
       do ii=p_q1,ii2
          qqq => rpnb%que(ii)
          if(get_lo32(qqq%tid)==TID_PAR &
-              .and.get_up32(qqq%tid)>PID_END) then
+              .and.get_up32(qqq%tid)==PID_INPUT) then
             qqq%p1=qqq%p1+1
             istat=find_par(rpnc%pars,_EXPR_(ii),ent=kk)
             if(istat/=0) stop "proc_input: UNEXPECTED ERROR: find_par failed"
@@ -1814,8 +1844,8 @@ contains
     select case(q%tid)
     case(TID_PAR,TID_APAR)
        q%tid=tid
-       if(present(p1)) q%p1=ior(q%p1,ishft(p1,16))
-       if(present(p2)) q%p2=ior(q%p2,ishft(p2,16))
+       if(present(p1)) q%p1=get_i32(q%p1,p1)
+       if(present(p2)) q%p2=get_i32(q%p2,p2)
        set_tid_par=0
     case default
        set_tid_par=RPNCERR_PARSER
@@ -1830,7 +1860,7 @@ contains
     integer t,told,btold
     integer tid,tidold,btidold
     integer p1,p2
-    integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc,sc
+    integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc,sc,otc
     logical amac,integ
     integer pfasn
     integer p_q1
@@ -1898,7 +1928,14 @@ contains
           case(TID_FIG,TID_KET,TID_PAR,TID_UOP2,TID_UOP3)
              call push_implicit_mul()
           end select
-          call rpn_put(rpnb,tid,p1,p2)
+          if(get_up32(tid)==PID_EMAC) then
+             pc=pc-1
+             if(.not.expand_mac()) then
+                istat=RPNCERR_PARSER
+             end if
+          else
+             call rpn_put(rpnb,tid,p1,p2)
+          end if
        case(TID_FIG)
           fc=fc+1
           call set_arg_read()
@@ -1915,6 +1952,7 @@ contains
              istat=RPNCERR_PARSER        
           else if(t==TID_TOP1) then
              tc=tc+1
+             otc=otc+1
              call rpn_try_push(rpnb,t,p1,bc-kc)
              call rpn_put(rpnb,TID_DLM1,p1,bc-kc)
           else
@@ -2007,7 +2045,7 @@ contains
                 ! q    s      q     s
                 ! APAR =  ->  AMAC  MASN
                 !                  QSTA
-                istat=set_tid_par(rpnb,TID_AMAC,p1,find_chr(rpnb%expr(p1+1:rpnb%len_expr),"""")+p1)
+                istat=set_tid_par(rpnb,TID_AMAC,p1+1,find_chr(rpnb%expr(p1+1:rpnb%len_expr),"""")+p1-1)
                 rpnb%buf(rpnb%p_buf)%tid=TID_MASN ! it must be TID_ASN
                 call rpn_push(rpnb,TID_QSTA,p1,p2)
                 amac=.true.
@@ -2049,10 +2087,16 @@ contains
        case(TID_COL)
           clc=clc+1
           if(is_uset(RPNCOPT_DAT)) then
-             call rpn_pop_until(rpnb,TID_TOP1)
-             call rpn_push(rpnb,t,p1,p2)
+             if(otc>0) then
+                otc=otc-1 ! open TOP count
+                call rpn_pop_until(rpnb,TID_TOP1)
+                call rpn_push(rpnb,t,p1,p2)
+             else
+                istat=RPNCERR_PARSER
+             end if
           else
              if(clc<=1) then
+                call rpn_pop_all(rpnb)
                 call rpn_put(rpnb,t,p1,p2)
              else
                 istat=RPNCERR_PARSER
@@ -2115,12 +2159,27 @@ contains
       pfnc_opened=0
       pfasn=0
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
-      amc=0; clc=0; tc=0; sc=0
+      amc=0; clc=0; tc=0; sc=0; otc=0
       p_q1=rpnb%p_que+1
       terr=0
       p1err=0
       p2err=0
     end subroutine init_stat
+
+    logical function expand_mac()
+      integer kk,len,ptr
+      character(LEN_FORMULA_MAX) str
+      expand_mac=.false.
+      if(rpnc%rl%s%n>0) then
+         kk=find_str(rpnc%rl%s,rpnb%expr(p1:p2))
+         if(kk>0.and.get_str_ptr(rpnc%rl%rpnm(kk)%pnames,1,ptr,len)==0) then
+            rpnb%expr(p1-1:)=trim(cpstr(ptr,len))//rpnb%expr(p2+1:rpnb%len_expr)
+            rpnb%len_expr=rpnb%len_expr+len-(p2-p1+1)
+            rpnb%cur_pos=p1-1-1
+            expand_mac=.true.
+         end if
+      end if
+    end function expand_mac
 
     subroutine set_idmy(iend)
       integer,intent(in)::iend

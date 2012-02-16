@@ -995,7 +995,6 @@ contains
        i=i+1
        if(i>size(rpnc%que)) then
           rpnc%ip=0
-          call set_ans(.false.)
           exit
        end if
        ec=ec+1
@@ -1048,6 +1047,8 @@ contains
     if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
          call set_sd(rpnc%ip,rpnc)
 
+    if(.not.ansset) call set_ans(.false.)
+
     ! order is important
     call remove_dup(rpnc%pars)
     if(is_set(RPNCOPT_NEW)) call set_newpar
@@ -1081,6 +1082,7 @@ contains
       else
          rpnc%answer=rpnc%tmpans
       end if
+      ansset=.true.
    end subroutine set_ans
     
   end function eval

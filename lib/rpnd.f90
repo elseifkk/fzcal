@@ -142,6 +142,7 @@ module rpnd
   integer,parameter::TID_MSCL   = 58 ! ; in macro definition
   integer,parameter::TID_SHRP   = 59 ! #
   integer,parameter::TID_IGNORE = 60 
+  integer,parameter::TID_EMAC   = 61 ! $mac to be expanded
 
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2
@@ -251,6 +252,8 @@ module rpnd
   integer,parameter::PID_Z   = 16
   integer,parameter::PID_Y   = 17
   integer,parameter::PID_END = 17
+  integer,parameter::PID_INPUT  = 18
+  integer,parameter::PID_EMAC   = 19
 
   integer,parameter::SC_RO  = 1
   integer,parameter::SC_MAC = 2
@@ -474,7 +477,6 @@ contains
        q => rpnc%que(i)
        select case(q%tid)
        case(TID_VAR,TID_PAR,TID_CPAR,TID_ROVAR)
-          q%tid=TID_NOP
           pz=q%cid
           if(.not.col) then
              j=j+1
@@ -485,6 +487,7 @@ contains
                 rpnc%sd%ws(rpnc%sd%p_vs)=1.0_rp
              end if
           else
+             q%tid=TID_NOP
              rpnc%sd%ws(rpnc%sd%p_vs)=realpart(z)
           end if
        case(TID_COL)
