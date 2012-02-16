@@ -469,8 +469,8 @@ contains
        get_tid=TID_AT
     case("#")
        get_tid=TID_SHRP
-    case("$")
-       get_tid=TID_EMAC
+!!$    case("$")
+!!$       get_tid=TID_EMAC
     case default
        get_tid=TID_UNDEF
     end select
@@ -658,15 +658,15 @@ contains
        else
           t=TID_FIN
        end if
-    case(TID_EMAC)
-       t=TID_INV
-       if(p1<rpnb%len_expr) then
-          p2=get_end_of_par(rpnb,p1,force_alpha=.true.)
-          if(p2>p1) then
-             t=get_i32(TID_PAR,PID_EMAC)
-             p1=p1+1
-          end if
-       end if
+!!$    case(TID_EMAC)
+!!$       t=TID_INV
+!!$       if(p1<rpnb%len_expr) then
+!!$          p2=get_end_of_par(rpnb,p1,force_alpha=.true.)
+!!$          if(p2>p1) then
+!!$             t=get_i32(TID_PAR,PID_EMAC)
+!!$             p1=p1+1
+!!$          end if
+!!$       end if
     end select
     
     rpnb%old_tid=t
@@ -1928,14 +1928,14 @@ contains
           case(TID_FIG,TID_KET,TID_PAR,TID_UOP2,TID_UOP3)
              call push_implicit_mul()
           end select
-          if(get_up32(tid)==PID_EMAC) then
-             pc=pc-1
-             if(.not.expand_mac()) then
-                istat=RPNCERR_PARSER
-             end if
-          else
+!!$          if(get_up32(tid)==PID_EMAC) then
+!!$             pc=pc-1
+!!$             if(.not.expand_mac()) then
+!!$                istat=RPNCERR_PARSER
+!!$             end if
+!!$          else
              call rpn_put(rpnb,tid,p1,p2)
-          end if
+!          end if
        case(TID_FIG)
           fc=fc+1
           call set_arg_read()
@@ -2165,21 +2165,6 @@ contains
       p1err=0
       p2err=0
     end subroutine init_stat
-
-    logical function expand_mac()
-      integer kk,len,ptr
-      character(LEN_FORMULA_MAX) str
-      expand_mac=.false.
-      if(rpnc%rl%s%n>0) then
-         kk=find_str(rpnc%rl%s,rpnb%expr(p1:p2))
-         if(kk>0.and.get_str_ptr(rpnc%rl%rpnm(kk)%pnames,1,ptr,len)==0) then
-            rpnb%expr(p1-1:)=trim(cpstr(ptr,len))//rpnb%expr(p2+1:rpnb%len_expr)
-            rpnb%len_expr=rpnb%len_expr+len-(p2-p1+1)
-            rpnb%cur_pos=p1-1-1
-            expand_mac=.true.
-         end if
-      end if
-    end function expand_mac
 
     subroutine set_idmy(iend)
       integer,intent(in)::iend
@@ -2476,10 +2461,32 @@ contains
       call rpn_push(rpnb,TID_IBRA,0,0) 
     end subroutine push_implicit_bra
 
+    logical function expand_mac()
+      integer kk,len,ptr,pp2,pp1
+      integer jj
+      expand_mac=.false.
+      kk=0
+      do 
+         kk=kk+1
+         if(kk>rpnb%len_expr) exit
+         if(rpnb%expr(kk:kk)/="$") cycle
+         pp2=get_end_of_par(rpnb,kk,force_alpha=.true.)
+         if(pp2==kk) return
+         pp1=kk+1
+         if(rpnc%rl%s%n==0) return
+         jj=find_str(rpnc%rl%s,rpnb%expr(pp1:pp2))
+         if(jj<=0.or.get_str_ptr(rpnc%rl%rpnm(jj)%pnames,1,ptr,len)/=0) return
+         rpnb%len_expr=replace(rpnb%expr,kk,pp2-kk+1,cpstr(ptr,len),len)
+         kk=kk-1
+      end do
+      expand_mac=.true.
+    end function expand_mac
+
     subroutine init_rpnb(s)
       character*(*),intent(in)::s
-      rpnb%expr=s(1:LEN_FORMULA_MAX)
+      rpnb%expr=s(1:min(LEN_FORMULA_MAX,len(s)))
       rpnb%len_expr=strip(rpnb%expr)
+      if(.not.expand_mac()) STOP "hogee"
       rpnb%cur_pos=0
       rpnb%old_pos=0
       rpnb%old_tid=TID_UNDEF ! <<<<<<<<<<<<<<
