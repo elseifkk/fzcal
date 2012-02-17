@@ -951,22 +951,24 @@ contains
     tmpc%answer => rpnc%answer
     tmpc%pars   => rpnc%pars
     allocate(tmpc%p_vbuf)
-    tmpc%rc     => rpnc%rc
     tmpc%opt    => rpnc%opt
     tmpc%sd     => rpnc%sd
     allocate(tmpc%ip)
+    allocate(tmpc%rc)
     tmpc%pfs    => rpnc%pfs
     tmpc%ifnc   => rpnc%ifnc
     tmpc%ique   => rpnc%ique
     
     istat=parse_formula(tmpc,expr)
     if(istat==0) then
+       tmpc%rc=rpnc%rc+1 ! <<<
        istat=eval(tmpc) 
        if(istat==0) then
           z=tmpc%answer
        end if
     end if
     deallocate(tmpc%ip)
+    deallocate(tmpc%rc)
     deallocate(tmpc%p_vbuf)
     if(associated(tmpc%que).and.size(tmpc%que)>0) deallocate(tmpc%que)
     if(associated(tmpc%vbuf).and.size(tmpc%vbuf)>0) deallocate(tmpc%vbuf)
@@ -975,28 +977,26 @@ contains
 
   recursive function eval(rpnc) result(istat)
     type(t_rpnc),intent(inout),target::rpnc
-    integer i,istat,ec
+    integer i,istat,ec,ip1
     logical ansset
     complex(cp) v
     pointer(pv,v)
 
-    istat=0
-    ec=0
     if(rpnc%rc>RPN_REC_MAX) then
        istat=RPNCERR_RECOV
        return
     end if
 
-    ansset=.false.
     rpnc%rc=rpnc%rc+1
-    i=rpnc%ip-1
+    istat=0
+    ec=0
+    ansset=.false.
 
+    ip1=rpnc%ip
+    i=rpnc%ip-1
     do 
        i=i+1
-       if(i>size(rpnc%que)) then
-          rpnc%ip=0
-          exit
-       end if
+       if(i>size(rpnc%que)) exit
        ec=ec+1
        select case(get_lo32(rpnc%que(i)%tid))
        case(TID_OP,TID_OPN,TID_AOP)
@@ -1020,15 +1020,13 @@ contains
        case(TID_ISTA)
           i=i+rpnc%que(i)%cid+1
        case(TID_END)
-          ec=ec-1
-          rpnc%que(i)%tid=TID_NOP
-          call set_ans(.true.)
           if(rpnc%rc==1.and.rpnc%que(i)%cid/=0) then
              ! multiple ";"  will exit the loop
-             rpnc%ip=i+1 ! the next code
+             ec=ec-1
              exit
+          else
+             ec=0
           end if
-          ec=0
        case default
           ec=ec-1
        end select
@@ -1039,19 +1037,24 @@ contains
        end if
 
     end do
-
     rpnc%rc=rpnc%rc-1
 
     if(istat/=0) return
 
     if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
-         call set_sd(rpnc%ip,rpnc)
+         call set_sd(ip1,i,rpnc)
 
-    if(.not.ansset) call set_ans(.false.)
+    call set_ans
 
     ! order is important
     call remove_dup(rpnc%pars)
     if(is_set(RPNCOPT_NEW)) call set_newpar
+
+    if(i>=size(rpnc%que)) then
+       rpnc%ip=0
+    else
+       rpnc%ip=i+1 ! the next code
+    end if
 
   contains
     
@@ -1063,22 +1066,25 @@ contains
       cle_opt(RPNCOPT_NEW)
     end subroutine set_newpar
 
-    subroutine set_ans(end)
-      logical,intent(in)::end
+    subroutine set_ans
       integer k1,kk
       if(ec==0) then ! only fig or par
-         if(end) then
-            k1=i-1
-         else
+         if(i>size(rpnc%que)) then
             k1=size(rpnc%que)
+         else
+            k1=i-1 ! i => TID_END
          end if
-         do kk=k1,1,-1                          ! <<<<<<<<<<<<<<<<<<<<<<,
-            if(rpnc%que(kk)%tid/=TID_NOP) then  ! <<<<<<<<<<<<<<<<<<<<<<,
-               pv=rpnc%que(kk)%cid              ! <<<<<<<<<<<<<<<<<<<<<<,
-               rpnc%answer=v                    ! <<<<<<<<<<<<<<<<<<<<<<,
-               exit                             ! <<<<<<<<<<<<<<<<<<<<<<,
-            end if                              ! <<<<<<<<<<<<<<<<<<<<<<,
-         end do                                 ! <<<<<<<<<<<<<<<<<<<<<<,
+         do kk=k1,ip1,-1
+            select case(rpnc%que(kk)%tid)
+            case(TID_VAR,TID_PAR,TID_CPAR,TID_ROVAR)
+               pv=rpnc%que(kk)%cid             
+               rpnc%answer=v                   
+               exit                            
+               !case(TID_END)
+               !  should never come here 
+               !exit
+            end select
+         end do                                
       else
          rpnc%answer=rpnc%tmpans
       end if
