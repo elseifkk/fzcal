@@ -455,8 +455,8 @@ contains
     if(istat/=0) write(*,*) "*** Error delete_par: "//trim(s)//": code = ",istat
   end subroutine delete_par
 
-  subroutine set_sd(ip,rpnc)
-    integer,intent(in)::ip
+  subroutine set_sd(ip1,ip2,rpnc)
+    integer,intent(in)::ip1,ip2
     type(t_rpnc),intent(inout),target::rpnc
     integer i,j,i2
     complex(cp) z
@@ -466,14 +466,8 @@ contains
 
     if(.not.allocated(rpnc%sd%vs)) call init_sd(rpnc%sd)
     call next
-    if(ip==0) then
-       i2=size(rpnc%que)
-    else
-       ! the last operand
-       ! ip points to next of ;;
-       i2=ip-2 
-    end if
-    do i=1,i2
+    i2=min(size(rpnc%que),ip2)
+    do i=ip1,i2
        q => rpnc%que(i)
        select case(q%tid)
        case(TID_VAR,TID_PAR,TID_CPAR,TID_ROVAR)
@@ -494,6 +488,7 @@ contains
           q%tid=TID_NOP
           col=.true.
        case(TID_END)
+          if(i==i2) exit
           q%tid=TID_NOP
           call next
        end select
@@ -554,17 +549,17 @@ contains
     sd%p_vs=0
   end subroutine reset_sd
 
-  integer function get_lo32(cid)
+  pure integer function get_lo32(cid)
     integer,intent(in)::cid
     get_lo32=iand(cid,int(Z"FFFF",kind=4))
   end function get_lo32
 
-  integer function get_up32(cid)
+  pure integer function get_up32(cid)
     integer,intent(in)::cid
     get_up32=iand(ishft(cid,-16),int(Z"FFFF",kind=4))
   end function get_up32
 
-  integer function get_i32(lo,up)
+  pure integer function get_i32(lo,up)
     integer,intent(in)::lo,up
     get_i32=ior(lo,ishft(up,16))
   end function get_i32
