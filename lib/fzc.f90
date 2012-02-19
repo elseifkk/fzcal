@@ -143,7 +143,7 @@ contains
     pr=ptr_rpnc
     call c2fstr(ptr_str,name)
     fzc_regist_parameter=&
-         int(add_par_by_reference(rpnc%pars,name,ptr_var,ro=.true.,pk=int(pk)),kind=C_INT)
+         int(add_par_by_reference(rpnc%pars,trim(adjustl(name)),ptr_var,ro=.true.,pk=int(pk)),kind=C_INT)
   end function fzc_regist_parameter
 
   subroutine fzc_cle_dat(ptr_rpnc)
