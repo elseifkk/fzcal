@@ -749,7 +749,7 @@ contains
 14  format(x,z16)
 16  format(x,i8,x,a)
     write(*,*) "vbuf dump:"
-    write(*,*) "size= ",rpnc%p_vbuf
+    write(*,*) "size used/alloc= ",rpnc%p_vbuf,size(rpnc%vbuf)
     if(rpnc%p_vbuf>0) then
        do i=1,rpnc%p_vbuf
           write(*,13) i,loc(rpnc%vbuf(i)),trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW))

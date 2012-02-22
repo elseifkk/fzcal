@@ -97,7 +97,7 @@ contains
     complex(cp) v
     pointer(pv,v)
 
-    kd=get_up32(rpnc%que(i)%cid)
+    kd=get_up32(rpnc%que(i)%cid)+i
     od1=get_operand(rpnc,i-1)
 
     if(od1==0) then
