@@ -1374,15 +1374,20 @@ contains
     subroutine find_delim(pos)
       integer,intent(in)::pos
       integer ii
-      do ii=1,size(rpnb%que)
-         if(rpnb%que(ii)%tid==TID_DLM1&
-              .and.rpnb%que(ii)%p1==pos) then
-            rpnc%que(ii)=q
-            rpnc%que(ii)%cid=get_i32(rpnc%que(ii)%cid,i)
-            q%tid=TID_DLM1
-            q%cid=rpnb%que(ii)%p2 ! = bc-kc
-            return
-         end if
+      ! i => TOP1
+      do ii=i,p_q1,-1
+         select case(rpnb%que(ii)%tid)
+         case(TID_DLM1)
+            if(rpnb%que(ii)%p1==pos) then
+               rpnc%que(ii)=q
+               rpnc%que(ii)%cid=get_i32(rpnc%que(ii)%cid,i-ii)
+               q%tid=TID_DLM1
+               q%cid=rpnb%que(ii)%p2 ! = bc-kc
+               return
+            end if
+         case(TID_SCL)
+            exit
+         end select
       end do
       istat=RPNCERR_PARSER
     end subroutine find_delim
