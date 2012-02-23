@@ -21,8 +21,8 @@ module memio
   implicit none
   public
 
-  integer,parameter::DISP_FMT_RAW   = 0
-  integer,parameter::DISP_FMT_NORM  = 1
+  integer,parameter::DISP_FMT_RAW   =  0
+  integer,parameter::DISP_FMT_NORM  =  1
 
   integer,parameter::DISP_FMT_BIN   = -1
   integer,parameter::DISP_FMT_OCT   = -2
@@ -96,7 +96,6 @@ contains
     read(a,sfmt,iostat=istat) atoi_8
     if(present(ist)) ist=istat
   end function atoi_8
-
 
   character*32 function itoa_4(i,fmt) 
     integer*4,intent(in)::i

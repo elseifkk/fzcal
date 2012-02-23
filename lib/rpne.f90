@@ -235,6 +235,7 @@ contains
           rpnc%que(ks(k1))%tid=tid
        end if
     end if
+
     rpnc%que(i)%tid=TID_NOP
     if(k1==0) then
        ! no wratable vars
@@ -614,7 +615,9 @@ contains
     allocate(ifnc%que(nc),rpnc%ique(nc))
     allocate(ifnc%p_vbuf)
     allocate(ifnc%ip)
+    allocate(ifnc%rc)
     ifnc%ip     = 1
+    ifnc%rc     = rpnc%rc
     ifnc%que    = rpnc%que(i1:i2)
     ifnc%p_vbuf = 0
     nullify(ifnc%vbuf)
@@ -623,7 +626,6 @@ contains
     ifnc%answer => rpnc%answer
     ifnc%tmpans => rpnc%tmpans
     ifnc%rl     => rpnc%rl
-    ifnc%rc     => rpnc%rc
     ifnc%pfs    => rpnc%pfs
     ifnc%opt    => rpnc%opt
     ifnc%sd     => rpnc%sd
@@ -636,6 +638,7 @@ contains
     pf=rpnc%que(i)%cid
     pa=pvs(1)
     pb=pvs(2)
+
     x=f(loc(rpnc),loc(integrand),realpart(a),realpart(b))
     ans=complex(x,rzero)
 
@@ -647,6 +650,7 @@ contains
          deallocate(ifnc%vbuf)
     deallocate(ifnc%p_vbuf)
     deallocate(ifnc%ip)
+    deallocate(ifnc%rc)
     deallocate(rpnc%ifnc)
 
     istat=0
@@ -978,7 +982,6 @@ contains
   recursive function eval(rpnc) result(istat)
     type(t_rpnc),intent(inout),target::rpnc
     integer i,istat,ec,ip1
-    logical ansset
     complex(cp) v
     pointer(pv,v)
 
@@ -990,7 +993,6 @@ contains
     rpnc%rc=rpnc%rc+1
     istat=0
     ec=0
-    ansset=.false.
 
     ip1=rpnc%ip
     i=rpnc%ip-1
@@ -1037,6 +1039,7 @@ contains
        end if
 
     end do
+
     rpnc%rc=rpnc%rc-1
 
     if(istat/=0) return
@@ -1046,12 +1049,14 @@ contains
 
     call set_ans
 
-    ! order is important
-    call remove_dup(rpnc%pars)
-    if(is_set(RPNCOPT_NEW)) call set_newpar
-
     if(i>=size(rpnc%que)) then
        rpnc%ip=0
+       if(rpnc%rc==0) then
+          ! this is the last time
+          ! order is important
+          call remove_dup(rpnc%pars)
+          if(is_set(RPNCOPT_NEW)) call set_newpar
+       end if
     else
        rpnc%ip=i+1 ! the next code
     end if
@@ -1079,6 +1084,7 @@ contains
             case(TID_VAR,TID_PAR,TID_CPAR,TID_ROVAR)
                pv=rpnc%que(kk)%cid             
                rpnc%answer=v                   
+               rpnc%que(kk)%tid=TID_NOP
                exit                            
                !case(TID_END)
                !  should never come here 
@@ -1088,7 +1094,6 @@ contains
       else
          rpnc%answer=rpnc%tmpans
       end if
-      ansset=.true.
    end subroutine set_ans
     
   end function eval

@@ -1368,7 +1368,7 @@ contains
       else if(is_set(RPNCOPT_IHEX)) then
          f=DISP_FMT_HEX
       end if
-      x=real(atoi(_EXPR_(i),f,read_fig),kind=rp)
+      x=real(atoi(_EXPR_(i),0,f,read_fig),kind=rp)
     end function read_fig
 
     subroutine find_delim(pos)

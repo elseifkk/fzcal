@@ -119,27 +119,31 @@ contains
              cle_disp_opt(X2A_ENG)            
              call set_disp_digit()
              parse_command=CID_DONE
+          case("noeng")
+             cle_opt(RPNCOPT_OUTM)
+             cle_disp_opt(X2A_ENG)
+             parse_command=CID_DONE
           case("eng")
              cle_opt(RPNCOPT_OUTM)
-             set_disp_opt(ior(X2A_ENG,X2A_TRIM_ZERO))
-             cle_disp_opt(ior(X2A_FIX,ior(X2A_SHOW_E0,X2A_ALLOW_ORDINARY)))
+             set_disp_opt(X2A_ENG)
+             cle_disp_opt(X2A_DMS)
              call set_disp_digit()
              parse_command=CID_DONE
           case("fix")
              cle_opt(RPNCOPT_OUTM)
              set_disp_opt(X2A_FIX)
-             cle_disp_opt(ior(X2A_ENG,X2A_SHOW_E0))
+             cle_disp_opt(X2A_SHOW_E0)
              call set_disp_digit()
              parse_command=CID_DONE
           case("exp")
              cle_opt(RPNCOPT_OUTM)
-             cle_disp_opt(ior(X2A_FIX,ior(X2A_ENG,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))))
+             cle_disp_opt(ior(X2A_FIX,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO)))
              call set_disp_digit()
              parse_command=CID_DONE
           case("fig")
              cle_opt(RPNCOPT_OUTM)
              set_disp_opt(ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))
-             cle_disp_opt(ior(X2A_FIX,ior(X2A_ENG,X2A_SHOW_E0)))
+             cle_disp_opt(ior(X2A_FIX,X2A_SHOW_E0))
              n=max_digit
              put_disp_digit(n)
              parse_command=CID_DONE

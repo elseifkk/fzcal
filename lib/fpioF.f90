@@ -63,12 +63,12 @@ module fpio
 
   integer,parameter::LEN_STR_ANS_MAX=128
   
-  integer*8,parameter:: X2A_ALLOW_ORDINARY = Z"0100"
-  integer*8,parameter:: X2A_TRIM_ZERO      = Z"0200"
-  integer*8,parameter:: X2A_SHOW_E0        = Z"0400"
-  integer*8,parameter:: X2A_FIX            = Z"0800"
-  integer*8,parameter:: X2A_ENG            = Z"1000"
-  integer*8,parameter:: X2A_DMS            = Z"2000"
+  integer*8,parameter:: X2A_ALLOW_ORDINARY = Z"00000100"
+  integer*8,parameter:: X2A_TRIM_ZERO      = Z"00000200"
+  integer*8,parameter:: X2A_SHOW_E0        = Z"00000400"
+  integer*8,parameter:: X2A_FIX            = Z"00000800"
+  integer*8,parameter:: X2A_ENG            = Z"00001000"
+  integer*8,parameter:: X2A_DMS            = Z"00002000"
   integer*8,parameter:: X2A_DEFAULT        = max_digit
 
   character*(*),parameter,private::NAN_STR="NaN"
@@ -193,7 +193,7 @@ contains
           ztoa="( "//trim(rtoa(realpart(z),fmt))//", "&
                //trim(rtoa(imagpart(z),fmt))//" )"
           return
-       else if(iand(fmt,X2A_DMS)/=0) then
+       else if(fmt>0.and.iand(fmt,X2A_DMS)/=0) then
           call todms
           return
        end if
