@@ -724,13 +724,14 @@ contains
              end if
           else
              if(t==TID_CPAR) then
-                write(*,*) "(copied)"
-                cycle
+                write(*,"(a,$)") " (copied)"
+                pv=q%cid
+                z=v
              end if
              pv=q%cid
              z=v
              if(pv==0) then
-                write(*,*) "(undef)"
+                write(*,*) " (undef)"
                 cycle
              end if
           end if
