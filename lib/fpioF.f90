@@ -28,28 +28,24 @@ module fpio
 #if !defined _NO_REAL16_
   integer,parameter::rp=qp
   integer,parameter::cp=qp
-  integer,parameter::max_digit=33
   character*(*),parameter::cfmt="(ES41.33e4)"
   real(rp),parameter::int_max=2.0_rp**63.0_rp-1.0_rp
 #elif !defined _NO_REAL10_
   integer,parameter::rp=ep
   integer,parameter::cp=ep
-  integer,parameter::max_digit=18
   character*(*),parameter::cfmt="(ES26.18e4)"
   real(rp),parameter::int_max=2.0_rp**63.0_rp-1.0_rp
 #else
 #define _RP_IS_DP_
   integer,parameter::rp=dp
   integer,parameter::cp=dp
-  integer,parameter::max_digit=17 !15
   real(rp),parameter::int_max=2.0_rp**31_rp-1.0_rp
-  character*(*),parameter::cfmt="(ES25.16e4)" !"(ES23.15e4)"
+  character*(*),parameter::cfmt="(ES25.16e4)"
 #endif
-  integer,parameter::min_digit=3
-
-  real(rp),parameter::eps=epsilon(0.0_rp)
-  real(rp),parameter::pre=precision(0.0_rp)
   real(rp),parameter::rzero=0.0_rp
+  integer,parameter::min_digit=3
+  integer,parameter::max_digit=precision(rzero)
+  real(rp),parameter::eps=epsilon(rzero)
   complex(cp),parameter::czero=complex(rzero,rzero)
   real(rp),public,parameter::pi =4.0_rp*atan(1.0_rp)
   real(rp),public,parameter::pi2=2.0_rp*pi
