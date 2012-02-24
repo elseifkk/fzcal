@@ -37,7 +37,7 @@ program fzcal
   integer fu
   character*32 prompt
   integer i
-  
+
   p=init_rpnc()
   call init_rpne
 
