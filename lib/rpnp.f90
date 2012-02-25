@@ -2473,14 +2473,15 @@ contains
       kk=0
       do 
          kk=kk+1
-         if(kk>rpnb%len_expr) exit
+         if(kk>=rpnb%len_expr) exit
          if(rpnb%expr(kk:kk)/="$") cycle
-         pp2=get_end_of_par(rpnb,kk,force_alpha=.true.)
-         if(pp2==kk) return
          pp1=kk+1
+         if(.not.is_alpha(iachar(rpnb%expr(pp1:pp1)))) return
+         pp2=get_end_of_par(rpnb,pp1)
          if(rpnc%rl%s%n==0) return
          jj=find_str(rpnc%rl%s,rpnb%expr(pp1:pp2))
-         if(jj<=0.or.get_str_ptr(rpnc%rl%rpnm(jj)%pnames,1,ptr,len)/=0) return
+         if(jj<=0) return
+         if(get_str_ptr(rpnc%rl%rpnm(jj)%pnames,1,ptr,len)/=0) return
          rpnb%len_expr=replace(rpnb%expr,kk,pp2-kk+1,cpstr(ptr,len),len)
          kk=kk-1
       end do

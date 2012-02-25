@@ -93,6 +93,9 @@ contains
        select case(parse_command)
        case(CID_NOP)
           select case(a(p1:p2))
+          case("h","help")
+             call print_help
+             parse_command=CID_DONE
           case("read")
              call read_arg
              parse_command=CID_READ
@@ -374,6 +377,22 @@ contains
       end do
       b=trim(str)
     end subroutine read_arg
+
+    subroutine print_help()
+      character*(*),parameter::coms=&
+           "quit\tread\twrite\n"&
+           //"print\techo\tprompt\n"&
+           //"delete\tinit\tdebug\n"&
+           //"stat\tdata\tnorm\n"&
+           //"load\trad\tdeg\n"&
+           //"opt\thelp\tcle\n"&
+           //"ratio\tfrac\tfig\n"&
+           //"fix\texp\teng\n"&
+           //"dms\tnoeng\tnodms\n"&
+           //"dec\tbin\toct\n"&
+           //"hex\tDec\tBin\n"
+           write(*,"(a)") coms
+    end subroutine print_help
 
   end function parse_command
 
