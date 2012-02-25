@@ -96,6 +96,12 @@ contains
           case("h","help")
              call print_help
              parse_command=CID_DONE
+          case("byte")
+             set_opt(RPNCOPT_BYTE)
+             parse_command=CID_DONE
+          case("nobyte")
+             cle_opt(RPNCOPT_BYTE)
+             parse_command=CID_DONE
           case("read")
              call read_arg
              parse_command=CID_READ
@@ -129,7 +135,7 @@ contains
           case("eng")
              cle_opt(RPNCOPT_OUTM)
              set_disp_opt(X2A_ENG)
-             cle_disp_opt(X2A_DMS)
+             cle_disp_opt(ior(X2A_DMS,X2A_ALLOW_ORDINARY)) ! <<<<<<<<<<<<<<<
              call set_disp_digit()
              parse_command=CID_DONE
           case("fix")
@@ -195,7 +201,7 @@ contains
           case("dbg","debug")
              set_opt(RPNCOPT_DEBUG)
              parse_command=CID_DONE
-          case("cle")
+          case("cle","clear")
              parse_command=CID_SCLE
           case("s","sta","stat")
              set_opt(RPNCOPT_STA)
@@ -379,19 +385,66 @@ contains
     end subroutine read_arg
 
     subroutine print_help()
-      character*(*),parameter::coms=&
-           "quit\tread\twrite\n"&
-           //"print\techo\tprompt\n"&
-           //"delete\tinit\tdebug\n"&
-           //"stat\tdata\tnorm\n"&
-           //"load\trad\tdeg\n"&
-           //"opt\thelp\tcle\n"&
-           //"ratio\tfrac\tfig\n"&
-           //"fix\texp\teng\n"&
-           //"dms\tnoeng\tnodms\n"&
-           //"dec\tbin\toct\n"&
-           //"hex\tDec\tBin\n"
-           write(*,"(a)") coms
+      integer i,j
+      character*(*),parameter::coms(12*4)=[&
+           "help     ",&    
+           "[no]debug",&      
+           "opt      ",&        
+           "quit     ",&            
+           "init     ",&            
+           "         ",&                       
+           "read     ",&                 
+           "write    ",&                    
+           "load     ",&                 
+           "prompt   ",&                  
+           "echo     ",&                 
+           "print    ",&                 
+           !
+           "[no]dms  ",&                   
+           "[no]eng  ",&                         
+           "fix      ",&                   
+           "exp      ",&                    
+           "fig      ",&                    
+           "[no]byte ",&                    
+           "         ",&               
+           "bin      ",&                     
+           "oct      ",&                  
+           "dec      ",&               
+           "hex      ",&                  
+           "Bin      ",&
+           !
+           "Oct      ",&                  
+           "Dec      ",&                  
+           "Hex      ",&                  
+           "BIN      ",&                  
+           "OCT      ",&                
+           "DEC      ",&                  
+           "HEX      ",&                  
+           "deg      ",&                  
+           "rad      ",&                  
+           "ratio    ",&                      
+           "frac     ",&                
+           "         ",&                
+           !        
+           "stat     ",&                
+           "data     ",&                     
+           "clear    ",&                    
+           "norm     ",&                
+           "         ",&
+           "         ",&
+           "         ",&
+           "         ",&
+           "         ",&
+           "         ",&
+           "         ",&
+           "         "]
+      do j=1,12
+         do i=1,4
+            write(*,"(a,$)") coms(j+(i-1)*12)//"\t"
+         end do
+         write(*,*)
+      end do
+      
     end subroutine print_help
 
   end function parse_command

@@ -469,8 +469,6 @@ contains
        get_tid=TID_AT
     case("#")
        get_tid=TID_SHRP
-!!$    case("$")
-!!$       get_tid=TID_EMAC
     case default
        get_tid=TID_UNDEF
     end select
@@ -658,15 +656,6 @@ contains
        else
           t=TID_FIN
        end if
-!!$    case(TID_EMAC)
-!!$       t=TID_INV
-!!$       if(p1<rpnb%len_expr) then
-!!$          p2=get_end_of_par(rpnb,p1,force_alpha=.true.)
-!!$          if(p2>p1) then
-!!$             t=get_i32(TID_PAR,PID_EMAC)
-!!$             p1=p1+1
-!!$          end if
-!!$       end if
     end select
     
     rpnb%old_tid=t
@@ -1933,14 +1922,7 @@ contains
           case(TID_FIG,TID_KET,TID_PAR,TID_UOP2,TID_UOP3)
              call push_implicit_mul()
           end select
-!!$          if(get_up32(tid)==PID_EMAC) then
-!!$             pc=pc-1
-!!$             if(.not.expand_mac()) then
-!!$                istat=RPNCERR_PARSER
-!!$             end if
-!!$          else
-             call rpn_put(rpnb,tid,p1,p2)
-!          end if
+          call rpn_put(rpnb,tid,p1,p2)
        case(TID_FIG)
           fc=fc+1
           call set_arg_read()
