@@ -336,6 +336,8 @@ contains
     integer istat
     real(rp) p
     complex(cp) z
+    real(rp),parameter::kB=1024.0_rp
+
     select case(rpnc%que(i)%cid)
     case(PID_yoc)
        p=1.0e-24_rp
@@ -354,21 +356,53 @@ contains
     case(PID_mi)
        p=1.0e-3_rp
     case(PID_k)
-       p=1.0e+3_rp
+       if(is_uset(RPNCOPT_BYTE)) then
+          p=1.0e+3_rp
+       else
+          p=kB
+       end if
     case(PID_M)
-       p=1.0e+6_rp
+       if(is_uset(RPNCOPT_BYTE)) then
+          p=1.0e+6_rp
+       else
+          p=kB**2.0_rp
+       end if
     case(PID_G)
-       p=1.0e+9_rp
+       if(is_uset(RPNCOPT_BYTE)) then
+          p=1.0e+9_rp
+       else
+          p=kB**3.0_rp
+       end if
     case(PID_T)
-       p=1.0e+12_rp
+       if(is_uset(RPNCOPT_BYTE)) then
+          p=1.0e+12_rp
+       else
+          p=kB**4.0_rp
+       end if
     case(PID_P)
-       p=1.0e+15_rp
+       if(is_uset(RPNCOPT_BYTE)) then
+          p=1.0e+15_rp
+       else
+          p=kB**5.0_rp
+       end if
     case(PID_E)
-       p=1.0e+18_rp
+       if(is_uset(RPNCOPT_BYTE)) then
+          p=1.0e+18_rp
+       else
+          p=kB**6.0_rp
+       end if
     case(PID_Z)
-       p=1.0e+21_rp
+       if(is_uset(RPNCOPT_BYTE)) then
+          p=1.0e+21_rp
+       else
+          p=kB**7.0_rp
+       end if
     case(PID_Y)
-       p=1.0e+24_rp
+       if(is_uset(RPNCOPT_BYTE)) then
+          p=1.0e+24_rp
+       else
+          p=kB**8.0_rp
+       end if
     case default
        stop "unexpected error in eval_p"
     end select

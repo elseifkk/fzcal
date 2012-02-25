@@ -229,6 +229,7 @@ module rpnd
   integer*8,parameter::RPNCOPT_IOCT            =  Z"00001000"
   integer*8,parameter::RPNCOPT_IHEX            =  Z"00002000"
   integer*8,parameter::RPNCOPT_INM = ior(RPNCOPT_IHEX,ior(RPNCOPT_IOCT,RPNCOPT_IBIN))     
+  integer*8,parameter::RPNCOPT_BYTE            =  Z"00004000" ! for SI prefix k to be 1024
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
