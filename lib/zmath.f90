@@ -353,8 +353,8 @@ contains
     end if
   end function zm_pow
 
-  complex(cp) function zm_invpow(z2,z1)
-    complex(cp),intent(in)::z2,z1
+  complex(cp) function zm_invpow(z1,z2)
+    complex(cp),intent(in)::z1,z2
     integer*8 n1,n2
     if(is_integer(z2,n2)) then
        if(is_integer(z1,n1)) then
