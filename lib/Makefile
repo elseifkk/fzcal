@@ -87,13 +87,13 @@ fzcal: $(BINOBJ)
 install: install-lib install-bin
 
 install-lib: $(ALIBTARG) $(SOLIBTARG) 
-	cp -pf $(.ALLSRC) $(LIBDIR) 
-	cp -pf fzc.h $(INCDIR)
+	cp -pRf $(.ALLSRC) $(LIBDIR) 
+	cp -pRf fzc.h $(INCDIR)
 	ln -sf $(SOLIBTARG) $(SOFILE)
-	cp -p $(SOFILE) $(LIBDIR)
+	cp -pRf $(SOFILE) $(LIBDIR)
 
 install-bin: $(BINTARG)
-	cp -pf $(.ALLSRC) $(BINDIR)
+	cp -pRf $(.ALLSRC) $(BINDIR)
 
 clean:
 	rm -f *.o *.mod $(BINTARG) $(ALIBTARG) $(SOLIBTARG) $(SOFILE)
