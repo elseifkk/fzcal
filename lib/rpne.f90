@@ -571,12 +571,12 @@ contains
 
   end function eval_n
 
-  recursive function integrand(pc,n,x) result(s)
+  recursive function integrand1(pc,n,x) result(s)
     use fpio, only: rp,rzero
     integer,intent(in)::pc
     integer,intent(in)::n
     real(rp),intent(in)::x(n)
-    real(rp) s
+    complex(cp) s
     type(t_rpnc) rpnc
     type(t_rpnc),pointer::ifnc
     pointer(prpnc,rpnc)
@@ -592,8 +592,7 @@ contains
     call set_dmy_par
 
     istat=eval(ifnc)
-    s=realpart(ifnc%answer)
-
+    s=ifnc%answer
     ifnc%p_vbuf=p_vbuf_in
 
   contains
@@ -621,21 +620,21 @@ contains
       ifnc%que(i)%tid=TID_VAR      
     end subroutine put_dmy_par
 
-  end function integrand
+  end function integrand1
 
   recursive function eval_i(rpnc,i) result(istat)
     use fpio, only: cp,rzero
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     interface
-       complex(cp) function f(ptr_rpnc,ptr_integrand,a,b)
+       complex(cp) function f1(ptr_rpnc,ptr_integrand,a,b)
          use fpio, only: cp, rp
          integer,intent(in)::ptr_rpnc
          integer,intent(in)::ptr_integrand
          real(rp),intent(in)::a,b
-       end function f
+       end function f1
     end interface
-    pointer(pf,f)
+    pointer(pf1,f1)
     integer istat
     integer pvs(0:2)
     integer ods(2)
@@ -644,7 +643,6 @@ contains
     complex(cp) a,b,ans
     pointer(pa,a)
     pointer(pb,b)
-    real(rp) x
 
     istat=get_operands(rpnc,i,2,ks=ods,ps=pvs(1:2))
     if(istat/=0) return
@@ -681,12 +679,11 @@ contains
     call set_idmy
     rpnc%ique=ifnc%que
 
-    pf=rpnc%que(i)%cid
+    pf1=rpnc%que(i)%cid
     pa=pvs(1)
     pb=pvs(2)
 
-    x=f(loc(rpnc),loc(integrand),realpart(a),realpart(b))
-    ans=complex(x,rzero)
+    ans=f1(loc(rpnc),loc(integrand1),realpart(a),realpart(b))
 
     call set_result(rpnc,i,ans,2,ods)
     rpnc%que(i1:i2)%tid=TID_NOP
@@ -990,7 +987,7 @@ contains
     type(t_rpnc) tmpc
 
     write(*,*) "Input pending for: "//trim(p)
-    write(*,10) trim(s)//"? > "
+    write(*,10) trim(s(2:))//"? > "
 10  format(x,a,$)
     read(*,20,iostat=istat) expr
 20  format(a)

@@ -97,15 +97,19 @@ contains
     if(present(ist)) ist=istat
   end function atoi_8
 
-  character*32 function itoa_4(i,fmt) 
+  character*32 function itoa_4(i,fmt,cfmt,len) 
     integer*4,intent(in)::i
     integer,intent(in),optional::fmt
-    itoa_4=itoa_8(int(i,kind=8),fmt)
+    character*(*),intent(in),optional::cfmt
+    integer,intent(in),optional::len
+    itoa_4=itoa_8(int(i,kind=8),fmt,cfmt,len)
   end function itoa_4
 
-  character*32 function itoa_8(i,fmt) 
+  character*32 function itoa_8(i,fmt,cfmt,len) 
     integer*8,intent(in)::i
     integer,intent(in),optional::fmt
+    character*(*),intent(in),optional::cfmt
+    integer,intent(in),optional::len
     integer f,istat
     character*32 sfmt
     itoa_8=""
@@ -114,22 +118,35 @@ contains
     else
        f=DISP_FMT_DEC
     end if
-    select case(f)
-    case(DISP_FMT_RAW)
-       write(itoa_8,*,iostat=istat) i
-       if(istat==0) itoa_8=adjustl(itoa_8)
-       return
-    case(DISP_FMT_DEC,DISP_FMT_NORM)
-       sfmt="(I0)"
-    case(DISP_FMT_HEX)
-       sfmt="(Z0)"
-    case(DISP_FMT_BIN)
-       sfmt="(B0)"
-    case(DISP_FMT_OCT)
-       sfmt="(O0)"
-    end select
+    if(present(cfmt)) then
+       sfmt=cfmt
+    else
+       select case(f)
+       case(DISP_FMT_RAW)
+          write(itoa_8,*,iostat=istat) i
+          if(istat==0) call adj
+          return
+       case(DISP_FMT_DEC,DISP_FMT_NORM)
+          sfmt="(I0)"
+       case(DISP_FMT_HEX)
+          sfmt="(Z0)"
+       case(DISP_FMT_BIN)
+          sfmt="(B0)"
+       case(DISP_FMT_OCT)
+          sfmt="(O0)"
+       end select
+    end if
     write(itoa_8,sfmt,iostat=istat) i
-    if(istat==0) itoa_8=adjustl(itoa_8)
+    if(istat==0) call adj
+  contains 
+    subroutine adj
+      integer lp
+      itoa_8=adjustl(itoa_8)
+      if(.not.present(len)) return
+      lp=len-len_trim(itoa_8)
+      if(lp<=0) return
+      itoa_8=repeat(" ",lp)//trim(itoa_8)
+    end subroutine adj
   end function itoa_8
 
 #ifdef _NO_ASM_
