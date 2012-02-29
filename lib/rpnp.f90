@@ -18,18 +18,8 @@
 ! *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 module rpnp
-  use slist
-  use plist
-  use fpio
   use rpnd
   implicit none
-
-#define is_set(x) (iand(rpnc%opt,(x))/=0)
-#define is_uset(x) (iand(rpnc%opt,(x))==0)
-#define is_setb(x) (iand(rpnb%opt,(x))/=0)
-#define is_usetb(x) (iand(rpnb%opt,(x))==0)
-#define set_opt(x) rpnc%opt=ior(rpnc%opt,(x))
-#define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
 
   character*(*),parameter::LOPS_NOT ="not"
   character*(*),parameter::LOPS_AND ="and"
@@ -175,48 +165,9 @@ contains
     ptr_input=pinput
   end subroutine init_rpnp
 
-  integer function replace(s1,p,ln,s2,ln2)
-    character*(*),intent(inout)::s1
-    character*(*),intent(in)::s2
-    integer,intent(in),optional::ln2
-    integer ls2,ls1
-    integer,intent(in)::p,ln ! p > 0, len >= 0
-    replace=0
-    if(p<=0.or.ln<0) return
-    if(present(ln2)) then
-       ls2=ln2
-    else
-       ls2=len_trim(s2)
-    end if
-    if(p+ls2-ln>len(s1)) return
-    ls1=len_trim(s1)
-    s1(p:)=s2(1:ls2)//s1(p+ln:ls1)
-    replace=ls2+ls1-ln
-  end function replace
-
-  integer function strip(s)
-    character*(*),intent(inout)::s
-    integer i,k,wc
-    k=0
-    wc=0
-    do i=1,len(s)
-       select case(s(i:i))
-       case(" ","\t")
-          wc=wc+1
-          if(wc>1) cycle
-       case(achar(0))
-          exit
-       case default
-          wc=0
-       end select
-       k=k+1
-       if(k/=i) s(k:k)=s(i:i)
-    end do
-    if(wc/=0) k=k-1
-    strip=k
-  end function strip
-
   integer function get_end_of_fig(rpnb,k_)
+    use misc, only: is_numeric,is_bin_number,is_oct_number,is_hex_number,&
+         is_set,is_not_set
     type(t_rpnb),intent(in)::rpnb
     integer,intent(in)::k_
     integer c,a,k
@@ -234,13 +185,13 @@ contains
        c=0
     end if
     
-    if(is_usetb(RPNCOPT_INM)) then
+    if(is_not_set(rpnb%opt,RPNCOPT_INM)) then
        pf=loc(is_numeric)
-    else if(is_setb(RPNCOPT_IBIN)) then
+    else if(is_set(rpnb%opt,RPNCOPT_IBIN)) then
        pf=loc(is_bin_number)
-    else if(is_setb(RPNCOPT_IOCT)) then
+    else if(is_set(rpnb%opt,RPNCOPT_IOCT)) then
        pf=loc(is_oct_number)
-    else if(is_setb(RPNCOPT_IHEX)) then
+    else if(is_set(rpnb%opt,RPNCOPT_IHEX)) then
        pf=loc(is_hex_number)
     end if
 
@@ -270,6 +221,7 @@ contains
   end function get_end_of_fig
   
   integer function get_end_of_par(rpnb,k_,force_alpha)
+    use misc, only: is_alpha,is_number,is_symbol
     type(t_rpnb),intent(in)::rpnb
     integer,intent(in)::k_
     logical,intent(in),optional::force_alpha
@@ -314,49 +266,8 @@ contains
     end select
   end function is_lop
 
-  logical function is_symbol(a)
-    integer,intent(in)::a
-    select case(a)
-    case(95,36) ! _, $
-       is_symbol=.true.
-    case default
-       is_symbol=.false.
-    end select
-  end function is_symbol
-
-  logical function is_alpha(a)
-    integer,intent(in)::a
-    integer b
-    b=ior(a,32)
-    is_alpha=(b>=97.and.b<=122)
-  end function is_alpha
-  
-  logical function is_hex_number(a)
-    integer,intent(in)::a
-    is_hex_number=(a>=65.and.a<=70).or.(a>=97.and.a<=102).or.is_number(a)
-  end function is_hex_number
-
-  logical function is_oct_number(a)
-    integer,intent(in)::a
-    is_oct_number=(a>=48.and.a<=55)
-  end function is_oct_number
-
-  logical function is_bin_number(a)
-    integer,intent(in)::a
-    is_bin_number=(a>=48.and.a<=49)
-  end function is_bin_number
-
-  logical function is_number(a)
-    integer,intent(in)::a
-    is_number=(a>=48.and.a<=57)
-  end function is_number
-  
-  logical function is_numeric(a)
-    integer,intent(in)::a
-    is_numeric=(is_number(a).or.a==46)
-  end function is_numeric
-  
   logical function is_ppar(a,ent)
+    use fpio, only: si_prefix
     character,intent(in)::a
     integer,intent(out),optional::ent
     integer k
@@ -475,6 +386,7 @@ contains
   end function get_tid
 
   logical function is_usr_fnc(sl,f,ent)
+    use slist
     type(t_slist),intent(in)::sl
     character*(*),intent(in)::f
     integer,intent(out),optional::ent
@@ -489,6 +401,9 @@ contains
   end function is_usr_fnc
   
   integer function get_next(rpnb,p1,p2,sl)
+    use slist, only: t_slist
+    use misc, only: get_i32,is_alpha,is_numeric,is_number,&
+         is_set
     type(t_rpnb),intent(inout)::rpnb
     integer,intent(out)::p1,p2
     type(t_slist),intent(in)::sl
@@ -606,7 +521,7 @@ contains
           p2=get_end_of_par(rpnb,p1)
           if(p2<rpnb%len_expr) then
              if(.not.is_lop(rpnb%expr(p1:p2),t)&
-                  .and..not.(is_setb(RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))) then
+                  .and..not.(is_set(rpnb%opt,RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))) then
                 k=p2+1
                 if(rpnb%expr(k:k)=="(") then
                    if(is_usr_fnc(sl,rpnb%expr(p1:p2),kf)) then
@@ -685,17 +600,32 @@ contains
 
   end function get_next
   
-#define _EXPR_(i) rpnb%expr(get_lo32(rpnb%que(i)%p1):get_lo32(rpnb%que(i)%p2))
-#define _UEXPR_(i) rpnb%expr(get_up32(rpnb%que(i)%p1):get_up32(rpnb%que(i)%p2))
+  pure function supexpr(rpnb,i)
+    use misc, only: get_up32
+    type(t_rpnb),intent(in)::rpnb
+    integer,intent(in)::i
+    character(len=get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1) supexpr
+    supexpr=rpnb%expr(get_up32(rpnb%que(i)%p1):get_up32(rpnb%que(i)%p2))
+  end function supexpr
 
+  pure function subexpr(rpnb,i)
+    use misc, only: get_lo32
+    type(t_rpnb),intent(in)::rpnb
+    integer,intent(in)::i
+    character(len=get_lo32(rpnb%que(i)%p2)-get_lo32(rpnb%que(i)%p1)+1) subexpr
+    subexpr=rpnb%expr(get_lo32(rpnb%que(i)%p1):get_lo32(rpnb%que(i)%p2))
+  end function subexpr
+  
   integer function add_rpnm_entry(rpnc,rpnb,i,code,k)
+    use misc, only: get_lo32
+    use slist, only: try_add_str
     type(t_rpnc),intent(inout)::rpnc
     type(t_rpnb),intent(in)::rpnb
     integer i
     integer,intent(in)::code
     integer,intent(out)::k
     integer istat
-    istat=try_add_str(rpnc%rl%s,_EXPR_(i),code,k)
+    istat=try_add_str(rpnc%rl%s,subexpr(rpnb,i),code,k)
     if(istat==0) then
        if(k>size(rpnc%rl%rpnm)) then
           write(*,*) "add_rpnm_entry faild: buffer overflow"
@@ -711,6 +641,7 @@ contains
   end function add_rpnm_entry
     
   integer function set_function(rpnb,rpnc,k1)
+    use slist, only: trim_slist
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
@@ -779,13 +710,15 @@ contains
     end function find_end
 
     subroutine init_pnames()
+      use slist, only: init_slist,add_str,LEN_SLIST_HDR
+      use misc, only: get_up32
       if(allocated(rpnm%pnames)) deallocate(rpnm%pnames)
       allocate(rpnm%pnames)
       plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1&
            +get_up32(rpnb%que(ka)%p2)-get_up32(rpnb%que(ka)%p1)+1
       rpnm%pnames=init_slist(plen+(pc+1)*LEN_SLIST_HDR)
-      if(add_str(rpnm%pnames,_UEXPR_(i),SC_RO)/=0 &
-           .or.add_str(rpnm%pnames,_UEXPR_(ka),SC_RO)/=0) &
+      if(add_str(rpnm%pnames,supexpr(rpnb,i),SC_RO)/=0 &
+           .or.add_str(rpnm%pnames,supexpr(rpnb,ka),SC_RO)/=0) &
            STOP "*** init_pnames: UNEXPECTED ERROR: add_str failed."
     end subroutine init_pnames
 
@@ -801,6 +734,9 @@ contains
     end function find_implicit_mul
 
     subroutine cp_vbuf()
+      use fpio, only: cp
+      use misc, only: get_up32,get_lo32
+      use slist, only: try_add_str
       integer ii,jj
       integer kp,asis
       type(t_rrpnq),pointer::qq
@@ -819,7 +755,7 @@ contains
          if(qq%tid/=TID_FIG) then ! par
             asis=get_up32(qq%tid)
             if(asis/=0) qq%p1=qq%p1+1
-            if(try_add_str(rpnm%pnames,_EXPR_(jj),SC_RO,ent=kp)/=0) &            
+            if(try_add_str(rpnm%pnames,subexpr(rpnb,jj),SC_RO,ent=kp)/=0) &            
                  STOP "*** cp_vbuf: UNEXPECTED ERROR: try_add_str failed"
             rpnm%que(ii)%tid=get_lo32(qq%tid)
             if(asis/=0) then
@@ -861,6 +797,7 @@ contains
   end function set_function
 
   integer function set_macro(rpnb,rpnc,k1)
+    use slist, only: trim_slist
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
@@ -927,15 +864,20 @@ contains
     end function find_end
 
     subroutine init_pnames()
+      use slist, only: init_slist,add_str,LEN_SLIST_HDR
+      use misc, only: get_up32
       if(allocated(rpnm%pnames)) deallocate(rpnm%pnames)
       allocate(rpnm%pnames)
       plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1
       rpnm%pnames=init_slist(plen+(pc+1)*LEN_SLIST_HDR)
-      if(add_str(rpnm%pnames,_UEXPR_(i),ior(SC_RO,SC_MAC))/=0) &
+      if(add_str(rpnm%pnames,supexpr(rpnb,i),ior(SC_RO,SC_MAC))/=0) &
            STOP  "*** init_pnames: UNEXPECT3D ERROR: add_str failed"
     end subroutine init_pnames
 
     subroutine cp_vbuf()
+      use slist, only: try_add_str
+      use fpio, only: cp
+      use misc, only: get_up32,get_lo32
       ! Reverts TID_VAR to FIG,PAR,APAR
       ! FIG and PAR will have pointer to vbuf
       ! APAR will have pointer to pars%v
@@ -957,7 +899,7 @@ contains
          if(qq%tid/=TID_FIG) then ! par
             asis=get_up32(qq%tid)
             if(asis/=0) qq%p1=qq%p1+1
-            if(try_add_str(rpnm%pnames,_EXPR_(jj),SC_RO,ent=kp)/=0) &            
+            if(try_add_str(rpnm%pnames,subexpr(rpnb,jj),SC_RO,ent=kp)/=0) &            
                  STOP "*** cp_vbuf: UNEXPECTED ERROR: try_add_str failed"
             rpnm%que(ii)%tid=get_lo32(qq%tid) ! <<< TID_PAR or TID_APAR
             if(asis/=0) then
@@ -1020,6 +962,9 @@ contains
   end subroutine print_error
   
   integer function build_rpnc(rpnb,rpnc,nvbuf)
+    use misc, only: get_lo32,get_i32,get_up32,is_not_set
+    use plist
+    use fpio, only: czero
     type(t_rpnb),intent(in),target::rpnb ! only temporarly modified
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::nvbuf
@@ -1093,12 +1038,12 @@ contains
           if(get_up32(qq%p1)/=0) istat=RPNCERR_NARG ! <<<<<<<<<
        case(TID_APAR) ! asign a parameter.
           q%tid=TID_PAR
-          istat=add_par_by_entry(rpnc%pars,_EXPR_(i),k)
+          istat=add_par_by_entry(rpnc%pars,subexpr(rpnb,i),k)
           if(istat==0) then
              q%cid=get_par_loc(rpnc%pars,k)
           else
              if(istat==PLERR_RDONL) then
-                write(*,*) "*** Parameter is read-only: "//_EXPR_(i)
+                write(*,*) "*** Parameter is read-only: "//subexpr(rpnb,i)
              else
                 write(*,*) "*** add_par_by_entry failed: code = ",istat
              end if
@@ -1109,7 +1054,7 @@ contains
           !
        case(TID_FIG)
           q%tid=TID_VAR
-          if(qq%p1==qq%p2.and._EXPR_(i)=="@") then
+          if(qq%p1==qq%p2.and.subexpr(rpnb,i)=="@") then
              call put_vbuf(rpnc,i,czero)
              q%cid=-q%cid !<<<<<<<<<<<<<<<<<<<<<<<<<
           else
@@ -1191,7 +1136,7 @@ contains
           STOP "*** build_rpnc: UNEXPECTED ERROR: unexpected tid in rpnb"
        end select
        if(istat/=0) then
-          if(.not.is_set(RPNCOPT_NO_WARN)) &
+          if(is_not_set(rpnc%opt,RPNCOPT_NO_WARN)) &
                call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(qq%p1),get_lo32(qq%p2)) 
           exit
        end if
@@ -1211,6 +1156,7 @@ contains
   contains
 
     integer function proc_input(ii2)
+      use fpio, only: cp
       integer,intent(in)::ii2
       integer ii,kk,ke
       type(t_rrpnq),pointer::qqq
@@ -1237,7 +1183,7 @@ contains
          if(get_lo32(qqq%tid)==TID_PAR &
               .and.get_up32(qqq%tid)==PID_INPUT) then
             qqq%p1=qqq%p1+1
-            istat=find_par(rpnc%pars,_EXPR_(ii),ent=kk)
+            istat=find_par(rpnc%pars,subexpr(rpnb,ii),ent=kk)
             if(istat/=0) stop "proc_input: UNEXPECTED ERROR: find_par failed"
             pzz=get_par_loc(rpnc%pars,kk)
             if(pzz==0) stop "proc_input: UNEXPECTED ERROR: get_par_loc failed"
@@ -1266,9 +1212,10 @@ contains
     end function check_pop
 
     logical function check_sop()
+      use misc, only: is_set
       integer kk
       check_sop=.false.
-      if(is_set(RPNCOPT_STA).and.is_spar(_EXPR_(i),kk)) then
+      if(is_set(rpnc%opt,RPNCOPT_STA).and.is_spar(subexpr(rpnb,i),kk)) then
          q%tid=TID_SOP
          q%cid=get_sid(kk)
          check_sop=.true.
@@ -1276,10 +1223,11 @@ contains
     end function check_sop
  
     logical function check_mac()
+      use slist, only: find_str
       integer kk
       check_mac=.false.
-      if(rpnc%rl%s%n>0) then
-         kk=find_str(rpnc%rl%s,_EXPR_(i))
+      if(rpnlist_count(rpnc%rl)>0) then
+         kk=find_str(rpnc%rl%s,subexpr(rpnb,i))
          if(kk>0) then
             q%tid=TID_MAC
             q%cid=kk
@@ -1296,20 +1244,20 @@ contains
          qq%p1=qq%p1+1 ! skip @ (modifying intent in var)
          if(.not.amac.and..not.afnc) inpt=inpt+1
       end if
-      istat=find_par(rpnc%pars,_EXPR_(i),ent=kk)
-      if(asis/=0.or.amac.and.istat/=0.and.is_uset(RPNCOPT_NO_AUTO_ADD_PAR)) then
+      istat=find_par(rpnc%pars,subexpr(rpnb,i),ent=kk)
+      if(asis/=0.or.amac.and.istat/=0.and.is_not_set(rpnc%opt,RPNCOPT_NO_AUTO_ADD_PAR)) then
          ! par may not already exist
-         istat=add_par_by_entry(rpnc%pars,_EXPR_(i),kk)
+         istat=add_par_by_entry(rpnc%pars,subexpr(rpnb,i),kk)
          if(istat/=0) then
             if(istat==PLERR_RDONL) then
-               write(*,*) "*** Parameter is read-only: "//_EXPR_(i)
+               write(*,*) "*** Parameter is read-only: "//subexpr(rpnb,i)
             else
                write(*,*) "*** add_par_by_entry failed: code = ",istat
             end if
             istat=RPNCERR_ADDPAR
          end if
       else if(istat/=0) then
-         write(*,*) "*** No such parameter: "//_EXPR_(i)
+         write(*,*) "*** No such parameter: "//subexpr(rpnb,i)
          istat=RPNCERR_NOPAR
       end if
       if(istat==0) then
@@ -1346,18 +1294,23 @@ contains
     end subroutine set_fnc_op
     
     integer function read_fig()
+      use memio
+      use misc, only: is_set,is_not_set
       integer f
-      if(is_uset(RPNCOPT_INM)) then
-         read(_EXPR_(i),*,iostat=read_fig) x
+      character(len=128) fig ! <<<<<<<<<<<<<<<<<<<<<<<<<<<
+      if(is_not_set(rpnc%opt,RPNCOPT_INM)) then
+         fig=subexpr(rpnb,i)
+         read(fig,*,iostat=read_fig) x
+         !read(subexpr(rpnb,i),*,iostat=read_fig) x ! compile error
          return
-      else if(is_set(RPNCOPT_IBIN)) then
+      else if(is_set(rpnc%opt,RPNCOPT_IBIN)) then
          f=DISP_FMT_BIN
-      else if(is_set(RPNCOPT_IOCT)) then
+      else if(is_set(rpnc%opt,RPNCOPT_IOCT)) then
          f=DISP_FMT_OCT
-      else if(is_set(RPNCOPT_IHEX)) then
+      else if(is_set(rpnc%opt,RPNCOPT_IHEX)) then
          f=DISP_FMT_HEX
       end if
-      x=real(atoi(_EXPR_(i),0,f,read_fig),kind=rp)
+      x=real(atoi(subexpr(rpnb,i),0,f,read_fig),kind=rp)
     end function read_fig
 
     subroutine find_delim(pos)
@@ -1418,46 +1371,45 @@ contains
       end select
     end function get_sid
 
-#define isdeg is_set(RPNCOPT_DEG)
-
     integer function get_fid(fid)
       use zmath
+      use misc, only: is_set
       integer,intent(in)::fid
       select case(fid)
       case(FID_RAN)
          get_fid=loc(zm_ran)
       case(FID_SIN)
-         if(isdeg) then
+         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
             get_fid=loc(zm_sind)
          else
             get_fid=loc(zm_sin)
          end if
       case(FID_COS)
-         if(isdeg) then
+         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
             get_fid=loc(zm_cosd)
          else
             get_fid=loc(zm_cos)
          end if
       case(FID_TAN)
-         if(isdeg) then
+         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
             get_fid=loc(zm_tand)
          else
             get_fid=loc(zm_tan)
          end if
       case(FID_ASIN)
-         if(isdeg) then 
+         if(is_set(rpnc%opt,RPNCOPT_DEG)) then 
             get_fid=loc(zm_asind)
          else
             get_fid=loc(zm_asin)
          end if
       case(FID_ACOS)
-         if(isdeg) then
+         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
             get_fid=loc(zm_acosd)
          else
             get_fid=loc(zm_acos)
          end if
       case(FID_ATAN)
-         if(isdeg) then
+         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
             get_fid=loc(zm_atand)
          else
             get_fid=loc(zm_atan)
@@ -1536,7 +1488,7 @@ contains
     integer function get_aid()
       use zmath
       get_aid=AID_NOP ! to avoid warning
-      select case(_EXPR_(i))
+      select case(subexpr(rpnb,i))
       case("=")
          get_aid=loc(zm_mov)
       case("+=")
@@ -1556,12 +1508,13 @@ contains
 
     integer function get_oid1()
       use zmath
+      use misc, only: is_not_set
       get_oid1=OID_NOP
-      select case(_EXPR_(i))
+      select case(subexpr(rpnb,i))
       case("+")
          get_oid1=loc(zm_nop) 
       case("-")
-         if(is_uset(RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
             get_oid1=loc(zm_neg) 
          else
             get_oid1=loc(zm_neg_f)
@@ -1571,13 +1524,13 @@ contains
       case("!!")
          get_oid1=loc(zm_dfac)
       case("++")
-         if(is_uset(RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
             get_oid1=loc(zm_inc)
          else
             get_oid1=loc(zm_inc_f)
          end if
       case("--")
-         if(is_uset(RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
             get_oid1=loc(zm_dec)
          else
             get_oid1=loc(zm_dec_f)
@@ -1589,7 +1542,7 @@ contains
 
     integer function get_loid1()
       use zmath
-      select case(_EXPR_(i)) 
+      select case(subexpr(rpnb,i)) 
       case("~",LOPS_NOT)
          get_loid1=LOID_NOT
       case default
@@ -1599,32 +1552,33 @@ contains
 
     integer function get_oid2()
       use zmath
+      use misc, only: is_not_set
       if(qq%tid==TID_BOP4) then
          get_oid2=loc(zm_mul)
          return
       end if
       get_oid2=OID_NOP
-      select case(_EXPR_(i))
+      select case(subexpr(rpnb,i))
       case("+")
-         if(is_uset(RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
             get_oid2=loc(zm_add)   
          else
             get_oid2=loc(zm_add_f)
          end if
       case("-")
-         if(is_uset(RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
             get_oid2=loc(zm_sub)   
          else
             get_oid2=loc(zm_sub_f)   
          end if
       case("*")
-         if(is_uset(RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
             get_oid2=loc(zm_mul)
          else
             get_oid2=loc(zm_mul_f)
          end if
       case("/")
-         if(is_uset(RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
             get_oid2=loc(zm_div)
          else
             get_oid2=loc(zm_div_f)
@@ -1658,7 +1612,7 @@ contains
 
     integer function get_loid2()
       use zmath
-      select case(_EXPR_(i))
+      select case(subexpr(rpnb,i))
       case(LOPS_AND)
          get_loid2=LOID_AND
       case(LOPS_OR)
@@ -1808,6 +1762,7 @@ contains
   end subroutine rpn_try_pop
 
   subroutine rpn_try_push(rpnb,tid,p1,p2)
+    use misc, only: get_lo32
     type(t_rpnb),intent(inout)::rpnb
     integer,intent(in)::tid,p1,p2
     integer tst
@@ -1830,6 +1785,7 @@ contains
   end subroutine rpn_try_push
 
   integer function set_tid_par(rpnb,tid,p1,p2)
+    use misc, only: get_i32
     type(t_rpnb),intent(inout),target::rpnb
     integer,intent(in)::tid
     integer,intent(in),optional::p1,p2
@@ -1847,6 +1803,7 @@ contains
   end function set_tid_par
 
   integer function parse_formula(rpnc,formula)
+    use misc, only: get_i32,get_lo32,get_up32,is_set,is_not_set,cle_opt
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(in)::formula
     type(t_rpnb),target::rpnb
@@ -1864,7 +1821,7 @@ contains
 
     call init_rpnb(formula)
 
-    cle_opt(RPNCOPT_READY)
+    call cle_opt(rpnc%opt,RPNCOPT_READY)
 
     nvbuf=0
     call init_stat()
@@ -1878,7 +1835,7 @@ contains
           cycle
        case(TID_FIN,TID_SCL)
           nvbuf=nvbuf+fc+oc+fnc+pc ! pc includes macro which needs vbuf       
-          if(.not.was_operand().or.(tc/=clc.and.is_uset(RPNCOPT_DAT))) then
+          if(.not.was_operand().or.(tc/=clc.and.is_not_set(rpnc%opt,RPNCOPT_DAT))) then
              if(nvbuf==0) then
                 istat=RPNSTA_EMPTY
              else if(told/=TID_UNDEF) then
@@ -2073,7 +2030,7 @@ contains
           end if
        case(TID_COL)
           clc=clc+1
-          if(is_uset(RPNCOPT_DAT)) then
+          if(is_not_set(rpnc%opt,RPNCOPT_DAT)) then
              if(otc>0) then
                 otc=otc-1 ! open TOP count
                 call rpn_pop_until(rpnb,TID_TOP1)
@@ -2118,7 +2075,7 @@ contains
        told=t
     end do
 
-    if(is_set(RPNCOPT_DEBUG)) call dump_rpnb(rpnb)
+    if(is_set(rpnc%opt,RPNCOPT_DEBUG)) call dump_rpnb(rpnb)
 
     if(istat==0.and.terr/=0) then
        istat=terr
@@ -2128,7 +2085,7 @@ contains
 
     if(istat==0) then
        istat=build_rpnc(rpnb,rpnc,nvbuf)
-    else if(.not.is_set(RPNCOPT_NO_WARN).and.istat>0) then
+    else if(is_not_set(rpnc%opt,RPNCOPT_NO_WARN).and.istat>0) then
        call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if
 
@@ -2175,11 +2132,11 @@ contains
       do ii=rpnb%p_que-1,p_q1,-1
          select case(rpnb%que(ii)%TID)
          case(TID_PAR)
-            if(_EXPR_(ii)==dmy(1:ld)) then
+            if(subexpr(rpnb,ii)==dmy(1:ld)) then
                rpnb%que(ii)%tid=TID_IVAR1
-            else if(_EXPR_(ii)==dmy_lo(1:ld_b)) then
+            else if(subexpr(rpnb,ii)==dmy_lo(1:ld_b)) then
                rpnb%que(ii)%tid=TID_IVAR1L
-            else if(_EXPR_(ii)==dmy_up(1:ld_b)) then
+            else if(subexpr(rpnb,ii)==dmy_up(1:ld_b)) then
                rpnb%que(ii)%tid=TID_IVAR1U
             end if
          case(TID_ISTA)
@@ -2375,8 +2332,8 @@ contains
             found=.false.
             do jj=pfasn+1,rpnb%p_que ! <<<<
                if(rpnb%que(jj)%tid==TID_PAR) then
-                  if(_EXPR_(ii)&
-                       ==_EXPR_(jj)) then
+                  if(subexpr(rpnb,ii)&
+                       ==subexpr(rpnb,jj)) then
                      rpnb%que(jj)%tid=TID_DPAR
                      rpnb%que(jj)%p1=get_i32(rpnb%que(jj)%p1,did) !<<<
                      found=.true.
@@ -2384,7 +2341,7 @@ contains
                end if
             end do
             if(.not.found) then
-               write(*,*) "*** Warning: Unused parameter: "//_EXPR_(ii)
+               write(*,*) "*** Warning: Unused parameter: "//subexpr(rpnb,ii)
             end if
          end if
       end do
@@ -2449,6 +2406,8 @@ contains
     end subroutine push_implicit_bra
 
     logical function expand_mac()
+      use misc, only: is_alpha,replace
+      use slist, only: find_str,get_str_ptr,cpstr
       integer kk,len,ptr,pp2,pp1
       integer jj
       expand_mac=.false.
@@ -2471,6 +2430,7 @@ contains
     end function expand_mac
 
     subroutine init_rpnb(s)
+      use misc, only: strip
       character*(*),intent(in)::s
       rpnb%expr=s(1:min(LEN_FORMULA_MAX,len(s)))
       rpnb%len_expr=strip(rpnb%expr)

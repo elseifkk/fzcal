@@ -18,9 +18,9 @@
 ! *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 module rpnd
-  use slist
-  use plist
-  use fpio
+  use slist, only: t_slist
+  use plist, only: t_plist
+  use fpio, only: rp,cp
   implicit none
 
   integer,parameter::RPNSTA_EMPTY  = -2
@@ -269,7 +269,14 @@ module rpnd
 
 contains
 
+  integer function rpnlist_count(rl)
+    use slist, only: slist_count
+    type(t_rpnlist),intent(in)::rl
+    rpnlist_count=slist_count(rl%s)
+  end function rpnlist_count
+
   function init_rpnlist(sz,nmax)
+    use slist, only: init_slist
     type(t_rpnlist) init_rpnlist
     integer,intent(in)::sz,nmax
     init_rpnlist%s=init_slist(sz)
@@ -277,6 +284,7 @@ contains
   end function init_rpnlist
 
   subroutine uinit_rpnms(n,rpnm)
+    use slist, only: uinit_slist
     integer,intent(in)::n
     type(t_rpnm),intent(inout)::rpnm(n)
     integer i
@@ -294,6 +302,7 @@ contains
   end subroutine uinit_rpnms
 
   subroutine uinit_rpnlist(rl)
+    use slist, only: uinit_slist
     type(t_rpnlist),intent(inout),target::rl
     call uinit_slist(rl%s)
     if(.not.allocated(rl%rpnm)) return
@@ -302,7 +311,8 @@ contains
   
   integer function init_rpnc(szplist_,npbuf_,szrlist_,nrpnm_)
      ! type(t_rpnc) function init_rpnc causes segmentation fault
-    use zmath
+    use zmath, only: zm_f1,zm_f2,zm_f3
+    use fpio, only: czero,X2A_DEFAULT
     type(t_rpnc) rpnc
     pointer(p,rpnc)
     integer,intent(in),optional::szplist_,npbuf_,szrlist_,nrpnm_
@@ -353,6 +363,7 @@ contains
   end function init_rpnc
 
   subroutine cp_rpnm(rpnm1,rpnm2)
+    use slist, only: init_slist,min_cp_slist
     type(t_rpnm),intent(in)::rpnm1
     type(t_rpnm),intent(inout)::rpnm2
     if(.not.allocated(rpnm2%que)) then
@@ -375,18 +386,21 @@ contains
   end subroutine cp_rpnm
 
   subroutine min_cp_rpnlist(rl1,rl2)
+    use slist, only: min_cp_slist
     type(t_rpnlist),intent(in)::rl1
     type(t_rpnlist),intent(inout)::rl2
-    integer i
+    integer i,nrl2
     call min_cp_slist(rl1%s,rl2%s)
-    if(rl2%s%n<=0) return
-    allocate(rl2%rpnm(rl2%s%n))
-    do i=1,rl2%s%n
+    nrl2=rpnlist_count(rl2)
+    if(nrl2<=0) return
+    allocate(rl2%rpnm(nrl2))
+    do i=1,nrl2
        call cp_rpnm(rl1%rpnm(i),rl2%rpnm(i))
     end do
   end subroutine min_cp_rpnlist
 
   integer function cp_rpnc(rpnc_in)
+    use plist, only: add_par_by_reference,min_cp_plist
     type(t_rpnc),intent(in)::rpnc_in
     type(t_rpnc) rpnc
     integer istat
@@ -423,6 +437,7 @@ contains
   end subroutine uinit_rpnc
 
   function init_par(rpnc,sz,nmax)
+    use plist, only: init_plist,add_par_by_reference,add_par_by_value
     type(t_plist) init_par
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::sz,nmax
@@ -439,24 +454,30 @@ contains
   end function init_par
 
   subroutine uinit_par(rpnc)
+    use plist, only: uinit_plist
     type(t_rpnc),intent(inout)::rpnc
     call uinit_plist(rpnc%pars)
   end subroutine uinit_par
 
   subroutine delete_par_all(rpnc)
+    use plist, only: rm_par_all
     type(t_rpnc),intent(inout)::rpnc
     call rm_par_all(rpnc%pars)
   end subroutine delete_par_all
 
   subroutine delete_par(rpnc,s)
+    use plist, only: rm_par
+    use misc, only: mess
+    use memio, only: itoa
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(in)::s
     integer istat
     istat=rm_par(rpnc%pars,trim(adjustl(s)))
-    if(istat/=0) write(*,*) "*** Error delete_par: "//trim(s)//": code = ",istat
+    if(istat/=0) call mess("*** Error delete_par: "//trim(s)//": code = "//trim(itoa(istat)))
   end subroutine delete_par
 
   subroutine set_sd(ip1,ip2,rpnc)
+    use fpio, only: rzero
     integer,intent(in)::ip1,ip2
     type(t_rpnc),intent(inout),target::rpnc
     integer i,j,i2
@@ -507,14 +528,17 @@ contains
   end subroutine set_sd
 
   subroutine dump_sd(rpnc)
+    use fpio, only: ztoa,rtoa
+    use memio, only: itoa
+    use misc, only: mess
     type(t_rpnc),intent(in)::rpnc
     integer i,f
     if(.not.allocated(rpnc%sd%vs)) return
     f=ishft(rpnc%opt,-32)
     do i=1,rpnc%sd%p_vs
-       write(*,*) trim(itoa(i))//": "//trim(ztoa(rpnc%sd%vs(i,1),f)) &
+       call mess(trim(itoa(i))//": "//trim(ztoa(rpnc%sd%vs(i,1),f)) &
             //", "//trim(ztoa(rpnc%sd%vs(i,2),f)) &
-            //" ("//trim(rtoa(rpnc%sd%ws(i),f))//")"
+            //" ("//trim(rtoa(rpnc%sd%ws(i),f))//")")
     end do    
   end subroutine dump_sd
 
@@ -550,22 +574,8 @@ contains
     sd%p_vs=0
   end subroutine reset_sd
 
-  pure integer function get_lo32(cid)
-    integer,intent(in)::cid
-    get_lo32=iand(cid,int(Z"FFFF",kind=4))
-  end function get_lo32
-
-  pure integer function get_up32(cid)
-    integer,intent(in)::cid
-    get_up32=iand(ishft(cid,-16),int(Z"FFFF",kind=4))
-  end function get_up32
-
-  pure integer function get_i32(lo,up)
-    integer,intent(in)::lo,up
-    get_i32=ior(lo,ishft(up,16))
-  end function get_i32
-
   subroutine put_vbuf_r(rpnc,i,v)
+    use fpio, only: rzero
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(inout)::i
     real(rp),intent(in)::v
@@ -579,6 +589,7 @@ contains
   end subroutine put_vbuf_r
 
   integer function count_op(q)
+    use misc, only: get_lo32
     type(t_rpnq),intent(in)::q(:)
     integer i
     count_op=0
@@ -593,6 +604,7 @@ contains
   end function count_op
 
   integer function count_tid(q,tid)
+    use misc, only: get_lo32
     type(t_rpnq),intent(in)::q(:)
     integer,intent(in)::tid
     integer i
@@ -622,40 +634,94 @@ contains
     rpnc%que(i)%tid=t
   end subroutine put_vbuf_z
 
-  subroutine dump_rpnm(rpnc,ent,name,type)
+  subroutine save_par(rpnc,f)
+    use misc, only: open_file
+    use plist, only: dump_plist,plist_count
+    type(t_rpnc),intent(in)::rpnc
+    character*(*),intent(in)::f
+    integer i,ou
+    ou=open_file(f,.true.,.true.)
+    if(ou==0) return
+    do i=1,plist_count(rpnc%pars)
+       call dump_plist(rpnc%pars,ent=i,out_unit=ou)
+    end do
+    close(ou)
+  end subroutine save_par
+
+  subroutine save_fnc(rpnc,f)
+    use misc, only: open_file
+    type(t_rpnc),intent(in)::rpnc
+    character*(*),intent(in)::f
+    integer i,ou
+    ou=open_file(f,.true.,.true.)
+    if(ou==0) return
+    do i=1,rpnlist_count(rpnc%rl)
+       call dump_rpnm(rpnc,ent=i,type=SC_FNC,out_unit=ou)
+    end do
+    close(ou)
+  end subroutine save_fnc
+
+  subroutine save_mac(rpnc,f)
+    use misc, only: open_file
+    type(t_rpnc),intent(in)::rpnc
+    character*(*),intent(in)::f
+    integer i,ou
+    ou=open_file(f,.true.,.true.)
+    if(ou==0) return
+    do i=1,rpnlist_count(rpnc%rl)
+       call dump_rpnm(rpnc,ent=i,type=SC_MAC,out_unit=ou)
+    end do
+  end subroutine save_mac
+
+  subroutine dump_rpnm(rpnc,ent,name,type,out_unit)
+    use slist, only: slist_count,get_str_ptr,cpstr,dump_slist
+    use misc, only: mess
+    use memio, only: itoa
     type(t_rpnc),intent(in),target::rpnc
     integer,intent(in),optional::ent
     character*(*),intent(in),optional::name
     integer,intent(in),optional::type
+    integer,intent(in),optional::out_unit
+    integer ou
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) tmprpnc
     integer ptr,len
     integer code
-    integer i
-
-    do i=1,rpnc%rl%s%n
-       if(present(ent)) then
-          if(ent>0.and.i/=ent) cycle
+    integer i,i1,i2
+    integer t
+    if(present(out_unit)) then
+       ou=out_unit
+    else
+       ou=0
+    end if
+    if(present(type)) then
+       t=type
+    else
+       t=0
+    end if
+    i1=1
+    i2=slist_count(rpnc%rl%s)
+    if(present(ent)) then
+       if(ent>0) then
+          i1=ent
+          i2=ent
        end if
+    end if
+    do i=i1,i2
        if(i>size(rpnc%rl%rpnm) &
             .or.get_str_ptr(rpnc%rl%s,i,ptr,len,code)/=0) then
-          write(*,*) "*** dump_rpnm: no such entry: ",i
+          if(ou==0) call mess("*** dump_rpnm: no such entry: "//trim(itoa(i)))
           cycle
        end if
-
        rpnm=>rpnc%rl%rpnm(i)
        if(iand(code,SC_MAC)/=0) then
-          if(present(type)) then
-             if(type/=SC_MAC) cycle
-          end if
-          write(*,*) "MACRO entry: ",i
+          if(t/=0.and.t/=SC_MAC) cycle
+          if(ou==0) call mess("MACRO entry: "//trim(itoa(i)))
        else
-          if(present(type)) then
-             if(type/=SC_FNC) cycle
-          end if
-          write(*,*) "FUNCTION entry: ",i
+          if(t/=0.and.t/=SC_FNC) cycle
+          if(ou==0) call mess("FUNCTION entry: "//trim(itoa(i)))
           if(get_str_ptr(rpnm%pnames,2,ptr,len)/=0) then
-             write(*,*) "???"
+             if(ou==0) call mess("???") !<<<<<<<<<<<<<<<<<<<<
              cycle !<<<<<<<<<
           end if
        end if
@@ -664,30 +730,53 @@ contains
           if(name/="".and.name/=trim(cpstr(ptr,len))) cycle
        end if
 
-       write(*,*) "name: "//trim(cpstr(ptr,len))
-       if(allocated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
-          write(*,*) "definition: "//trim(cpstr(ptr,len))
-          tmprpnc%que=>rpnm%que
-          tmprpnc%vbuf=>rpnm%vbuf
-          tmprpnc%p_vbuf=>rpnm%p_vbuf
-          tmprpnc%pars=>rpnm%pars
-          tmprpnc%answer=>rpnm%answer
-          tmprpnc%tmpans=>rpnm%tmpans
-          tmprpnc%rl=>rpnc%rl
-          tmprpnc%rc=>rpnc%rc
-          tmprpnc%pfs=>rpnc%pfs
-          if(allocated(rpnm%na)) write(*,*) "number of arguments = ",rpnm%na
-          call dump_rpnc(tmprpnc,i)
-          call dump_slist(rpnm%pnames)
+       if(ou==0) then
+          call mess("name: "//trim(cpstr(ptr,len)))
        else
-          write(*,*) "(empty)"
+          write(ou,"(a,$)") trim(cpstr(ptr,len))//"="
        end if
-       write(*,*)
+
+       if(allocated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
+          if(ou==0) then
+             call mess("definition: "//trim(cpstr(ptr,len)))
+          else
+             if(t==SC_MAC) then
+                write(ou,"(a)") """"//trim(cpstr(ptr,len))//""""
+             else
+                write(ou,"(a)") trim(cpstr(ptr,len))
+             end if
+             cycle
+          end if
+       else
+          if(ou==0) then
+             call mess("(empty)")
+          else
+             write(ou,*) ""
+          end if
+          cycle
+       end if
+
+       tmprpnc%que=>rpnm%que
+       tmprpnc%vbuf=>rpnm%vbuf
+       tmprpnc%p_vbuf=>rpnm%p_vbuf
+       tmprpnc%pars=>rpnm%pars
+       tmprpnc%answer=>rpnm%answer
+       tmprpnc%tmpans=>rpnm%tmpans
+       tmprpnc%rl=>rpnc%rl
+       tmprpnc%rc=>rpnc%rc
+       tmprpnc%pfs=>rpnc%pfs
+       if(allocated(rpnm%na)) call mess("number of arguments = "//trim(itoa(rpnm%na)))
+       call dump_rpnc(tmprpnc,i)
+       call dump_slist(rpnm%pnames)
+
     end do
   end subroutine dump_rpnm
   
   subroutine dump_rpnc(rpnc,mid)
-    use slist
+    use fpio, only: DISP_FMT_RAW,ztoa
+    use misc, only: get_lo32,mess,messp
+    use slist, only: get_str_ptr,cpstr
+    use memio, only: itoa, DISP_FMT_HEX
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in),optional::mid
     type(t_rpnm),pointer::rpnm
@@ -697,88 +786,85 @@ contains
     complex(cp) z
     complex(cp) v
     pointer(pv,v)
-    write(*,*) "rpnc dump:"
+    call mess("rpnc dump:")
     if(.not.associated(rpnc%que).or.size(rpnc%que)<1) then
-       write(*,*) "(empty)"
+       call mess("(empty)")
        return
     end if
     if(.not.present(mid).and.iand(rpnc%opt,RPNCOPT_READY)==0) then
-       write(*,*) "(not set)"
+       call mess("(not set)")
        return
     end if
-    write(*,*) "# tid cid value"
+    call mess("#\ttid\tcid\tvalue")
     if(present(mid)) rpnm=>rpnc%rl%rpnm(mid)
     do i=1,size(rpnc%que)
        q => rpnc%que(i)
        t=get_lo32(q%tid)
-       write(*,10) i,t
+       call messp(trim(itoa(i))//":\t"//trim(itoa(t))//"\t")
        select case(t)
        case(TID_VAR,TID_PAR,TID_CPAR,TID_FIG,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
-          write(*,11) q%cid
+          call messp(trim(itoa(q%cid,DISP_FMT_HEX)))
           if(present(mid)) then
              if(t/=TID_FIG) then
                 istat=get_str_ptr(rpnm%pnames,q%cid,ptr,len)
-                write(*,*) trim(cpstr(ptr,len))
+                call mess(trim(cpstr(ptr,len)))
                 cycle
              else
                 z=rpnm%vbuf(q%cid)
              end if
           else
              if(t==TID_CPAR) then
-                write(*,"(a,$)") " (copied)"
+                call messp(" (copied)")
                 pv=q%cid
                 z=v
              end if
              pv=q%cid
              z=v
              if(pv==0) then
-                write(*,*) " (undef)"
+                call mess(" (undef)")
                 cycle
              end if
           end if
           write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
-       case(TID_OP,TID_OPN,TID_ROP)
-          write(*,14) q%cid
        case(TID_DPAR)
-          write(*,16) q%cid,"(dummy par)"
+          call mess(trim(itoa(q%cid))//" (dummy par)")
        case default
-          write(*,14) q%cid
+          call mess(trim(itoa(q%cid,DISP_FMT_HEX)))
        end select
     end do
-10  format(2(x,i4),$)
-11  format(x,z16,$)
-13  format(x,i4,x,z8,x,a)
-14  format(x,z16)
-16  format(x,i8,x,a)
-    write(*,*) "vbuf dump:"
-    write(*,*) "size used/alloc= ",rpnc%p_vbuf,size(rpnc%vbuf)
+    call mess("vbuf dump:")
+    call mess("size used/alloc= "//trim(itoa(rpnc%p_vbuf))//"/"//trim(itoa(size(rpnc%vbuf))))
     if(rpnc%p_vbuf>0) then
        do i=1,rpnc%p_vbuf
-          write(*,13) i,loc(rpnc%vbuf(i)),trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW))
+          call mess(trim(itoa(i))//":\t"//trim(itoa(loc(rpnc%vbuf(i)),DISP_FMT_HEX))&
+               //"\t"//trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW)))
        end do
     end if
     if(.not.present(mid)) write(*,*)
   end subroutine dump_rpnc
 
   subroutine dump_rpnb(rpnb)
+    use misc, only:  mess
     type(t_rpnb),intent(in),target::rpnb
     type(t_rrpnq),pointer::q(:)
-    write(*,*) "rpnb que:\n# tid p1 p2 expr"
+    call mess("rpnb que:\n#\ttid\tp1\tp2\texpr")
     if(.not.allocated(rpnb%que).or.rpnb%p_que<1)  then
-       write(*,*) "(empty)"
+       call mess("(empty)")
     else
        q => rpnb%que
        call dump_q(rpnb%p_que)
     end if
-    write(*,*) "rpnb buf:\n# tid p1 p2 expr"
+    call mess("rpnb buf:\n#\ttid\tp1\tp2\texpr")
     if(.not.allocated(rpnb%buf).or.rpnb%p_buf<1)  then
-       write(*,*) "(empty)"
+       call mess("(empty)")
     else
        q => rpnb%buf
        call dump_q(rpnb%p_buf)
     end if
   contains
     subroutine dump_q(n)
+      use misc, only: get_lo32,get_up32,messp
+      use memio, only: itoa
       integer,intent(in)::n
       integer i,p1lo,p2lo,p1up,p2up,tid
       do i=1,n
@@ -786,20 +872,19 @@ contains
          p2lo=get_lo32(q(i)%p2)
          tid=q(i)%tid
          if(tid>0) tid=get_lo32(tid)
-         write(*,10) i,tid,p1lo,p2lo
-10       format(4(x,i4),x,$)
+         call messp(trim(itoa(i))//":\t"//trim(itoa(tid))//"\t"//trim(itoa(p1lo))//"\t"//trim(itoa(p2lo))//"\t")
          if(q(i)%tid==TID_VAR) then
-            write(*,*) rpnb%expr(p1lo:p2lo)
+            call mess(rpnb%expr(p1lo:p2lo))
          else if(q(i)%tid==TID_AMAC) then
             p1up=get_up32(q(i)%p1)
             p2up=get_up32(q(i)%p2)
-            write(*,*) rpnb%expr(p1lo:p2lo)//" "//rpnb%expr(p1up:p2up)
+            call mess(rpnb%expr(p1lo:p2lo)//"\t"//rpnb%expr(p1up:p2up))
          else if(p1lo==0) then
-            write(*,*) "(no ref)"
+            call mess("(no ref)")
          else if(q(i)%tid/=TID_NOP) then
-            write(*,*) rpnb%expr(p1lo:p2lo)
+            call mess(rpnb%expr(p1lo:p2lo))
          else
-            write(*,*)
+            call mess("")
          end if
       end do
     end subroutine dump_q

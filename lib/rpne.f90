@@ -18,16 +18,8 @@
 ! *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 module rpne
-  use slist
-  use plist
-  use fpio
   use rpnd
   implicit none
-
-#define is_set(x) (iand(rpnc%opt,(x))/=0)
-#define is_uset(x) (iand(rpnc%opt,(x))==0)
-#define set_opt(x) rpnc%opt=ior(rpnc%opt,(x))
-#define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
 
 contains
 
@@ -37,19 +29,21 @@ contains
   end subroutine init_rpne
 
   character(LEN_STR_ANS_MAX) function rpn_sans(rpnc)
-    use memio
+    use memio, only: DISP_FMT_BIN,DISP_FMT_OCT,DISP_FMT_HEX,itoa
+    use fpio, only: ztoa,LEN_STR_ANS_MAX
+    use misc, only: is_set, is_not_set
     type(t_rpnc),intent(in)::rpnc
     integer f
-    if(is_uset(RPNCOPT_OUTM)) then
+    if(is_not_set(rpnc%opt,RPNCOPT_OUTM)) then
        f=ishft(rpnc%opt,-32) !DISP_FMT_NORM
-    else if(is_set(RPNCOPT_OBIN)) then
+    else if(is_set(rpnc%opt,RPNCOPT_OBIN)) then
        f=DISP_FMT_BIN
-    else if(is_set(RPNCOPT_OOCT)) then
+    else if(is_set(rpnc%opt,RPNCOPT_OOCT)) then
        f=DISP_FMT_OCT
-    else if(is_set(RPNCOPT_OHEX)) then
+    else if(is_set(rpnc%opt,RPNCOPT_OHEX)) then
        f=DISP_FMT_HEX
     end if
-    if(is_uset(RPNCOPT_RATIO)) then
+    if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
           rpn_sans=trim(ztoa(rpnc%answer,fmt=f))
     else
        rpn_sans=trim(itoa(int(realpart(rpnc%answer),kind=8),f))
@@ -60,16 +54,19 @@ contains
   end function rpn_sans
 
   complex(cp) function rpn_ans(rpnc)
+    use fpio, only: cp
     type(t_rpnc),intent(in)::rpnc
     rpn_ans=rpnc%answer
   end function rpn_ans
 
   real(rp) function rpn_rans(rpnc)
+    use fpio, only: rp
     type(t_rpnc),intent(in)::rpnc
     rpn_rans=realpart(rpnc%answer)
   end function rpn_rans
 
   real(dp) function rpn_dans(rpnc)
+    use fpio, only: dp
     type(t_rpnc),intent(in)::rpnc
     rpn_dans=real(realpart(rpnc%answer),kind=dp)
   end function rpn_dans
@@ -89,6 +86,8 @@ contains
   end function get_operand
 
   integer function eval_c(rpnc,i)
+    use fpio, only: cp
+    use misc, only: get_up32
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     integer kd,ke,n,kz
@@ -180,6 +179,7 @@ contains
   end function eval_c
 
   subroutine set_result(rpnc,i,v,n,ks,logical)
+    use fpio, only: cp,zfalse
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     complex(cp),intent(in)::v
@@ -271,6 +271,7 @@ contains
   end function get_operands
 
   recursive function eval_0(rpnc,i) result(istat)
+    use fpio, only: cp
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     interface
@@ -289,6 +290,7 @@ contains
   end function eval_0
 
   recursive function eval_r(rpnc,i) result(istat)
+    use fpio, only: cp,zfalse
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     interface
@@ -331,6 +333,8 @@ contains
   end function eval_r
 
   recursive function eval_p(rpnc,i) result(istat)
+    use fpio, only: cp,rp,rzero
+    use misc, only: is_not_set
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     integer istat
@@ -356,49 +360,49 @@ contains
     case(PID_mi)
        p=1.0e-3_rp
     case(PID_k)
-       if(is_uset(RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
           p=1.0e+3_rp
        else
           p=kB
        end if
     case(PID_M)
-       if(is_uset(RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
           p=1.0e+6_rp
        else
           p=kB**2.0_rp
        end if
     case(PID_G)
-       if(is_uset(RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
           p=1.0e+9_rp
        else
           p=kB**3.0_rp
        end if
     case(PID_T)
-       if(is_uset(RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
           p=1.0e+12_rp
        else
           p=kB**4.0_rp
        end if
     case(PID_P)
-       if(is_uset(RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
           p=1.0e+15_rp
        else
           p=kB**5.0_rp
        end if
     case(PID_E)
-       if(is_uset(RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
           p=1.0e+18_rp
        else
           p=kB**6.0_rp
        end if
     case(PID_Z)
-       if(is_uset(RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
           p=1.0e+21_rp
        else
           p=kB**7.0_rp
        end if
     case(PID_Y)
-       if(is_uset(RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
           p=1.0e+24_rp
        else
           p=kB**8.0_rp
@@ -413,6 +417,8 @@ contains
   end function eval_p
 
   recursive function eval_l(rpnc,i) result(istat)
+    use fpio, only: cp,zfalse,ztrue
+    use misc, only: get_up32
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     integer istat
@@ -477,6 +483,7 @@ contains
   end function eval_l
 
   recursive function eval_s(rpnc,i) result(istat)
+    use fpio, only: cp,czero
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     integer istat
@@ -502,6 +509,8 @@ contains
   end function eval_s
 
   recursive function eval_n(rpnc,i) result(istat)
+    use fpio, only: cp
+    use misc, only: get_up32,get_lo32
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(in)::i
     interface
@@ -551,17 +560,19 @@ contains
   contains
     
     subroutine set_assign()
+      use misc, only: set_opt
       complex(cp) z
       pointer(pz,z)
       pz=pvs(1)
       z=v
       rpnc%que(ods(1))%tid=TID_NPAR
-      set_opt(RPNCOPT_NEW)
+      call set_opt(rpnc%opt,RPNCOPT_NEW)
     end subroutine set_assign
 
   end function eval_n
 
   recursive function integrand(pc,n,x) result(s)
+    use fpio, only: rp,rzero
     integer,intent(in)::pc
     integer,intent(in)::n
     real(rp),intent(in)::x(n)
@@ -613,6 +624,7 @@ contains
   end function integrand
 
   recursive function eval_i(rpnc,i) result(istat)
+    use fpio, only: cp,rzero
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     interface
@@ -702,6 +714,7 @@ contains
     end subroutine alloc_vbuf
 
     subroutine set_idmy()
+      use fpio, only: czero
       integer ii
       do ii=1,nc
          select case(ifnc%que(ii)%tid)
@@ -744,6 +757,8 @@ contains
   end function eval_i
 
   recursive function eval_uf(rpnc,i) result(istat)
+    use fpio, only: cp
+    use plist, only: get_par_loc
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     integer istat
@@ -828,6 +843,8 @@ contains
     end subroutine alloc_vbuf
 
     subroutine set_par_ptr(ent) 
+      use slist, only: get_str_ptr,cpstr
+      use plist, only: find_par
       integer,intent(out)::ent
       integer ptr,len,cid
       integer ptr0,len0
@@ -856,6 +873,7 @@ contains
   end function eval_uf
   
   recursive function eval_m(rpnc,i) result(istat)
+    use plist, only: get_par_loc
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     integer istat
@@ -928,6 +946,9 @@ contains
     end subroutine alloc_vbuf
 
     subroutine set_par_ptr(ent)
+      use fpio, only: cp
+      use slist, only: get_str_ptr,cpstr
+      use plist, only: find_par
       integer,intent(out)::ent
       integer ptr,len,cid
       integer ptr0,len0
@@ -958,6 +979,7 @@ contains
   end function eval_m
 
   recursive function input(rpnc,p,s,z) result(istat)
+    use fpio, only: cp
     use rpnp, only: parse_formula
     type(t_rpnc),intent(in),target::rpnc
     character*(*),intent(in)::p
@@ -1014,6 +1036,9 @@ contains
   end function input
 
   recursive function eval(rpnc) result(istat)
+    use fpio, only: cp
+    use misc, only: get_lo32,is_set
+    use plist, only: remove_dup,sort_par
     type(t_rpnc),intent(inout),target::rpnc
     integer i,istat,ec,ip1
     complex(cp) v
@@ -1078,7 +1103,7 @@ contains
 
     if(istat/=0) return
 
-    if(rpnc%rc==0.and.is_set(RPNCOPT_DAT)) &
+    if(rpnc%rc==0.and.is_set(rpnc%opt,RPNCOPT_DAT)) &
          call set_sd(ip1,i,rpnc)
 
     call set_ans
@@ -1089,7 +1114,7 @@ contains
           ! this is the last time
           ! order is important
           call remove_dup(rpnc%pars)
-          if(is_set(RPNCOPT_NEW)) call set_newpar
+          if(is_set(rpnc%opt,RPNCOPT_NEW)) call set_newpar
        end if
     else
        rpnc%ip=i+1 ! the next code
@@ -1098,11 +1123,12 @@ contains
   contains
     
     subroutine set_newpar
+      use misc, only: cle_opt
       integer ii
       do ii=1,size(rpnc%que)
          if(rpnc%que(ii)%tid==TID_NPAR) call sort_par(rpnc%pars,rpnc%que(ii)%cid)
       end do
-      cle_opt(RPNCOPT_NEW)
+      call cle_opt(rpnc%opt,RPNCOPT_NEW)
     end subroutine set_newpar
 
     subroutine set_ans

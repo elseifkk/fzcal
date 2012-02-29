@@ -17,7 +17,7 @@
 ! *   Free Software Foundation, Inc.,                                       *
 ! *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-program fzcal
+program fzcalc
   use memio ! for test
   use fpio  ! for test
   use plist ! for test
@@ -25,6 +25,7 @@ program fzcal
   use rpnd
   use rpne
   use rpnp
+  use misc
   use integral ! for test
   implicit none
   type(t_rpnc) rpnc
@@ -34,13 +35,14 @@ program fzcal
   integer ka,n,kb
   integer cid
   logical calc,echo
-  integer fu
+  integer fu,hu
   character*32 prompt
   integer i
 
   p=init_rpnc()
   call init_rpne
 
+  hu=0
   fu=0
   echo=.false.
   prompt=">"
@@ -49,8 +51,7 @@ program fzcal
      calc=.false.
      if(fu==0) then
         if(command_argument_count()==0) then
-           write(*,10) trim(prompt)//" "
-10         format(x,a,$)
+           call messp(trim(prompt)//" ")
            read(*,"(a)") str
         else
            i=i+1
@@ -70,6 +71,7 @@ program fzcal
      end if
      if(str=="") cycle
      str=adjustl(str)
+     call write_hist(str)
      cid=parse_command(rpnc,str,ka,kb,str)
      if(ka/=0) then
         n=atoi(str(ka:kb),n,ist=istat)
@@ -84,6 +86,13 @@ program fzcal
         exit
      case(CID_SCLE)
         call reset_sd(rpnc%sd)
+     case(-CID_SAVE,-CID_SAVE_PAR,-CID_SAVE_FNC,-CID_SAVE_MAC)
+     case(CID_SAVE_PAR)
+        call save_par(rpnc,str(ka:kb))
+     case(CID_SAVE_FNC)
+        call save_fnc(rpnc,str(ka:kb))
+     case(CID_SAVE_MAC)
+        call save_mac(rpnc,str(ka:kb))
      case(-CID_PRI)
      case(-CID_PRI_PAR)
         call dump_plist(rpnc%pars)
@@ -110,15 +119,21 @@ program fzcal
         fu=123
         open(unit=fu,iostat=istat,file=str(ka:kb),status="old")
         if(istat/=0) then
-           write(*,*) "Cannot open: "//str(ka:kb)
+           call mess("Cannot open: "//str(ka:kb))
            fu=0
         end if
      case(-CID_ECHO)
-        write(*,*) "echo is "//trim(log2str(echo)) 
+        call mess("echo is "//trim(log2str(echo))) 
      case(CID_ECHO_OFF)
         echo=.false.
      case(CID_ECHO_ON)
         echo=.true.
+     case(-CID_HIST)
+        call mess("hist is "//trim(i2str(hu))) 
+     case(CID_HIST_OFF)
+        call enable_hist(.false.)
+     case(CID_HIST_ON)
+        call enable_hist(.true.)
      case(-CID_SET_PROMPT)
      case(CID_SET_PROMPT)
         prompt=str(ka:kb)
@@ -128,37 +143,37 @@ program fzcal
         write(*,*) trim(str(ka:kb))
      case(CID_DONE)
      case(CID_INV)
-        write(*,*) "Invalid command: "//trim(str)
+        call mess("Invalid command: "//trim(str))
      case default
         calc=.true.
      end select
      
      if(.not.calc) cycle
 
-     if(echo) write(*,*) trim(prompt)//" "//trim(str)
+     if(echo) call mess(trim(prompt)//" "//trim(str))
      istat=parse_formula(rpnc,str)
 
      if(istat>0) then
-        write(*,*)  "*** parse_formula failed: code = ",istat
+        call mess("*** parse_formula failed: code = "//trim(itoa(istat)))
         call dump_rpnc(rpnc)
      else if(istat==0) then
         if(iand(rpnc%opt,RPNCOPT_DEBUG)/=0) then
-           write(*,*) "=== Before eval ==="
+           call mess("=== Before eval ===")
            call dump_rpnc(rpnc)
         end if
         
         do while(rpnc%ip/=0)
            istat=eval(rpnc)
            if(istat/=0) then
-              write(*,*) "*** rpn_eval failed: code = ",istat
+              call mess("*** rpn_eval failed: code = "//trim(itoa(istat)))
               call dump_rpnc(rpnc)
               exit
            else
               if(iand(rpnc%opt,RPNCOPT_DEBUG)/=0) then
-                 write(*,*) "=== After eval ==="
+                 call mess("=== After eval ===")
                  call dump_rpnc(rpnc)
               end if
-              write(*,*) trim(rpn_sans(rpnc))
+              call mess(trim(rpn_sans(rpnc)))
            end if
         end do
 
@@ -166,19 +181,42 @@ program fzcal
 
   end do main
   
+  call enable_hist(.false.)
+
 contains
   
-  character*4 function log2str(log)
-    logical,intent(in)::log
-    if(log) then
-       log2str="on"
+  subroutine enable_hist(on)
+    logical,intent(in)::on
+    character*(*),parameter::histfile=".fzcalc-hist"
+    character(len=1024) f
+    integer istat
+    if(on) then
+       call getenv("HOME",f)
+       if(f/="") then
+          f=trim(adjustl(f))//"/"//histfile
+       else
+          f=histfile
+       end if
+       hu=1210
+       open(unit=hu,file=f,iostat=istat)
+       if(istat/=0) then
+          call mess("*** Error: cannot open file: "//trim(f))
+          hu=0
+       end if
     else
-       log2str="off"
+       close(hu)
     end if
-  end function log2str
+  end subroutine enable_hist
+
+  subroutine write_hist(h)
+    character*(*),intent(in)::h
+    if(hu==0) return
+    write(hu,"(a)") trim(h)
+    flush(hu)
+  end subroutine write_hist
 
   subroutine read_line()
     read(fu,"(a)",iostat=istat) str
   end subroutine read_line
 
-end program fzcal
+end program fzcalc
