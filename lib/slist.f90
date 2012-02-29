@@ -22,11 +22,19 @@ module slist
 
   private
 
+  type t_sn
+     integer*1,allocatable::s(:)
+     integer:: code = 0 
+     integer:: len  = 0
+     type(t_sn),pointer::next => null()
+  end type t_sn
+
   type,public::t_slist
      integer sz ! total size
      integer st ! stack top
      integer n  ! num elements
      integer p  ! str list
+     type(t_sn),pointer::sn => null() 
   end type t_slist
   
   integer,parameter::SLERR_NOMEM = 1
@@ -55,7 +63,7 @@ module slist
 
 contains
   
-  integer function slist_count(sl)
+  pure integer function slist_count(sl)
     type(t_slist),intent(in)::sl
     slist_count=sl%n
   end function slist_count
@@ -105,6 +113,16 @@ contains
  
   subroutine uinit_slist(sl)
     type(t_slist),intent(inout)::sl
+    integer i
+    type(t_sn),pointer::sn
+!!!!!!!!!!!!!
+    sn => sl%sn
+    do i=1,sl%n
+       if(.not.associated(sn)) exit
+       if(allocated(sn%s)) deallocate(sn%s)
+       sn => sn%next
+    end do
+!!!!!!!!!!!!
     if(sl%p/=0) call free(sl%p)
     sl%p=0
     sl%sz=0
@@ -112,7 +130,7 @@ contains
     sl%n=0
   end subroutine uinit_slist
 
-  character*256 function cpstr(ptr,len)
+  pure character*256 function cpstr(ptr,len)
     integer,intent(in)::ptr
     integer,intent(in)::len
     integer i
@@ -126,6 +144,22 @@ contains
     end do
   end function cpstr
       
+  function kth_node(sl,k)
+    type(t_slist),intent(in)::sl
+    integer,intent(in)::k
+    type(t_sn),pointer::kth_node
+    type(t_sn),pointer::cur
+    integer i
+    nullify(kth_node)
+    if(k>sl%n) return
+    cur => sl%sn
+    do i=2,k
+       if(.not.associated(cur)) return
+       cur => cur%next
+    end do
+    kth_node => cur
+  end function kth_node
+  
   integer function get_str_ptr(sl,k,ptr,len,code)
     type(t_slist),intent(in)::sl
     integer,intent(in)::k
@@ -396,13 +430,13 @@ contains
     call mess("size = "//trim(itoa(sl%sz)))
     call mess("capacity = "//trim(itoa(sl%sz-(sl%st-sl%p+1))))
     p=sl%p
-    call mess("#\tlen\tcode\tvalue")
+    call mess("#\tLen\tCode\tValue")
     do i=1,sl%n
        ptr=p
        len=c
        call messp(trim(itoa(i))//":\t"//trim(itoa(len))//"\t")
        p=p+1
-       call messp(trim(itoa(int(c),DISP_FMT_BIN))//"\t")
+       call messp("["//trim(itoa(int(c),DISP_FMT_BIN))//"]\t")
        p=p+1
        call mess(trim(cpstr(ptr,len)))
        p=ptr+len+LEN_SLIST_HDR

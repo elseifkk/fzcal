@@ -70,7 +70,8 @@ contains
     ! a must not include dup white and must be left adjusted
     use fpio
     use rpnd
-    use misc, only: set_opt,cle_opt
+    use memio, only: itoa
+    use misc, only: set_opt,cle_opt,mess,messp
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(in)::a
     integer,intent(out),optional::p1arg,p2arg
@@ -146,7 +147,7 @@ contains
                 str="print option-word"
                 exit
              end if
-             write(*,"(Z16.16)") rpnc%opt
+             call mess("Opt-word: "//trim(itoa(rpnc%opt,cfmt="(Z16.16)")))
              parse_command=CID_DONE
           case("q","quit")
              parse_command=CID_EXIT
@@ -468,7 +469,7 @@ contains
              if(present(p1arg)) p2arg=p2
           end if
        case default
-          write(*,*) "cid = ",parse_command
+          call mess("cid = "//trim(itoa(parse_command)))
           STOP "*** parse_command: UNEXPECTED ERROR: unknown cid"
        end select
 
@@ -484,11 +485,11 @@ contains
           call print_com_list
        else 
           if(parse_command==CID_INV) then
-             str="Unrecognized command"
+             str="*** Unrecognized command"
           else if(str=="") then
              call get_help
           end if
-          write(*,*) trim(str)
+          call mess(trim(str))
        end if
        parse_command=CID_DONE
     end if
@@ -567,7 +568,7 @@ contains
       character*128 ans ! <<<<<<<<<<
       character(LEN_FORMULA_MAX) str
       if(.not.present(b)) return
-      write(*,"(a)") "Input: "//trim(adjustl(a(p2+1:lencom)))
+      call mess("Input: "//trim(adjustl(a(p2+1:lencom))))
       jj=0
       do kk=p2+1,lencom
          select case(a(kk:kk))
@@ -637,11 +638,14 @@ contains
            "         ",&
            "         ",&
            "         "]
+      call mess("* Commands begin with `.'")
+      call mess("* Shell commands begin with `!'")
+      call mess("* Comments begin with `#'\n")
       do j=1,12
          do i=1,4
-            write(*,"(a,$)") coms(j+(i-1)*12)//"\t"
+            call messp(coms(j+(i-1)*12)//"\t")
          end do
-         write(*,*)
+         call mess("")
       end do
       
     end subroutine print_com_list

@@ -18,8 +18,7 @@
 ! *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 module plist
-  use fpio
-  use slist
+  use slist, only: t_slist,SLERR_END
   implicit none
   
   private
@@ -89,70 +88,72 @@ module plist
 
 contains
 
-  integer function plist_count(pl)
+  pure integer function plist_count(pl)
+    use slist
     type(t_plist),intent(in)::pl
     plist_count=slist_count(pl%s)
   end function plist_count
 
-  integer function get_pkind(sta)
+  pure integer function get_pkind(sta)
     integer,intent(in)::sta
     get_pkind=iand(sta,Z"FFFF")
   end function get_pkind
 
-  integer function get_pflg(sta)
+  pure integer function get_pflg(sta)
     integer,intent(in)::sta
     get_pflg=iand(ishft(sta,-16),Z"FFFF")
   end function get_pflg
 
-  subroutine set_pflg(sta,flg)
+  pure subroutine set_pflg(sta,flg)
     integer,intent(inout)::sta
     integer,intent(in)::flg
     sta=ior(sta,ishft(flg,16))
   end subroutine set_pflg
 
-  subroutine uset_pflg(sta,flg)
+  pure subroutine uset_pflg(sta,flg)
     integer,intent(inout)::sta
     integer,intent(in)::flg
     sta=iand(sta,not(ishft(flg,16)))
   end subroutine uset_pflg
 
-  subroutine set_pkind(sta,pk)
+  pure subroutine set_pkind(sta,pk)
     integer,intent(inout)::sta
     integer,intent(in)::pk
     sta=ior(iand(sta,Z"FFFF0000"),pk)
   end subroutine set_pkind
 
-  logical function is_reference(sta)
+  pure logical function is_reference(sta)
     integer,intent(in)::sta
     is_reference=(iand(get_pflg(sta),PS_REF)/=0)
   end function is_reference
 
-  logical function is_value(sta)
+  pure logical function is_value(sta)
     integer,intent(in)::sta
     is_value=(iand(get_pflg(sta),PS_REF)==0)
   end function is_value
 
-  logical function is_duplicated(sta)
+  pure logical function is_duplicated(sta)
     integer,intent(in)::sta
     is_duplicated=(iand(get_pflg(sta),PS_DUP)/=0)
   end function is_duplicated
 
-  logical function is_single(sta)
+  pure logical function is_single(sta)
     integer,intent(in)::sta
     is_single=(iand(get_pflg(sta),PS_DUP)==0)
   end function is_single
 
-  logical function is_read_only(sta)
+  pure logical function is_read_only(sta)
     integer,intent(in)::sta
     is_read_only=(iand(get_pflg(sta),PS_RO)/=0)
   end function is_read_only
 
-  logical function is_writable(sta)
+  pure logical function is_writable(sta)
     integer,intent(in)::sta
     is_writable=(iand(get_pflg(sta),PS_RO)==0)
   end function is_writable
 
   function init_plist(sz,nmax)
+    use slist
     type(t_plist) init_plist
     integer,intent(in)::sz
     integer,intent(in)::nmax
@@ -180,6 +181,7 @@ contains
   end subroutine uinit_vbufs
 
   subroutine uinit_plist(pl)
+    use slist
     type(t_plist),intent(inout)::pl
     call uinit_slist(pl%s)
     if(.not.allocated(pl%v)) return
@@ -226,7 +228,8 @@ contains
   end subroutine cp_vbuf
 
   integer function palloc(pk,sz)
-    use memio
+    use memio, only: mcle
+    use fpio, only: dp,rp,cp
     integer,intent(in)::pk
     integer,intent(out),optional::sz
     integer sz_
@@ -273,12 +276,13 @@ contains
   subroutine rm_par_all(pl)
     type(t_plist),intent(inout)::pl
     integer i,istat
-    do i=pl%s%n,1,-1
+    do i=plist_count(pl),1,-1
        istat=rm_par_k(pl,i)
     end do
   end subroutine rm_par_all
 
   integer function rm_par_s(pl,s)
+    use slist
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     integer k
@@ -291,6 +295,7 @@ contains
   end function rm_par_s
 
   integer function rm_par_k(pl,k)
+    use slist
     type(t_plist),intent(inout)::pl
     integer,intent(in)::k
     integer i,kk
@@ -302,22 +307,24 @@ contains
     rm_par_k=rm_str(pl%s,ent=kk)
     if(rm_par_k/=0) return
     call uinit_vbuf(pl%v(k))
-    do i=k,pl%s%n
+    do i=k,plist_count(pl)
        call mv_vbuf(pl%v(i+1),pl%v(i))
     end do
     rm_par_k=0
   end function rm_par_k
 
   subroutine min_cp_plist(pl1,pl2)
+    use slist
     type(t_plist),intent(in),target::pl1
     type(t_plist),intent(inout),target::pl2
     type(t_vbuf),pointer::v1,v2
-    integer i
+    integer i,npl2
     call uinit_plist(pl2)
     call min_cp_slist(pl1%s,pl2%s)
-    if(pl2%s%n>0) then
-       call alloc_vbuf(pl2%s%n,pl2%v)
-       do i=1,pl2%s%n
+    npl2=plist_count(pl2)
+    if(npl2>0) then
+       call alloc_vbuf(npl2,pl2%v)
+       do i=1,npl2
           v1 => pl1%v(i)
           v2 => pl2%v(i)
           v2=v1
@@ -328,7 +335,10 @@ contains
   end subroutine min_cp_plist
   
   subroutine dump_plist(pl,ent,name,out_unit)
+    use slist
+    use fpio, only: dp,rp,cp,ztoa,rtoa
     use misc, only: mess,messp
+    use memio, only: itoa,DISP_FMT_RAW,DISP_FMT_HEX
     type(t_plist),intent(in),target::pl
     integer,intent(in),optional::ent
     character*(*),intent(in),optional::name
@@ -347,13 +357,14 @@ contains
     ou=0
     if(present(out_unit)) ou=out_unit
     i1=1
-    i2=pl%s%n
+    i2=plist_count(pl)
     if(present(ent)) then
        if(ent>0) then
           i1=ent
           i2=ent
        end if
     end if
+    if(ou==0) call mess("#\tStatus:(Addr)\t\tName\tValue")
     do i=i1,i2
        v => pl%v(i)
        istat=get_str_ptr(pl%s,i,ptr,len)
@@ -363,12 +374,13 @@ contains
        if(ou/=0) then
           call messp(trim(cpstr(ptr,len))//"=",ou)
        else
-          call messp(trim(itoa(i))//":\t["//trim(itoa(v%sta,DISP_FMT_HEX))//"]\t"//trim(cpstr(ptr,len))//"\t",ou)
+          call messp(trim(itoa(i))//":\t["//trim(itoa(v%sta,cfmt="(Z6.6)"))//"]")
           if(is_reference(v%sta)) then
-             call messp("("//trim(itoa(v%p,DISP_FMT_HEX))//")\t",ou)
+             call messp(":("//trim(itoa(v%p,DISP_FMT_HEX))//")\t",ou)
           else
              call messp("\t\t")
           end if
+          call messp(trim(cpstr(ptr,len))//"\t",ou)
        end if
        select case(get_pkind(v%sta))
        case(PK_COMP)
@@ -401,16 +413,18 @@ contains
   end subroutine alloc_vbuf
 
   subroutine trim_plist(pl)
-    use memio
+    use slist
     type(t_plist),intent(inout)::pl
     type(t_vbuf),allocatable::tmpv(:)
+    integer npl
     if(allocated(pl%v)) then
-       if(pl%s%n>0) then
-          call alloc_vbuf(pl%s%n,tmpv)
-          call mv_vbufs(pl%s%n,pl%v,tmpv)
+       npl=plist_count(pl)
+       if(npl>0) then
+          call alloc_vbuf(npl,tmpv)
+          call mv_vbufs(npl,pl%v,tmpv)
           deallocate(pl%v)
-          call alloc_vbuf(pl%s%n,pl%v)
-          call mv_vbufs(pl%s%n,tmpv,pl%v)
+          call alloc_vbuf(npl,pl%v)
+          call mv_vbufs(npl,tmpv,pl%v)
           deallocate(tmpv)
        else
           deallocate(pl%v)
@@ -420,6 +434,8 @@ contains
   end subroutine trim_plist
  
   integer function find_par(pl,s,zout,ent,code)
+    use slist
+    use fpio, only: dp,rp,cp,czero,rzero
     type(t_plist),intent(in),target::pl
     character*(*),intent(in)::s
     complex(cp),intent(out),optional::zout
@@ -465,39 +481,43 @@ contains
   end function find_par
 
   subroutine put_par_z(v,z)
-    use memio
+    use memio, only: mcp
+    use fpio, only: cp
     type(t_vbuf),intent(inout)::v
     complex(cp),intent(in)::z
     call mcp(v%p,loc(z),sizeof(z))
   end subroutine put_par_z
 
   subroutine put_par_x(v,x)
-    use  memio
+    use  memio, only: mcp
+    use fpio, only: rp
     type(t_vbuf),intent(inout)::v
     real(rp),intent(in)::x
     call mcp(v%p,loc(x),sizeof(x))
   end subroutine put_par_x
 
   subroutine put_par_r(v,r)
-    use memio
+    use memio, only: mcp
+    use fpio, only: dp
     type(t_vbuf),intent(inout)::v
     real(dp),intent(in)::r
     call mcp(v%p,loc(r),sizeof(r))
   end subroutine put_par_r
 
   subroutine put_par_n(v,n)
-    use memio
+    use memio, only: mcp
     type(t_vbuf),intent(inout)::v
     integer,intent(in)::n
     call mcp(v%p,loc(n),sizeof(n))
   end subroutine put_par_n
 
   integer function put_par_at(pl,k,z) ! for existing entry
+    use fpio, only: dp,cp
     type(t_plist),intent(inout),target::pl
     integer,intent(in)::k
     complex(cp),intent(in)::z
     type(t_vbuf),pointer::v
-    if(k>pl%s%n.or.k<=0) then
+    if(k>plist_count(pl).or.k<=0) then
        put_par_at=PLERR_NOPAR
        return
     end if
@@ -540,6 +560,7 @@ contains
   end subroutine inc_par_buf
 
   integer function try_add_par(pl,s,ent,force)
+    use slist
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     integer,intent(out),optional::ent
@@ -565,8 +586,8 @@ contains
        end if
     end if
     if(present(ent)) ent=k
-    if(pl%s%n>size(pl%v).or..not.allocated(pl%v)) &
-         call inc_par_buf(pl,max(pl%s%n-size(pl%v),8)) ! <<<
+    if(plist_count(pl)>size(pl%v).or..not.allocated(pl%v)) &
+         call inc_par_buf(pl,max(plist_count(pl)-size(pl%v),8)) ! <<<
     try_add_par=0
   end function try_add_par
 
@@ -637,6 +658,7 @@ contains
   end function add_par_by_reference
 
   integer function add_par_by_value_x(pl,s,x,ro,ent)
+    use fpio, only: rp
     type(t_plist),intent(inout),target::pl
     character*(*),intent(in)::s
     real(rp),intent(in)::x
@@ -664,6 +686,7 @@ contains
   end function add_par_by_value_x
 
   integer function add_par_by_value_r(pl,s,r,ro,ent)
+    use fpio, only: dp
     type(t_plist),intent(inout),target::pl
     character*(*),intent(in)::s
     real(dp),intent(in)::r
@@ -718,6 +741,7 @@ contains
   end function add_par_by_value_n
 
   integer function add_par_by_value_z(pl,s,z,ro,ent)
+    use fpio, only: cp
     type(t_plist),intent(inout),target::pl
     character*(*),intent(in)::s
     complex(cp),intent(in)::z
@@ -745,6 +769,7 @@ contains
   end function add_par_by_value_z
 
   integer function get_par_loc(pl,k,dup)
+    use fpio, only: dp,rp,cp,rzero
     type(t_plist),intent(inout),target::pl
     integer,intent(in)::k
     logical,intent(out),optional::dup
@@ -760,7 +785,7 @@ contains
     pointer(pn,n)
     if(present(dup)) dup=.false.
     get_par_loc=0
-    if(k>pl%s%n.or.k<=0) return
+    if(k>plist_count(pl).or.k<=0) return
     v => pl%v(k)
     if(is_duplicated(v%sta)) then
        get_par_loc=v%pz ! must not be zero
@@ -795,6 +820,7 @@ contains
   end function get_par_loc
 
   integer function get_par(pl,k,zout)
+    use fpio, only: dp,rp,cp,rzero
     type(t_plist),intent(in),target::pl
     integer,intent(in)::k
     complex(cp),intent(out)::zout
@@ -807,7 +833,7 @@ contains
     pointer(pz,z)
     pointer(px,x)
     pointer(pn,n)
-    if(k>pl%s%n.or.k<=0) then
+    if(k>plist_count(pl).or.k<=0) then
        get_par=PLERR_NOPAR
        return
     end if
@@ -833,6 +859,7 @@ contains
   end function get_par
 
   subroutine remove_dup(pl)
+    use fpio, only: dp,rp,cp
     type(t_plist),intent(inout),target::pl
     type(t_vbuf),pointer::v
     integer i
@@ -845,7 +872,7 @@ contains
     pointer(pz,z)
     pointer(pn,n)
     ! move value from pz to p 
-    do i=1,pl%s%n
+    do i=1,plist_count(pl)
        v => pl%v(i)
        if(is_single(v%sta)) cycle
        pz=v%pz
@@ -869,6 +896,7 @@ contains
   end subroutine remove_dup
 
   subroutine sort_par(pl,pz_in)
+    use fpio, only: rp,cp,rzero
     type(t_plist),intent(inout),target::pl
     integer,intent(in)::pz_in
     type(t_vbuf),pointer::v
@@ -879,7 +907,7 @@ contains
     integer i
     real(rp) x_in
     ! reallocate p with PK_REAL if z is real
-    do i=1,pl%s%n
+    do i=1,plist_count(pl)
        v => pl%v(i)
        if(v%p==pz_in) then
           pz=pz_in

@@ -345,6 +345,9 @@ contains
     if(is_integer(z2,n2)) then
        if(is_integer(z1,n1)) then
           zm_pow=real(n1,kind=rp)**real(n2,kind=rp)
+       else if(imagpart(z1)==rzero) then
+          ! gfortran retrns nonzero im for -0.99*2
+          zm_pow=realpart(z1)**real(n2,kind=rp)
        else
           zm_pow=z1**real(n2,kind=rp)
        end if
@@ -1073,15 +1076,17 @@ contains
   end function zm_gamma
 
   complex(cp) function zm_deint(ptr_rpnc,ptr_integrand,a,b)
-    use integral
+    use integral, only: deSdx
+    use misc, only: mess
+    use memio, only: itoa
     integer,intent(in)::ptr_rpnc
     integer,intent(in)::ptr_integrand
     complex(cp),intent(in)::a,b
-    real(rp) ans
+    complex(cp) ans
     integer istat
     istat=deSdx(ptr_rpnc,ptr_integrand,realpart(a),realpart(b),epsilon(rzero),ans)
-    if(istat/=0) WRITE(*,*) "*** deSdx failed: code=",istat
-    zm_deint=complex(ans,rzero)
+    if(istat/=0) call mess("*** zm_deint: deSdx failed: code = "//trim(itoa(istat)))
+    zm_deint=ans
   end function zm_deint
 
 end module zmath
