@@ -18,7 +18,6 @@
 ! *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 module com
-  use rpnd
   implicit none
   integer,parameter::CID_INV         =  -999
   integer,parameter::CID_NOP         =   0
@@ -44,6 +43,13 @@ module com
   integer,parameter::CID_SET_PROMPT  =  20
   integer,parameter::CID_WRITE       =  21
   integer,parameter::CID_READ        =  22
+  integer,parameter::CID_HIST        =  23
+  integer,parameter::CID_HIST_ON     =  24
+  integer,parameter::CID_HIST_OFF    =  25
+  integer,parameter::CID_SAVE        =  26
+  integer,parameter::CID_SAVE_PAR    =  27
+  integer,parameter::CID_SAVE_FNC    =  28
+  integer,parameter::CID_SAVE_MAC    =  29
   integer,parameter::CID_DONE        = 999
 
   integer,parameter::AK_INV    =  -1
@@ -60,15 +66,11 @@ module com
 
 contains
 
-#define set_opt(x) rpnc%opt=ior(rpnc%opt,(x))
-#define cle_opt(x) rpnc%opt=iand(rpnc%opt,not(x))
-#define set_disp_opt(x) rpnc%opt=ior(rpnc%opt,ishft((x),32))
-#define cle_disp_opt(x) rpnc%opt=iand(rpnc%opt,not(ishft((x),32)))
-#define put_disp_digit(x) rpnc%opt=ior(iand(rpnc%opt,digit_mask),ishft((x),32))
-
   integer function parse_command(rpnc,a,p1arg,p2arg,b)
-    use fpio
     ! a must not include dup white and must be left adjusted
+    use fpio
+    use rpnd
+    use misc, only: set_opt,cle_opt
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(in)::a
     integer,intent(out),optional::p1arg,p2arg
@@ -76,6 +78,8 @@ contains
     integer p1,p2
     integer*8 n
     integer lencom
+    logical help
+    character(len=1024) str ! <<<<<<<<<<<<<<<<<
 
     parse_command=CID_NOP
     if(present(p1arg)) p1arg=0
@@ -84,144 +88,286 @@ contains
 
     if(lencom<=1) return
     ! a(2:2) >= A?
+    if(a(1:1)=="!") then
+       call system(a(2:))
+       parse_command=CID_DONE
+       return
+    end if
     if(a(1:1)/=".".or.ichar(a(2:2))<65) return
 
     p2=1
     p1=get_arg(p2)
+    help=.false.
+    str=""
 
     do
        select case(parse_command)
        case(CID_NOP)
           select case(a(p1:p2))
           case("h","help")
-             call print_help
-             parse_command=CID_DONE
+             if(help) then
+                str="print help"
+                exit
+             end if
+             help=.true.
           case("byte")
-             set_opt(RPNCOPT_BYTE)
+             if(help) then
+                str="sets SI prefix k to 1024"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_BYTE)
              parse_command=CID_DONE
           case("nobyte")
-             cle_opt(RPNCOPT_BYTE)
+             if(help) then
+                str="sets SI prefix k to 1000 (default)"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_BYTE)
              parse_command=CID_DONE
           case("read")
+             if(help) then
+                str="read a string from stdin:\n\t.read a=?"
+                exit
+             end if
              call read_arg
-             parse_command=CID_READ
+             parse_command=CID_NOP
           case("write")
              parse_command=-CID_WRITE
           case("prompt")
              parse_command=-CID_SET_PROMPT
+          case("hist") 
+             parse_command=-CID_HIST
           case("echo")
              parse_command=-CID_ECHO
           case("load")
              parse_command=-CID_LOAD
           case("opt")
+             if(help) then
+                str="print option-word"
+                exit
+             end if
              write(*,"(Z16.16)") rpnc%opt
              parse_command=CID_DONE
           case("q","quit")
              parse_command=CID_EXIT
           case("nodms")
-             cle_opt(RPNCOPT_OUTM)
-             cle_disp_opt(X2A_DMS)            
+             if(help) then
+                str="unsets .dms"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_OUTM)
+             call cle_disp_opt(X2A_DMS)            
              parse_command=CID_DONE
           case("dms") ! degree minute second
-             cle_opt(RPNCOPT_OUTM)
-             set_disp_opt(X2A_DMS)
-             cle_disp_opt(X2A_ENG)            
+             if(help) then            
+                str="display mode to degree:minute:second"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_OUTM)
+             call set_disp_opt(X2A_DMS)
+             call cle_disp_opt(X2A_ENG)            
              call set_disp_digit()
              parse_command=CID_DONE
           case("noeng")
-             cle_opt(RPNCOPT_OUTM)
-             cle_disp_opt(X2A_ENG)
+             if(help) then
+                str="unsets .eng"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_OUTM)
+             call cle_disp_opt(X2A_ENG)
              parse_command=CID_DONE
           case("eng")
-             cle_opt(RPNCOPT_OUTM)
-             set_disp_opt(X2A_ENG)
-             cle_disp_opt(ior(X2A_DMS,X2A_ALLOW_ORDINARY)) ! <<<<<<<<<<<<<<<
+             if(help) then
+                str="sets display mode to engineering notation:\n\t.eng didits"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_OUTM)
+             call set_disp_opt(X2A_ENG)
+             call cle_disp_opt(ior(X2A_DMS,X2A_ALLOW_ORDINARY)) ! <<<<<<<<<<<<<<<
              call set_disp_digit()
              parse_command=CID_DONE
           case("fix")
-             cle_opt(RPNCOPT_OUTM)
-             set_disp_opt(X2A_FIX)
-             cle_disp_opt(X2A_SHOW_E0)
+             if(help) then
+                str="sets display mode to fixed point:\n\t.fix didits"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_OUTM)
+             call set_disp_opt(X2A_FIX)
+             call cle_disp_opt(X2A_SHOW_E0)
              call set_disp_digit()
              parse_command=CID_DONE
           case("exp")
-             cle_opt(RPNCOPT_OUTM)
-             cle_disp_opt(ior(X2A_FIX,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO)))
+             if(help) then
+                str="sets display mode to scientific notation:\n\t.exp didits"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_OUTM)
+             call cle_disp_opt(ior(X2A_FIX,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO)))
              call set_disp_digit()
              parse_command=CID_DONE
           case("fig")
-             cle_opt(RPNCOPT_OUTM)
-             set_disp_opt(ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))
-             cle_disp_opt(ior(X2A_FIX,X2A_SHOW_E0))
+             if(help) then
+                str="sets display mode to normal:\n\t.fig"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_OUTM)
+             call set_disp_opt(ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))
+             call cle_disp_opt(ior(X2A_FIX,X2A_SHOW_E0))
              n=max_digit
-             put_disp_digit(n)
+             call put_disp_digit(n)
              parse_command=CID_DONE
           case("DEC")
-             cle_opt(ior(RPNCOPT_INM,RPNCOPT_OUTM))
+             if(help) then
+                str="sets base of input and output to decimal"
+                exit
+             end if
+             call cle_opt(rpnc%opt,ior(RPNCOPT_INM,RPNCOPT_OUTM))
              parse_command=CID_DONE
           case("HEX")
-             set_opt(ior(RPNCOPT_IHEX,RPNCOPT_OHEX))
+             if(help) then
+                str="sets base of input and output to hexadecimal"
+                exit
+             end if
+             call set_opt(rpnc%opt,ior(RPNCOPT_IHEX,RPNCOPT_OHEX))
              parse_command=CID_DONE
           case("OCT")
-             set_opt(ior(RPNCOPT_IOCT,RPNCOPT_OOCT))
+             if(help) then
+                str="sets base of input and output to octal"
+                exit
+             end if
+             call set_opt(rpnc%opt,ior(RPNCOPT_IOCT,RPNCOPT_OOCT))
              parse_command=CID_DONE
           case("BIN")
-             set_opt(ior(RPNCOPT_IBIN,RPNCOPT_OBIN))
+             if(help) then
+                str="sets base of input and output to binary"
+                exit
+             end if
+             call set_opt(rpnc%opt,ior(RPNCOPT_IBIN,RPNCOPT_OBIN))
              parse_command=CID_DONE
           case("Dec")
-             cle_opt(RPNCOPT_INM)
+             if(help) then
+                str="sets base of input to decimal"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_INM)
              parse_command=CID_DONE
           case("Hex")
-             set_opt(RPNCOPT_IHEX)
+             if(help) then
+                str="sets base of input to hexadecimal"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_IHEX)
              parse_command=CID_DONE
           case("Oct")
-             set_opt(RPNCOPT_IOCT)
+             if(help) then
+                str="sets base of input to octal"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_IOCT)
              parse_command=CID_DONE
           case("Bin")
-             set_opt(RPNCOPT_IBIN)
+             if(help) then
+                str="sets base of input to binary"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_IBIN)
              parse_command=CID_DONE
           case("dec")
-             cle_opt((RPNCOPT_OUTM))
+             if(help) then
+                str="sets base of output to decimal"
+                exit
+             end if
+             call cle_opt(rpnc%opt,(RPNCOPT_OUTM))
              parse_command=CID_DONE
           case("hex")
-             set_opt(RPNCOPT_OHEX)
+             if(help) then
+                str="sets base of output to hexadecimal"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_OHEX)
              parse_command=CID_DONE
           case("oct")
-             set_opt(RPNCOPT_OOCT)
+             if(help) then
+                str="sets base of output to octal"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_OOCT)
              parse_command=CID_DONE
           case("bin")
-             set_opt(RPNCOPT_OBIN)
+             if(help) then
+                str="sets base of output to binaryl"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_OBIN)
              parse_command=CID_DONE
           case("deg")
-             set_opt(RPNCOPT_DEG)
+             if(help) then
+                str="sets angles in degree"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_DEG)
              parse_command=CID_DONE
           case("rad")
-             cle_opt(RPNCOPT_DEG)
+             if(help) then
+                str="sets angles in radian"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_DEG)
              parse_command=CID_DONE
           case("dbg","debug")
-             set_opt(RPNCOPT_DEBUG)
+             if(help) then
+                str="to debug mode:\n\t.{dbg|debug}"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_DEBUG)
              parse_command=CID_DONE
           case("cle","clear")
              parse_command=CID_SCLE
           case("s","sta","stat")
-             set_opt(RPNCOPT_STA)
-             cle_opt(RPNCOPT_DAT) ! <<<
+             if(help) then
+                str="to statistical mode:\n\t.{s|sta|stat}"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_STA)
+             call cle_opt(rpnc%opt,RPNCOPT_DAT) ! <<<
              parse_command=CID_DONE
           case("d","dat","data")
-             set_opt(RPNCOPT_DAT)
+             if(help) then
+                str="to data input mode:\n\t.{d|dat|data}"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_DAT)
              parse_command=CID_DONE
           case("n","norm")
-             cle_opt(ior(RPNCOPT_DAT,RPNCOPT_STA))
+             if(help) then
+                str="to normal mode:\n\t.{n|norm}"
+                exit
+             end if
+             call cle_opt(rpnc%opt,ior(RPNCOPT_DAT,RPNCOPT_STA))
              parse_command=CID_DONE
           case("nodbg","nodebug")
-             cle_opt(RPNCOPT_DEBUG)
+             if(help) then
+                str="exits from debug mode\n\t.{nodbg|nodebug}"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_DEBUG)
              parse_command=CID_DONE
           case("r","ratio")
-             set_opt(RPNCOPT_RATIO)
+             if(help) then
+                str="to rational mode:\n\t.{r|ratio}"
+                exit
+             end if
+             call set_opt(rpnc%opt,RPNCOPT_RATIO)
              parse_command=CID_DONE
           case("f","frac")
-             cle_opt(RPNCOPT_RATIO)
+             if(help) then
+                str="to fractional mode:\n\t.{f|frac}"
+                exit
+             end if
+             call cle_opt(rpnc%opt,RPNCOPT_RATIO)
              parse_command=CID_DONE
+          case("save")
+             parse_command=-CID_SAVE             
           case("del","delete")
              parse_command=-CID_DEL
           case("dm")
@@ -230,7 +376,7 @@ contains
              parse_command=-CID_DEL_FNC
           case("dp")
              parse_command=-CID_DEL_PAR
-          case("p","print")
+          case("p","pri","print")
              parse_command=-CID_PRI
           case("pm")
              parse_command=-CID_PRI_MAC
@@ -242,6 +388,16 @@ contains
              parse_command=CID_PRI_DAT   
           case("init")
              parse_command=CID_INI
+          case default
+             parse_command=CID_INV
+             exit
+          end select
+       case(-CID_HIST)
+          select case(get_ak(a(p1:p2)))
+          case(AK_ON)
+             parse_command=CID_HIST_ON
+          case(AK_OFF)
+             parse_command=CID_HIST_OFF
           case default
              parse_command=CID_INV
              exit
@@ -268,6 +424,18 @@ contains
              parse_command=CID_INV
              exit
           end select
+       case(-CID_SAVE)
+          select case(get_ak(a(p1:p2)))
+          case(AK_PAR)
+             parse_command=-CID_SAVE_PAR
+          case(AK_MAC)
+             parse_command=-CID_SAVE_MAC
+          case(AK_FNC)
+             parse_command=-CID_SAVE_FNC
+          case default
+             parse_command=CID_INV
+             exit
+          end select
        case(-CID_PRI)
           select case(get_ak(a(p1:p2)))
           case(AK_PAR)
@@ -286,7 +454,8 @@ contains
           if(present(p1arg)) p1arg=p1
           if(present(p2arg)) p2arg=lencom
           parse_command=CID_WRITE
-       case(-CID_PRI_PAR,-CID_PRI_FNC,-CID_PRI_MAC,-CID_LOAD,-CID_SET_PROMPT)
+       case(-CID_PRI_PAR,-CID_PRI_FNC,-CID_PRI_MAC,-CID_LOAD,-CID_SET_PROMPT,&
+            -CID_SAVE_PAR,-CID_SAVE_FNC,-CID_SAVE_MAC)
           if(present(p1arg)) p1arg=p1
           if(present(p2arg)) p2arg=p2
           parse_command=-parse_command
@@ -299,24 +468,54 @@ contains
              if(present(p1arg)) p2arg=p2
           end if
        case default
-          stop "internal error"
+          write(*,*) "cid = ",parse_command
+          STOP "*** parse_command: UNEXPECTED ERROR: unknown cid"
        end select
 
-       if(parse_command>=0) exit
+       if(parse_command>=0.and..not.help) exit
 
        p1=get_arg(p2)
        if(p1==0) exit
 
     end do
 
+    if(help) then
+       if(parse_command==CID_NOP.and.str=="") then
+          call print_com_list
+       else 
+          if(parse_command==CID_INV) then
+             str="Unrecognized command"
+          else if(str=="") then
+             call get_help
+          end if
+          write(*,*) trim(str)
+       end if
+       parse_command=CID_DONE
+    end if
+
   contains
     
+    subroutine cle_disp_opt(x)
+      integer*8,intent(in)::x
+      rpnc%opt=iand(rpnc%opt,not(ishft((x),32)))
+    end subroutine cle_disp_opt
+
+    subroutine put_disp_digit(x)
+      integer*8,intent(in)::x
+      rpnc%opt=ior(iand(rpnc%opt,digit_mask),ishft((x),32))
+    end subroutine put_disp_digit
+
+    subroutine set_disp_opt(x)
+      integer*8,intent(in)::x
+      rpnc%opt=ior(rpnc%opt,ishft((x),32))
+    end subroutine set_disp_opt
+
     subroutine set_disp_digit()
       integer*8 nn
       p1=get_arg(p2)
       if(p1>0) then
          nn=atoi(a(p1:p2),nn)
-         put_disp_digit(nn)
+         call put_disp_digit(nn)
       end if
     end subroutine set_disp_digit
 
@@ -384,7 +583,7 @@ contains
       b=trim(str)
     end subroutine read_arg
 
-    subroutine print_help()
+    subroutine print_com_list()
       integer i,j
       character*(*),parameter::coms(12*4)=[&
            "help     ",&    
@@ -395,11 +594,12 @@ contains
            "         ",&                       
            "read     ",&                 
            "write    ",&                    
+           "save     ",&                 
            "load     ",&                 
            "prompt   ",&                  
            "echo     ",&                 
-           "print    ",&                 
            !
+           "print    ",&                 
            "[no]dms  ",&                   
            "[no]eng  ",&                         
            "fix      ",&                   
@@ -411,8 +611,8 @@ contains
            "oct      ",&                  
            "dec      ",&               
            "hex      ",&                  
-           "Bin      ",&
            !
+           "Bin      ",&
            "Oct      ",&                  
            "Dec      ",&                  
            "Hex      ",&                  
@@ -424,7 +624,6 @@ contains
            "rad      ",&                  
            "ratio    ",&                      
            "frac     ",&                
-           "         ",&                
            !        
            "stat     ",&                
            "data     ",&                     
@@ -445,7 +644,58 @@ contains
          write(*,*)
       end do
       
-    end subroutine print_help
+    end subroutine print_com_list
+
+    subroutine get_help
+      select case(parse_command)
+      case(CID_EXIT)
+        str="quit:\n\t.{q|quit}"
+     case(CID_INI)
+        str="initialize all the status"
+     case(CID_SCLE)
+        str="clear data of statistical mode:\n\t.{cle|clear}"
+     case(-CID_SAVE,-CID_SAVE_PAR,-CID_SAVE_FNC,-CID_SAVE_MAC)
+        str="save parameters, functions or macros on a file:\n\t.save obj file"
+     case(CID_SAVE_PAR)
+        str="save parameters on a file:\n\t.save {p|par|parameter} file"
+     case(CID_SAVE_FNC)
+        str="save parameters on a file:\n\t.save {f|func|function} file"
+     case(CID_SAVE_MAC)
+        str="save parameters on a file:\n\t.save {m|mac|macro} file"
+     case(-CID_PRI)
+        str="print parameters, functions, macros or data:\n\t.{p|pri|print} obj [name]"
+     case(-CID_PRI_PAR,CID_PRI_PAR)
+        str="print parameters, pp:\n\t.{p|pri|print} {p|par|parameter} [name]"
+     case(-CID_PRI_FNC,CID_PRI_FNC)
+        str="print functions, pf:\n\t.{p|pri|print} {f|func|function} [name]"
+     case(-CID_PRI_MAC,CID_PRI_MAC)
+        str="print macros, pm:\n\t.{p|pri|print} {m|mac|macro} [name]"
+     case(CID_PRI_DAT)
+        str="print data, pd:\n\t.{p|pri|print} {d|dat|data}"
+     case(-CID_DEL)
+        str="delete parameter, function or macro\n\t.{del|delete} obj {name|.all}"
+     case(-CID_DEL_PAR,CID_DEL_PAR)
+        str="delete a parameter, dp:\n\t.{del|delete} {p|par|parameter} {name|.all}"
+     case(-CID_DEL_MAC,CID_DEL_MAC)
+        str="delete a macro, dm:\n\t.{del|delete} {m|mac|macros} {name|.all}"
+     case(-CID_DEL_FNC,CID_DEL_FNC)
+        str="delete a function, df:\n\t.{del|delete} {f|func|function} {name|.all}"
+     case(CID_DEL_PAR_ALL)
+        str="delete all parameters:\n\t.{del|delete} {p|par|parameter} .all"
+     case(CID_LOAD)
+        str="load a file:\n  .load file"
+     case(-CID_ECHO,CID_ECHO_OFF,CID_ECHO_ON)
+        str="sets echo mode on/off:\n\t.echo [on|off]"
+     case(-CID_HIST,CID_HIST_OFF,CID_HIST_ON)
+        str="sets history save mode on/off:\n\t.hist [on|off]"
+     case(-CID_SET_PROMPT,CID_SET_PROMPT)
+        str="sets prompt string:\n\t.prompt sting"
+     case(-CID_WRITE,CID_WRITE)
+        str="writes string:\n\t.write string"
+     case default
+        str="???"
+     end select
+   end subroutine get_help
 
   end function parse_command
 

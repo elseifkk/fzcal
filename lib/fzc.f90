@@ -83,6 +83,7 @@ contains
   end function fzc_eval
 
   real(dp) function fzc_get_ans(ptr_rpnc)
+    use fpio, only: dp
     size_t,intent(in),value::ptr_rpnc
     type(t_rpnc) rpnc
     pointer(p,rpnc)
@@ -91,6 +92,7 @@ contains
   end function fzc_get_ans
 
   subroutine fzc_get_str_ans(ptr_rpnc,ptr_str)
+    use fpio, only: LEN_STR_ANS_MAX
     size_t,intent(in),value::ptr_rpnc,ptr_str
     type(t_rpnc) rpnc
     pointer(pr,rpnc)
@@ -119,22 +121,9 @@ contains
     rpnc%opt=iand(rpnc%opt,not(opt))
   end subroutine fzc_cle_opt
 
-  subroutine c2fstr(pstr,s)
-    size_t,intent(in),value::pstr
-    character*(*),intent(out)::s
-    integer i
-    character*1 c
-    pointer(p,c)
-    s=""
-    p=pstr-1
-    do i=1,len(s)
-       p=p+1
-       if(c==achar(0)) exit
-       s(i:i)=c
-    end do
-  end subroutine c2fstr
-
   retint function fzc_regist_parameter(ptr_rpnc,ptr_var,ptr_str,pk)
+    use misc, only: c2fstr
+    use plist, only: add_par_by_reference
     size_t,intent(in),value::ptr_rpnc,ptr_var,ptr_str
     int_t,intent(in),value::pk
     character(LEN_STR_MAX) name

@@ -51,9 +51,15 @@ module slist
   public uinit_slist
   public dump_slist
   public trim_slist
+  public slist_count
 
 contains
   
+  integer function slist_count(sl)
+    type(t_slist),intent(in)::sl
+    slist_count=sl%n
+  end function slist_count
+
   subroutine trim_slist(sl)
     type(t_slist),intent(inout)::sl
     type(t_slist) tmp
@@ -376,30 +382,31 @@ contains
   end function find_str
 
   subroutine dump_slist(sl)
+    use misc, only: mess,messp
+    use memio, only: itoa,DISP_FMT_BIN
     type(t_slist),intent(in)::sl
     integer i
     integer*1 c
     integer ptr,len
     pointer(p,c)
-    write(*,*) "slist dump:"
+    call mess("slist dump:")
     if(sl%n<=0.or.sl%p==0.or.sl%sz==0) then
-       write(*,*) "(empty)"
+      call mess("(empty)")
     end if
-    write(*,*) "size = ",sl%sz
-    write(*,*) "capacity = ",sl%sz-(sl%st-sl%p+1)
+    call mess("size = "//trim(itoa(sl%sz)))
+    call mess("capacity = "//trim(itoa(sl%sz-(sl%st-sl%p+1))))
     p=sl%p
+    call mess("#\tlen\tcode\tvalue")
     do i=1,sl%n
        ptr=p
        len=c
-       write(*,10) i,len
+       call messp(trim(itoa(i))//":\t"//trim(itoa(len))//"\t")
        p=p+1
-       write(*,11) c
-       write(*,12) trim(cpstr(ptr,len))
+       call messp(trim(itoa(int(c),DISP_FMT_BIN))//"\t")
+       p=p+1
+       call mess(trim(cpstr(ptr,len)))
        p=ptr+len+LEN_SLIST_HDR
     end do
-10  format(x,i4,x,i4,$)
-11  format(x,b4.4,$)
-12  format(x,a)
   end subroutine dump_slist
 
 end module slist

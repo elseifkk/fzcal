@@ -85,8 +85,14 @@ module plist
   public remove_dup
   public min_cp_plist
   public sort_par
+  public plist_count
 
 contains
+
+  integer function plist_count(pl)
+    type(t_plist),intent(in)::pl
+    plist_count=slist_count(pl%s)
+  end function plist_count
 
   integer function get_pkind(sta)
     integer,intent(in)::sta
@@ -321,11 +327,13 @@ contains
     end if
   end subroutine min_cp_plist
   
-  subroutine dump_plist(pl,ent,name)
+  subroutine dump_plist(pl,ent,name,out_unit)
+    use misc, only: mess,messp
     type(t_plist),intent(in),target::pl
     integer,intent(in),optional::ent
     character*(*),intent(in),optional::name
-    integer i,len,istat,ptr
+    integer,intent(in),optional::out_unit
+    integer i,i1,i2,len,istat,ptr
     type(t_vbuf),pointer::v
     real(dp) r
     real(rp) x
@@ -335,33 +343,52 @@ contains
     pointer(pz,z)
     pointer(px,x)
     pointer(pn,n)
-    do i=1,pl%s%n
-       if(present(ent)) then
-          if(ent>0.and.ent/=i) cycle
+    integer ou
+    ou=0
+    if(present(out_unit)) ou=out_unit
+    i1=1
+    i2=pl%s%n
+    if(present(ent)) then
+       if(ent>0) then
+          i1=ent
+          i2=ent
        end if
+    end if
+    do i=i1,i2
        v => pl%v(i)
        istat=get_str_ptr(pl%s,i,ptr,len)
        if(present(name)) then
           if(name/=trim(cpstr(ptr,len))) cycle
        end if
-       write(*,10) trim(itoa(i))//": ["//trim(itoa(v%sta,DISP_FMT_HEX))//"] "//trim(cpstr(ptr,len))
-       if(is_reference(v%sta)) write(*,10) "("//trim(itoa(v%p,DISP_FMT_HEX))//")"
+       if(ou/=0) then
+          call messp(trim(cpstr(ptr,len))//"=",ou)
+       else
+          call messp(trim(itoa(i))//":\t["//trim(itoa(v%sta,DISP_FMT_HEX))//"]\t"//trim(cpstr(ptr,len))//"\t",ou)
+          if(is_reference(v%sta)) then
+             call messp("("//trim(itoa(v%p,DISP_FMT_HEX))//")\t",ou)
+          else
+             call messp("\t\t")
+          end if
+       end if
        select case(get_pkind(v%sta))
        case(PK_COMP)
           pz=v%p
-          write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
+          if(ou==0) then
+             call mess(trim(ztoa(z,fmt=DISP_FMT_RAW)),ou)
+          else
+             call mess(trim(rtoa(realpart(z),fmt=DISP_FMT_RAW))//" + "//trim(rtoa(imagpart(z),fmt=DISP_FMT_RAW))//" i",ou)
+          end if
        case(PK_REAL)
           px=v%p
-          write(*,*) trim(rtoa(x,fmt=DISP_FMT_RAW))                
+          call mess(trim(rtoa(x,fmt=DISP_FMT_RAW)),ou)
        case(PK_DBLE)
           pr=v%p
-          write(*,*) trim(rtoa(real(r,kind=rp),fmt=DISP_FMT_RAW))
+          call mess(trim(rtoa(real(r,kind=rp),fmt=DISP_FMT_RAW)),ou)
        case(PK_INT)
           pn=v%p
-          write(*,*) trim(rtoa(real(n,kind=rp),fmt=DISP_FMT_RAW))
+          call mess(trim(rtoa(real(n,kind=rp),fmt=DISP_FMT_RAW)),ou)
        end select
     end do
-10  format(x,a,$)
   end subroutine dump_plist
 
   subroutine alloc_vbuf(n,v)
