@@ -25,15 +25,12 @@ module slist
   type t_sn
      integer*1,allocatable::s(:)
      integer:: code = 0 
-     integer:: len  = 0
      type(t_sn),pointer::next => null()
+     type(t_sn),pointer::prev => null()
   end type t_sn
 
   type,public::t_slist
-     integer sz ! total size
-     integer st ! stack top
-     integer n  ! num elements
-     integer p  ! str list
+     integer::n = 0  ! allocated sn, sn%s may not be allocated
      type(t_sn),pointer::sn => null() 
   end type t_slist
   
@@ -42,8 +39,6 @@ module slist
   integer,parameter::SLERR_NOENT = 3
   integer,parameter,public::SLERR_END   = 3
 
-  integer,parameter,public::LEN_SLIST_HDR=2 ! len+code
-  
   !
   public get_sc
   public set_sc
@@ -55,10 +50,9 @@ module slist
   public rm_str
   public init_slist
   public add_str
-  public min_cp_slist
+  public cp_slist
   public uinit_slist
   public dump_slist
-  public trim_slist
   public slist_count
 
 contains
@@ -68,80 +62,62 @@ contains
     slist_count=sl%n
   end function slist_count
 
-  subroutine trim_slist(sl)
-    type(t_slist),intent(inout)::sl
-    type(t_slist) tmp
-    tmp%p=0
-    call min_cp_slist(sl,tmp)
-    call uinit_slist(sl)
-    sl=tmp
-  end subroutine trim_slist
+  function cp_slist(sl)
+    use memio, only: mcp
+    type(t_slist),intent(in)::sl
+    type(t_slist) cp_slist
+    integer i
+    type(t_sn),pointer::sn,prev
+    type(t_sn),pointer::sn_in
+    cp_slist=init_slist()
+    if(sl%n==0.or..not.associated(sl%sn)) return
+    allocate(cp_slist%sn)
+    cp_slist%n=1
+    sn => cp_slist%sn
+    sn_in => sl%sn
+    nullify(prev)
+    do i=1,sl%n
+       sn%code=sn_in%code
+       if(size(sn_in%s)>0) then
+          allocate(sn%s(size(sn_in%s)))
+          call mcp(loc(sn%s),loc(sn_in%s),size(sn%s))
+       end if
+       sn%prev => prev
+       prev => sn
+       nullify(sn%next)
+       sn_in => sn_in%next
+       if(.not.associated(sn_in)) exit
+       allocate(sn%next)
+       cp_slist%n=cp_slist%n+1
+    end do
+  end function cp_slist
 
-  subroutine min_cp_slist(sl1,sl2)
-    use memio
-    type(t_slist),intent(in)::sl1
-    type(t_slist),intent(inout)::sl2
-    integer sz
-    sz=sl1%st-sl1%p+1
-    if(sl2%p/=0) call free(sl2%p)
-    if(sl1%n>0.and.sz>0) then
-       sl2%p=malloc(sz)
-       sl2%sz=sz
-       call mcp(sl2%p,sl1%p,sz)
-       sl2%st=sl2%p+sz-1
-       sl2%n=sl1%n
-    else
-       sl2%n=0
-       sl2%p=0
-       sl2%st=0
-       sl2%sz=0
-    end if
-  end subroutine min_cp_slist
-
-  function init_slist(sz)
+  function init_slist()
     type(t_slist) init_slist
-    integer,intent(in)::sz
-    if(sz>0) then
-       init_slist%p=malloc(sz)
-    else
-       init_slist%p=0
-    end if
-    init_slist%sz=sz
-    init_slist%st=init_slist%p-1
     init_slist%n=0
   end function init_slist
  
   subroutine uinit_slist(sl)
     type(t_slist),intent(inout)::sl
     integer i
-    type(t_sn),pointer::sn
-!!!!!!!!!!!!!
+    type(t_sn),pointer::sn,next
     sn => sl%sn
     do i=1,sl%n
        if(.not.associated(sn)) exit
        if(allocated(sn%s)) deallocate(sn%s)
-       sn => sn%next
+       next => sn%next
+       deallocate(sn)
+       sn => next
     end do
-!!!!!!!!!!!!
-    if(sl%p/=0) call free(sl%p)
-    sl%p=0
-    sl%sz=0
-    sl%st=-1
     sl%n=0
   end subroutine uinit_slist
 
-  pure character*256 function cpstr(ptr,len)
+  function cpstr(ptr,len)
+    use memio, only: mcp 
     integer,intent(in)::ptr
     integer,intent(in)::len
-    integer i
-    character*1 c
-    pointer(p,c)
-    cpstr=""
-    p=ptr+LEN_SLIST_HDR-1 
-    do i=1,len
-       p=p+1
-       cpstr(i:i)=c
-    end do
+    character(len=len) cpstr
+    call mcp(loc(cpstr),ptr,len)
   end function cpstr
       
   function kth_node(sl,k)
@@ -151,14 +127,35 @@ contains
     type(t_sn),pointer::cur
     integer i
     nullify(kth_node)
-    if(k>sl%n) return
+    if(k>sl%n.or.k<=0) return
+    if(.not.associated(sl%sn)) return
     cur => sl%sn
     do i=2,k
-       if(.not.associated(cur)) return
        cur => cur%next
+       if(.not.associated(cur)) return
     end do
     kth_node => cur
   end function kth_node
+
+  function last_node(sl,k)
+    type(t_slist),intent(in)::sl
+    integer,intent(out)::k
+    type(t_sn),pointer::last_node
+    type(t_sn),pointer::cur
+    integer i
+    nullify(last_node)
+    k=0
+    if(.not.associated(sl%sn)) return
+    cur => sl%sn
+    do i=1,sl%n
+       if(.not.associated(cur%next)) then
+          k=i
+          last_node => cur
+          return
+       end if
+       cur => cur%next
+    end do
+  end function last_node
   
   integer function get_str_ptr(sl,k,ptr,len,code)
     type(t_slist),intent(in)::sl
@@ -166,25 +163,24 @@ contains
     integer,intent(out)::ptr
     integer,intent(out),optional::len
     integer,intent(out),optional::code
-    integer*1 b
-    integer l,i
-    pointer(p,b)
+    type(t_sn),pointer::sn
+
     if(present(len)) len=0
     if(sl%n<k.or.k<=0) then
        get_str_ptr=SLERR_NOENT
        return
     end if
-    p=sl%p
-    do i=1,k-1
-       l=b
-       p=p+l+LEN_SLIST_HDR
-    end do
-    ptr=p
-    if(present(len)) len=b
-    if(present(code)) then
-       p=p+1
-       code=b
+   
+    sn => kth_node(sl,k)
+    if(.not.associated(sn)) then
+       get_str_ptr=SLERR_NOENT
+       return
     end if
+
+    ptr=loc(sn%s)
+    if(present(len)) len=size(sn%s)
+    if(present(code)) code=sn%code
+
     get_str_ptr=0
   end function get_str_ptr
 
@@ -192,50 +188,41 @@ contains
     type(t_slist),intent(in)::sl
     integer,intent(in)::k
     integer,intent(out)::code
-    integer istat
-    integer*1 b
-    pointer(p,b)
-    istat=get_str_ptr(sl,k,p)
-    if(istat/=0) then
-       get_sc=istat
+    type(t_sn),pointer::sn
+    sn => kth_node(sl,k)
+    if(.not.associated(sn)) then
+       get_sc=SLERR_NOENT
        return
     end if
-    p=p+1
-    code=b
+    code=sn%code
     get_sc=0
   end function get_sc
 
   integer function set_sc(sl,k,code)
-    type(t_slist),intent(inout)::sl
+    type(t_slist),intent(in)::sl
     integer,intent(in)::k
     integer,intent(in)::code
-    integer istat
-    integer*1 b
-    pointer(p,b)
-    istat=get_str_ptr(sl,k,p)
-    if(istat/=0) then
-       set_sc=istat
+    type(t_sn),pointer::sn
+    sn => kth_node(sl,k)
+    if(.not.associated(sn)) then
+       set_sc=SLERR_NOENT
        return
     end if
-    p=p+1
-    b=int(code,kind=1)
+    sn%code=code
     set_sc=0
   end function set_sc
 
   integer function add_sc(sl,k,code)
-    type(t_slist),intent(inout)::sl
+    type(t_slist),intent(in)::sl
     integer,intent(in)::k
     integer,intent(in)::code
-    integer istat
-    integer*1 b
-    pointer(p,b)
-    istat=get_str_ptr(sl,k,p)
-    if(istat/=0) then
-       add_sc=istat
+    type(t_sn),pointer::sn
+    sn => kth_node(sl,k)
+    if(.not.associated(sn)) then
+       add_sc=SLERR_NOENT
        return
     end if
-    p=p+1
-    b=ior(b,int(code,kind=1))
+    sn%code=ior(sn%code,code)
     add_sc=0
   end function add_sc
   
@@ -245,45 +232,31 @@ contains
     character*(*),intent(inout),optional::s
     integer,intent(inout),optional::ent
     integer k
-    integer ptr,l
+    type(t_sn),pointer::sn
+
+    rm_str=SLERR_NOENT
+
     if(present(s).and.s/="") then
-       k=find_str(sl,s,ptr=ptr)
+       k=find_str(sl,s,node=sn)
        if(present(ent)) ent=k
-       if(k==0) then
-          rm_str=SLERR_NOENT
-          return
-       end if
+       if(k==0) return
     else if(present(ent)) then
-       if(ent<=0.or.ent>sl%n.or.get_str_ptr(sl,ent,ptr,len=l)/=0) then
-          rm_str=SLERR_NOENT
-          return
-       end if
-       if(present(s)) call mcp(loc(s),ptr,min(l,len(s)))
+       if(ent<=0.or.ent>sl%n) return
+       k=ent
+       sn => kth_node(sl,k)
+       if(.not.associated(sn)) return
+       if(present(s)) call mcp(loc(s),loc(sn%s),min(size(sn%s),len(s)))
     else
-       rm_str=SLERR_NOENT
+       return
     end if
-    call shift_slist()
+
+    sn%prev%next => sn%next
+    sn%next%prev => sn%prev
+
+    deallocate(sn)
     sl%n=sl%n-1
     rm_str=0
-  contains
-    subroutine shift_slist()
-      integer*1 c,d
-      pointer(si,c)
-      pointer(di,d)
-      di=ptr
-      si=ptr+d+LEN_SLIST_HDR
-      if(si>sl%st) then
-         sl%st=di-1
-      else
-         do 
-            d=c
-            if(si==sl%st) exit
-            di=di+1
-            si=si+1
-         end do
-         sl%st=di
-      end if
-    end subroutine shift_slist
+
   end function rm_str
 
   integer function try_add_str(sl,s,code,ent)
@@ -308,111 +281,100 @@ contains
     try_add_str=istat
   end function try_add_str
 
-  subroutine inc_slist(sl,inc_sz)
-    use memio
-    type(t_slist),intent(inout)::sl
-    integer,intent(in)::inc_sz
-    integer p
-    integer std
-    if(inc_sz<=0) return
-    p=malloc(sl%sz+inc_sz)
-    std=sl%st-sl%p
-    if(sl%p/=0) then
-       call mcp(p,sl%p,sl%sz)
-       call free(sl%p)
-    end if
-    sl%p=p
-    sl%st=std+p
-    sl%sz=sl%sz+inc_sz
-  end subroutine inc_slist
-
   integer function add_str(sl,s,code,ent)
+    use memio, only: mcp
     type(t_slist),intent(inout)::sl
     character*(*),intent(in)::s
     integer,intent(in)::code
     integer,intent(out),optional::ent
-    integer i
-    integer*1 b
-    integer*1 c
-    pointer(q,c)
-    pointer(p,b)
     integer len
+    integer k
+    type(t_sn),pointer::sn,prev
+
     if(present(ent)) ent=0
-    if(sl%p==0) then !<<<<<<<<<<<<<<<<<
-       add_str=SLERR_NOMEM
-       return
-    end if
     len=len_trim(s)
-    if(len>255) then
-       add_str=SLERR_MEMOV
-       return
+
+    sn => last_node(sl,k) ! k must be sl%n    
+
+    if(k==0) then
+       allocate(sl%sn)
+       sn => sl%sn
+       nullify(prev)
+    else
+       allocate(sn%next)
+       prev => sn
+       sn => sn%next
     end if
-    if(len+LEN_SLIST_HDR+(sl%st-sl%p+1)>sl%sz) &
-         call inc_slist(sl,len+LEN_SLIST_HDR)
-    p=sl%st+1
-    b=int(len,kind=1)
-    p=p+1
-    b=int(code,kind=1)
-    q=loc(s)-1
-    do i=1,len
-       p=p+1
-       q=q+1
-       b=c
-    end do
-    sl%st=p
-    sl%n=sl%n+1 
-    add_str=0
+    sl%n=sl%n+1
+
+    nullify(sn%next)
+    sn%prev => prev
+
     if(present(ent)) ent=sl%n
+    sn%code=code
+
+    add_str=0
+
+    if(len==0) return
+
+    allocate(sn%s(len))
+    call mcp(loc(sn%s),loc(s),len)
+
   end function add_str
 
-  integer function find_str(sl,s,target_code,found_code,ptr)
+  integer function find_str(sl,s,target_code,found_code,ptr,node)
     type(t_slist),intent(in)::sl
     character*(*),intent(in)::s
     integer,intent(in),optional::target_code
     integer,intent(out),optional::found_code
     integer,intent(out),optional::ptr
+    type(t_sn),intent(out),pointer,optional::node
     integer i
     integer len
     integer lenp
-    integer*1 cd
-    integer*1 b
-    integer*1 tc
-    pointer(p,b)
+    integer cd
+    integer tc
+    type(t_sn),pointer::sn
+
     find_str=0
-    p=sl%p
+    if(present(found_code)) found_code=-1
+    if(present(ptr)) ptr=0
+    if(present(node)) nullify(node)
+
     len=len_trim(s)
     if(present(target_code)) then
-       tc=int(target_code,kind=1)
+       tc=target_code
     else
        tc=-1
     end if
+
+    sn => sl%sn
     do i=1,sl%n
-       lenp=b
-       if(len==lenp) then
-          if(is_matched()) then
-             find_str=i
-             if(present(found_code)) found_code=cd
-             if(present(ptr)) ptr=p
-             return
-          end if
+       if(.not.associated(sn)) return
+       lenp=size(sn%s)
+       if(len==lenp.and.is_matched()) then
+          find_str=i
+          if(present(found_code)) found_code=cd
+          if(present(ptr)) ptr=loc(sn%s)
+          if(present(node)) node => sn
+          return
        end if
-       p=p+lenp+LEN_SLIST_HDR
+       sn => sn%next
     end do
+
   contains
+
     logical function is_matched()
-      integer*1 c
       integer j
-      pointer(q,c)
       is_matched=.false.
-      q=p+1 ! skip code
-      cd=c
-      if(tc/=-1.and.tc/=c) return
+      cd=sn%code
+      if(tc/=-1.and.tc/=cd) return
       do j=1,len
-         q=q+1
-         if(c/=ichar(s(j:j))) return
+         if(sn%s(j)/=ichar(s(j:j))) return
       end do
       is_matched=.true.
     end function is_matched
+
   end function find_str
 
   subroutine dump_slist(sl)
@@ -420,27 +382,26 @@ contains
     use memio, only: itoa,DISP_FMT_BIN
     type(t_slist),intent(in)::sl
     integer i
-    integer*1 c
-    integer ptr,len
-    pointer(p,c)
+    integer len
+    type(t_sn),pointer::sn
+
     call mess("slist dump:")
-    if(sl%n<=0.or.sl%p==0.or.sl%sz==0) then
+    if(sl%n<=0) then
       call mess("(empty)")
+      return
     end if
-    call mess("size = "//trim(itoa(sl%sz)))
-    call mess("capacity = "//trim(itoa(sl%sz-(sl%st-sl%p+1))))
-    p=sl%p
+
     call mess("#\tLen\tCode\tValue")
+
+    sn => sl%sn
     do i=1,sl%n
-       ptr=p
-       len=c
-       call messp(trim(itoa(i))//":\t"//trim(itoa(len))//"\t")
-       p=p+1
-       call messp("["//trim(itoa(int(c),DISP_FMT_BIN))//"]\t")
-       p=p+1
-       call mess(trim(cpstr(ptr,len)))
-       p=ptr+len+LEN_SLIST_HDR
+       if(.not.associated(sn)) exit
+       call messp(trim(itoa(i))//":\t"//trim(itoa(size(sn%s)))//"\t")
+       call messp("["//trim(itoa(sn%code,DISP_FMT_BIN))//"]\t")
+       call mess(trim(cpstr(loc(sn%s),len)))
+       sn => sn%next
     end do
+
   end subroutine dump_slist
 
 end module slist

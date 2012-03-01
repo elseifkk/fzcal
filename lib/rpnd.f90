@@ -52,7 +52,6 @@ module rpnd
   integer,parameter::NUM_VBUF_MIN    =   32
   integer,parameter::NUM_PBUF_MIN    =   32
   integer,parameter::NUM_RPNM_MIN    =    8
-  integer,parameter::LEN_PLIST_MIN   = 1024
   integer,parameter::LEN_RLIST_MIN   = 1024
   integer,parameter::NUM_VS_MIN      =   32
   integer,parameter::LEN_STR_MAX     = 1024
@@ -275,11 +274,11 @@ contains
     rpnlist_count=slist_count(rl%s)
   end function rpnlist_count
 
-  function init_rpnlist(sz,nmax)
+  function init_rpnlist(nmax)
     use slist, only: init_slist
     type(t_rpnlist) init_rpnlist
-    integer,intent(in)::sz,nmax
-    init_rpnlist%s=init_slist(sz)
+    integer,intent(in)::nmax
+    init_rpnlist%s=init_slist()
     if(nmax>0) allocate(init_rpnlist%rpnm(nmax))
   end function init_rpnlist
 
@@ -309,20 +308,15 @@ contains
     call uinit_rpnms(size(rl%rpnm),rl%rpnm)
   end subroutine uinit_rpnlist
   
-  integer function init_rpnc(szplist_,npbuf_,szrlist_,nrpnm_)
+  integer function init_rpnc(npbuf_,szrlist_,nrpnm_)
      ! type(t_rpnc) function init_rpnc causes segmentation fault
     use zmath, only: zm_f1,zm_f2,zm_f3
     use fpio, only: czero,X2A_DEFAULT
     type(t_rpnc) rpnc
     pointer(p,rpnc)
-    integer,intent(in),optional::szplist_,npbuf_,szrlist_,nrpnm_
-    integer szplist,npbuf,szrlist,nrpnm
+    integer,intent(in),optional::npbuf_,szrlist_,nrpnm_
+    integer npbuf,szrlist,nrpnm
     p=malloc(sizeof(rpnc))
-    if(present(szplist_)) then
-       szplist=szplist_
-    else
-       szplist=LEN_PLIST_MIN
-    end if
     if(present(npbuf_)) then
        npbuf=npbuf_
     else
@@ -356,14 +350,14 @@ contains
     rpnc%pfs(1)=loc(zm_f1)
     rpnc%pfs(2)=loc(zm_f2)
     rpnc%pfs(3)=loc(zm_f3)
-    rpnc%pars=init_par(rpnc,szplist,npbuf)
-    rpnc%rl=init_rpnlist(szrlist,nrpnm)
+    rpnc%pars=init_par(rpnc,npbuf)
+    rpnc%rl=init_rpnlist(nrpnm)
     rpnc%opt=ior(RPNCOPT_NOP,ishft(X2A_DEFAULT,32))
     init_rpnc=p
   end function init_rpnc
 
   subroutine cp_rpnm(rpnm1,rpnm2)
-    use slist, only: init_slist,min_cp_slist
+    use slist, only: cp_slist
     type(t_rpnm),intent(in)::rpnm1
     type(t_rpnm),intent(inout)::rpnm2
     if(.not.allocated(rpnm2%que)) then
@@ -380,17 +374,16 @@ contains
     end if
     if(.not.allocated(rpnm2%pnames)) then
        allocate(rpnm2%pnames)
-       rpnm2%pnames=init_slist(0)
-       call min_cp_slist(rpnm1%pnames,rpnm2%pnames) !<<<
+       rpnm2%pnames=cp_slist(rpnm1%pnames)
     end if
   end subroutine cp_rpnm
 
   subroutine min_cp_rpnlist(rl1,rl2)
-    use slist, only: min_cp_slist
+    use slist, only: cp_slist
     type(t_rpnlist),intent(in)::rl1
     type(t_rpnlist),intent(inout)::rl2
     integer i,nrl2
-    call min_cp_slist(rl1%s,rl2%s)
+    rl2%s=cp_slist(rl1%s)
     nrl2=rpnlist_count(rl2)
     if(nrl2<=0) return
     allocate(rl2%rpnm(nrl2))
@@ -405,7 +398,7 @@ contains
     type(t_rpnc) rpnc
     integer istat
     pointer(p,rpnc)
-    p=init_rpnc(size(rpnc_in%vbuf),0,0,0)
+    p=init_rpnc(0,0,0)
     call min_cp_rpnlist(rpnc_in%rl,rpnc%rl)
     call min_cp_plist(rpnc_in%pars,rpnc%pars)
     istat=add_par_by_reference(rpnc%pars,"tmp",loc(rpnc%tmpans),.true.)
@@ -436,14 +429,14 @@ contains
     end if
   end subroutine uinit_rpnc
 
-  function init_par(rpnc,sz,nmax)
+  function init_par(rpnc,nmax)
     use plist, only: init_plist,add_par_by_reference,add_par_by_value
     type(t_plist) init_par
     type(t_rpnc),intent(in)::rpnc
-    integer,intent(in)::sz,nmax
+    integer,intent(in)::nmax
     integer istat
-    init_par=init_plist(sz,nmax)
-    if(sz==0.or.nmax==0) return
+    init_par=init_plist(nmax)
+    if(nmax==0) return
     istat=add_par_by_reference(init_par,"tmp",loc(rpnc%tmpans),.true.)
     istat=add_par_by_reference(init_par,"ans",loc(rpnc%answer),.true.)
     istat=add_par_by_value(init_par,"eps",epsilon(0.0_rp),.true.)    
@@ -727,23 +720,23 @@ contains
        end if
 
        if(present(name)) then
-          if(name/="".and.name/=trim(cpstr(ptr,len))) cycle
+          if(name/="".and.name/=cpstr(ptr,len)) cycle
        end if
 
        if(ou==0) then
-          call mess("name: "//trim(cpstr(ptr,len)))
+          call mess("name: "//cpstr(ptr,len))
        else
-          write(ou,"(a,$)") trim(cpstr(ptr,len))//"="
+          write(ou,"(a,$)") cpstr(ptr,len)//"="
        end if
 
        if(allocated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
           if(ou==0) then
-             call mess("definition: "//trim(cpstr(ptr,len)))
+             call mess("definition: "//cpstr(ptr,len))
           else
              if(t==SC_MAC) then
-                write(ou,"(a)") """"//trim(cpstr(ptr,len))//""""
+                write(ou,"(a)") """"//cpstr(ptr,len)//""""
              else
-                write(ou,"(a)") trim(cpstr(ptr,len))
+                write(ou,"(a)") cpstr(ptr,len)
              end if
              cycle
           end if
@@ -807,7 +800,7 @@ contains
           if(present(mid)) then
              if(t/=TID_FIG) then
                 istat=get_str_ptr(rpnm%pnames,q%cid,ptr,len)
-                call mess(trim(cpstr(ptr,len)))
+                call mess(cpstr(ptr,len))
                 cycle
              else
                 z=rpnm%vbuf(q%cid)
