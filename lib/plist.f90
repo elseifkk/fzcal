@@ -47,6 +47,13 @@ module plist
      integer pz    ! pointer to complex
   end type t_vbuf
 
+!!$  type t_pn
+!!$     type(t_vbuf) v
+!!$     integer*1,allocatable::s(:)
+!!$     type(t_pn),pointer::next => null()
+!!$     type(t_pn),pointer::prev => null()
+!!$  end type t_pn
+
   type,public::t_plist
      type(t_slist) s
      type(t_vbuf),allocatable::v(:)
@@ -152,12 +159,11 @@ contains
     is_writable=(iand(get_pflg(sta),PS_RO)==0)
   end function is_writable
 
-  function init_plist(sz,nmax)
+  function init_plist(nmax)
     use slist
     type(t_plist) init_plist
-    integer,intent(in)::sz
     integer,intent(in)::nmax
-    init_plist%s=init_slist(sz)
+    init_plist%s=init_slist()
     if(nmax>0) call alloc_vbuf(nmax,init_plist%v)
   end function init_plist
 
@@ -320,7 +326,7 @@ contains
     type(t_vbuf),pointer::v1,v2
     integer i,npl2
     call uinit_plist(pl2)
-    call min_cp_slist(pl1%s,pl2%s)
+    pl2%s=cp_slist(pl1%s)
     npl2=plist_count(pl2)
     if(npl2>0) then
        call alloc_vbuf(npl2,pl2%v)
@@ -369,10 +375,10 @@ contains
        v => pl%v(i)
        istat=get_str_ptr(pl%s,i,ptr,len)
        if(present(name)) then
-          if(name/=trim(cpstr(ptr,len))) cycle
+          if(name/=cpstr(ptr,len)) cycle
        end if
        if(ou/=0) then
-          call messp(trim(cpstr(ptr,len))//"=",ou)
+          call messp(cpstr(ptr,len)//"=",ou)
        else
           call messp(trim(itoa(i))//":\t["//trim(itoa(v%sta,cfmt="(Z6.6)"))//"]")
           if(is_reference(v%sta)) then
@@ -380,7 +386,7 @@ contains
           else
              call messp("\t\t")
           end if
-          call messp(trim(cpstr(ptr,len))//"\t",ou)
+          call messp(cpstr(ptr,len)//"\t",ou)
        end if
        select case(get_pkind(v%sta))
        case(PK_COMP)
@@ -430,7 +436,6 @@ contains
           deallocate(pl%v)
        end if
     end if
-    call trim_slist(pl%s)
   end subroutine trim_plist
  
   integer function find_par(pl,s,zout,ent,code)

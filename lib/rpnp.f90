@@ -641,7 +641,6 @@ contains
   end function add_rpnm_entry
     
   integer function set_function(rpnb,rpnc,k1)
-    use slist, only: trim_slist
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
@@ -690,7 +689,6 @@ contains
        call init_pnames()
        if(vc>0) allocate(rpnm%vbuf(vc))
        call cp_vbuf()
-       call trim_slist(rpnm%pnames)
        exit
     end do
     rpnc%que(k1:ke)%tid=TID_NOP
@@ -710,13 +708,13 @@ contains
     end function find_end
 
     subroutine init_pnames()
-      use slist, only: init_slist,add_str,LEN_SLIST_HDR
+      use slist, only: init_slist,add_str
       use misc, only: get_up32
       if(allocated(rpnm%pnames)) deallocate(rpnm%pnames)
       allocate(rpnm%pnames)
       plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1&
            +get_up32(rpnb%que(ka)%p2)-get_up32(rpnb%que(ka)%p1)+1
-      rpnm%pnames=init_slist(plen+(pc+1)*LEN_SLIST_HDR)
+      rpnm%pnames=init_slist()
       if(add_str(rpnm%pnames,supexpr(rpnb,i),SC_RO)/=0 &
            .or.add_str(rpnm%pnames,supexpr(rpnb,ka),SC_RO)/=0) &
            STOP "*** init_pnames: UNEXPECTED ERROR: add_str failed."
@@ -797,7 +795,6 @@ contains
   end function set_function
 
   integer function set_macro(rpnb,rpnc,k1)
-    use slist, only: trim_slist
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
@@ -833,7 +830,6 @@ contains
        rpnm%que(1:tc)=rpnc%que(i+1:i+1+tc-1)
        if(vc>0) allocate(rpnm%vbuf(vc))
        call cp_vbuf()
-       call trim_slist(rpnm%pnames)
        call check_mscl()
     end do
 
@@ -864,12 +860,12 @@ contains
     end function find_end
 
     subroutine init_pnames()
-      use slist, only: init_slist,add_str,LEN_SLIST_HDR
+      use slist, only: init_slist,add_str
       use misc, only: get_up32
       if(allocated(rpnm%pnames)) deallocate(rpnm%pnames)
       allocate(rpnm%pnames)
       plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1
-      rpnm%pnames=init_slist(plen+(pc+1)*LEN_SLIST_HDR)
+      rpnm%pnames=init_slist()
       if(add_str(rpnm%pnames,supexpr(rpnb,i),ior(SC_RO,SC_MAC))/=0) &
            STOP  "*** init_pnames: UNEXPECT3D ERROR: add_str failed"
     end subroutine init_pnames

@@ -852,9 +852,9 @@ contains
       if(cid<0) cid=-cid
       istat=get_str_ptr(rpnm%pnames,cid,ptr,len)
       if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
-      istat=find_par(fnc%pars,trim(cpstr(ptr,len)),ent=ent)
+      istat=find_par(fnc%pars,cpstr(ptr,len),ent=ent)
       if(istat/=0) then
-         write(*,*) "*** No such parameter: "//trim(cpstr(ptr,len))
+         write(*,*) "*** No such parameter: "//cpstr(ptr,len)
       end if
       if(fnc%que(j)%cid<0) then
          pz=get_par_loc(fnc%pars,ent)
@@ -956,9 +956,9 @@ contains
       if(cid<0) cid=-cid
       istat=get_str_ptr(rpnm%pnames,cid,ptr,len)
       if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
-      istat=find_par(mac%pars,trim(cpstr(ptr,len)),ent=ent)
+      istat=find_par(mac%pars,cpstr(ptr,len),ent=ent)
       if(istat/=0) then
-         write(*,*) "*** No such parameter: "//trim(cpstr(ptr,len))
+         write(*,*) "*** No such parameter: "//cpstr(ptr,len)
          istat=RPNCERR_NOPAR
          return
       end if
