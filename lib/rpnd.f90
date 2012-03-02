@@ -229,6 +229,8 @@ module rpnd
   integer*8,parameter::RPNCOPT_IHEX            =  Z"00002000"
   integer*8,parameter::RPNCOPT_INM = ior(RPNCOPT_IHEX,ior(RPNCOPT_IOCT,RPNCOPT_IBIN))     
   integer*8,parameter::RPNCOPT_BYTE            =  Z"00004000" ! for SI prefix k to be 1024
+  integer*8,parameter::RPNCOPT_NO_STDIN        =  Z"00008000"
+  integer*8,parameter::RPNCOPT_NO_STDOUT       =  Z"00010000"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0
@@ -393,14 +395,14 @@ contains
   end subroutine min_cp_rpnlist
 
   integer function cp_rpnc(rpnc_in)
-    use plist, only: add_par_by_reference,min_cp_plist
+    use plist, only: add_par_by_reference,cp_plist
     type(t_rpnc),intent(in)::rpnc_in
     type(t_rpnc) rpnc
     integer istat
     pointer(p,rpnc)
     p=init_rpnc(0,0,0)
     call min_cp_rpnlist(rpnc_in%rl,rpnc%rl)
-    call min_cp_plist(rpnc_in%pars,rpnc%pars)
+    rpnc%pars=cp_plist(rpnc_in%pars)
     istat=add_par_by_reference(rpnc%pars,"tmp",loc(rpnc%tmpans),.true.)
     istat=add_par_by_reference(rpnc%pars,"ans",loc(rpnc%answer),.true.)
     cp_rpnc=p
@@ -435,7 +437,7 @@ contains
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::nmax
     integer istat
-    init_par=init_plist(nmax)
+    init_par=init_plist()
     if(nmax==0) return
     istat=add_par_by_reference(init_par,"tmp",loc(rpnc%tmpans),.true.)
     istat=add_par_by_reference(init_par,"ans",loc(rpnc%answer),.true.)
@@ -667,9 +669,9 @@ contains
   end subroutine save_mac
 
   subroutine dump_rpnm(rpnc,ent,name,type,out_unit)
-    use slist, only: slist_count,get_str_ptr,cpstr,dump_slist
-    use misc, only: mess
-    use memio, only: itoa
+    use slist, only: slist_count,get_str_ptr,dump_slist
+    use misc, only: mess,messp
+    use memio, only: cpstr,itoa
     type(t_rpnc),intent(in),target::rpnc
     integer,intent(in),optional::ent
     character*(*),intent(in),optional::name
@@ -726,7 +728,7 @@ contains
        if(ou==0) then
           call mess("name: "//cpstr(ptr,len))
        else
-          write(ou,"(a,$)") cpstr(ptr,len)//"="
+          call messp(cpstr(ptr,len)//"=",ou)
        end if
 
        if(allocated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
@@ -734,9 +736,9 @@ contains
              call mess("definition: "//cpstr(ptr,len))
           else
              if(t==SC_MAC) then
-                write(ou,"(a)") """"//cpstr(ptr,len)//""""
+                call mess(""""//cpstr(ptr,len)//"""",ou)
              else
-                write(ou,"(a)") cpstr(ptr,len)
+                call mess(cpstr(ptr,len),ou)
              end if
              cycle
           end if
@@ -744,7 +746,7 @@ contains
           if(ou==0) then
              call mess("(empty)")
           else
-             write(ou,*) ""
+             call mess("",ou)
           end if
           cycle
        end if
@@ -768,8 +770,8 @@ contains
   subroutine dump_rpnc(rpnc,mid)
     use fpio, only: DISP_FMT_RAW,ztoa
     use misc, only: get_lo32,mess,messp
-    use slist, only: get_str_ptr,cpstr
-    use memio, only: itoa, DISP_FMT_HEX
+    use slist, only: get_str_ptr
+    use memio, only: cpstr,itoa, DISP_FMT_HEX
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in),optional::mid
     type(t_rpnm),pointer::rpnm
@@ -818,7 +820,7 @@ contains
                 cycle
              end if
           end if
-          write(*,*) trim(ztoa(z,fmt=DISP_FMT_RAW))
+          call mess(trim(ztoa(z,fmt=DISP_FMT_RAW)))
        case(TID_DPAR)
           call mess(trim(itoa(q%cid))//" (dummy par)")
        case default
@@ -833,7 +835,7 @@ contains
                //"\t"//trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW)))
        end do
     end if
-    if(.not.present(mid)) write(*,*)
+    if(.not.present(mid)) call mess("")
   end subroutine dump_rpnc
 
   subroutine dump_rpnb(rpnb)

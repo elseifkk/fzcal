@@ -60,6 +60,13 @@ module memio
 
 contains
 
+  function cpstr(ptr,len)
+    integer,intent(in)::ptr
+    integer,intent(in)::len
+    character(len=len) cpstr
+    call mcp(loc(cpstr),ptr,len)
+  end function cpstr
+      
   integer*4 function atoi_4(a,n_dummy,fmt,ist)
     character*(*),intent(in)::a
     integer*4,intent(in)::n_dummy

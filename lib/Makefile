@@ -1,7 +1,11 @@
-BINTARG   = fzcal
+VERSION   = 0.0.3
+SOVERSION = 3
+
+#
+BINTARG   = fzcalc
 ALIBTARG  = libfzcal.a 
-SOLIBTARG = libfzcal.so.3
-SONAME    = libfzcal.so.3
+SOLIBTARG = libfzcal.so.$(SOVERSION)
+SONAME    = libfzcal.so.$(SOVERSION)
 SOFILE    = libfzcal.so
 
 #
@@ -20,7 +24,7 @@ AR  = ar
 CFLAGS = -c -Wall
 FFLAGS = -c -Wall -cpp -fbounds-check \
  -fcray-pointer -fbackslash -Wno-conversion \
- -g -fPIC
+ -g -fPIC -D_VERSION_=\"$(VERSION)\"
 AFLAGS  = -g stabs
 ARFLAGS = rv
 LDFLAGS = -L/usr/local/lib -L/usr/local/lib/gcc46
@@ -32,7 +36,7 @@ LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
 #
 .ifdef _NETWALKER_
     FFLAGS += -D_NO_REAL10_ -D_NO_REAL16_ -D_NO_ASM_ -D_USE32_
-    OBJ = memioF.o fpioF.o slist.o plist.o integral.o zmath.o rpnd.o rpnp.o rpne.o com.o
+    OBJ = memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpnd.o rpnp.o rpne.o com.o
     SOLIBOBJ = $(OBJ)
 .else
     USE64 != uname -m | grep -e x86_64 -e amd64 | wc -c
@@ -43,14 +47,14 @@ LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
         FFLAGS += -fdefault-integer-8
         AFLAGS += -f elf64 -m amd64
 .   endif
-    OBJ      = memioA.o   memioF.o fpioF.o slist.o plist.o integral.o zmath.o rpnd.o rpnp.o rpne.o com.o
-    SOLIBOBJ = memioA-d.o memioF.o fpioF.o slist.o plist.o integral.o zmath.o rpnd.o rpnp.o rpne.o com.o
+    OBJ      = memioA.o   memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpnd.o rpnp.o rpne.o com.o
+    SOLIBOBJ = memioA-d.o memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpnd.o rpnp.o rpne.o com.o
 .endif
 
 #
 ALIBOBJ  = $(OBJ) fzc.o
 SOLIBOBJ += fzc.o
-BINOBJ   = $(OBJ) fzcal.o
+BINOBJ   = $(OBJ) fzcalc.o
 
 #
 .PHONY: clean all install install-lib install-bin
@@ -81,7 +85,7 @@ $(ALIBTARG): $(ALIBOBJ)
 $(SOLIBTARG): $(SOLIBOBJ)
 	$(LD) $(LDFLAGS) $(SOFLAGS) -o $@ $(.ALLSRC)
 
-fzcal: $(BINOBJ)
+$(BINTARG): $(BINOBJ)
 	$(FC) $(LDFLAGS) $(.ALLSRC) -o $@
 
 install: install-lib install-bin

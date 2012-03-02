@@ -619,6 +619,8 @@ contains
   integer function add_rpnm_entry(rpnc,rpnb,i,code,k)
     use misc, only: get_lo32
     use slist, only: try_add_str
+    use misc, only: mess
+    use memio, only: itoa
     type(t_rpnc),intent(inout)::rpnc
     type(t_rpnb),intent(in)::rpnb
     integer i
@@ -628,13 +630,13 @@ contains
     istat=try_add_str(rpnc%rl%s,subexpr(rpnb,i),code,k)
     if(istat==0) then
        if(k>size(rpnc%rl%rpnm)) then
-          write(*,*) "add_rpnm_entry faild: buffer overflow"
+          call mess("add_rpnm_entry faild: buffer overflow")
           istat=RPNCERR_MEMOV
        else
           rpnc%que(i)%cid=k
        end if
     else
-       write(*,*) "*** try_add_str failed: code = ",istat
+       call mess("*** try_add_str failed: code = "//trim(itoa(istat)))
        istat=RPNCERR_ADDSTR
     end if
     add_rpnm_entry=istat
@@ -949,18 +951,20 @@ contains
   end function set_macro
       
   subroutine print_error(e,p1,p2)
+    use misc, only: mess
     character*(*),intent(in)::e
     integer,intent(in)::p1,p2
-    write(*,*) "*** Syntacs Error at: "
-    write(*,*) trim(e)
+    call mess("*** Syntacs Error at: ")
+    call mess(trim(e))
     if(p1<=0.or.p2<=0) return
-    write(*,*) repeat(" ",p1-1)//repeat("^",abs(p2)-p1+1) ! some return with negative p2
+    call mess(repeat(" ",p1-1)//repeat("^",abs(p2)-p1+1)) ! some return with negative p2
   end subroutine print_error
   
   integer function build_rpnc(rpnb,rpnc,nvbuf)
-    use misc, only: get_lo32,get_i32,get_up32,is_not_set
+    use misc, only: get_lo32,get_i32,get_up32,is_not_set,mess
     use plist
     use fpio, only: czero
+    use memio, only: itoa
     type(t_rpnb),intent(in),target::rpnb ! only temporarly modified
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::nvbuf
@@ -1039,9 +1043,9 @@ contains
              q%cid=get_par_loc(rpnc%pars,k)
           else
              if(istat==PLERR_RDONL) then
-                write(*,*) "*** Parameter is read-only: "//subexpr(rpnb,i)
+                call mess("*** Parameter is read-only: "//subexpr(rpnb,i))
              else
-                write(*,*) "*** add_par_by_entry failed: code = ",istat
+                call mess("*** add_par_by_entry failed: code = "//trim(itoa(istat)))
              end if
              istat=RPNCERR_ADDPAR
           end if
@@ -1128,7 +1132,7 @@ contains
           q%tid=TID_COL
           q%cid=0
        case default
-          WRITE(*,*) "que=",i,"tid=",qq%tid
+          call mess("que="//trim(itoa(i)//", tid="//trim(itoa(qq%tid))))
           STOP "*** build_rpnc: UNEXPECTED ERROR: unexpected tid in rpnb"
        end select
        if(istat/=0) then
@@ -1246,21 +1250,21 @@ contains
          istat=add_par_by_entry(rpnc%pars,subexpr(rpnb,i),kk)
          if(istat/=0) then
             if(istat==PLERR_RDONL) then
-               write(*,*) "*** Parameter is read-only: "//subexpr(rpnb,i)
+               call mess("*** Parameter is read-only: "//subexpr(rpnb,i))
             else
-               write(*,*) "*** add_par_by_entry failed: code = ",istat
+               call mess("*** add_par_by_entry failed: code = "//trim(itoa(istat)))
             end if
             istat=RPNCERR_ADDPAR
          end if
       else if(istat/=0) then
-         write(*,*) "*** No such parameter: "//subexpr(rpnb,i)
+         call mess("*** No such parameter: "//subexpr(rpnb,i))
          istat=RPNCERR_NOPAR
       end if
       if(istat==0) then
          q%tid=TID_PAR
          q%cid=get_par_loc(rpnc%pars,kk,dup)
          if(q%cid==0) then
-            write(*,*) "*** get_par failed: code = ",istat
+            call mess("*** get_par failed: code = "//trim(itoa(istat)))
             istat=RPNCERR_GETPAR
          else
             if(dup) q%tid=TID_CPAR
@@ -2318,6 +2322,7 @@ contains
     end function check_assignable
 
     subroutine set_par_dummy()
+      use misc, only: mess
       integer ii,jj
       integer did
       logical found
@@ -2337,7 +2342,7 @@ contains
                end if
             end do
             if(.not.found) then
-               write(*,*) "*** Warning: Unused parameter: "//subexpr(rpnb,ii)
+              call mess("*** Warning: Unused parameter: "//subexpr(rpnb,ii))
             end if
          end if
       end do
@@ -2403,7 +2408,8 @@ contains
 
     logical function expand_mac()
       use misc, only: is_alpha,replace
-      use slist, only: find_str,get_str_ptr,cpstr
+      use slist, only: find_str,get_str_ptr
+      use memio, only: cpstr
       integer kk,len,ptr,pp2,pp1
       integer jj
       expand_mac=.false.

@@ -79,7 +79,7 @@ contains
     integer p1,p2
     integer*8 n
     integer lencom
-    logical help
+    logical help,ver
     character(len=1024) str ! <<<<<<<<<<<<<<<<<
 
     parse_command=CID_NOP
@@ -100,11 +100,18 @@ contains
     p1=get_arg(p2)
     help=.false.
     str=""
+    ver=.false.
 
     do
        select case(parse_command)
        case(CID_NOP)
           select case(a(p1:p2))
+          case("ver","version")
+             if(help) then
+                str="print version"
+                exit
+             end if
+             ver=.true.
           case("h","help")
              if(help) then
                 str="print help"
@@ -494,8 +501,22 @@ contains
        parse_command=CID_DONE
     end if
 
+    if(ver) then
+       call print_version
+       parse_command=CID_DONE
+    end if
+
   contains
-    
+
+    subroutine print_version()
+#if defined _VERSION_
+      character*(*),parameter::v=_VERSION_
+#else
+      character*(*),parameter::v="Unknown"
+#endif
+      call mess(v)
+    end subroutine print_version
+
     subroutine cle_disp_opt(x)
       integer*8,intent(in)::x
       rpnc%opt=iand(rpnc%opt,not(ishft((x),32)))
@@ -564,16 +585,18 @@ contains
     end function get_ak
 
     subroutine read_arg()
+      use misc, only: ins,is_set
       integer kk,jj
       character*128 ans ! <<<<<<<<<<
       character(LEN_FORMULA_MAX) str
+      if(is_set(rpnc%opt,RPNCOPT_NO_STDIN)) return
       if(.not.present(b)) return
       call mess("Input: "//trim(adjustl(a(p2+1:lencom))))
       jj=0
       do kk=p2+1,lencom
          select case(a(kk:kk))
          case("?")
-            read(*,"(a)") ans
+            call ins(ans)
             str(jj+1:)=trim(ans)
             jj=jj+len_trim(ans)
          case default
@@ -588,6 +611,7 @@ contains
       integer i,j
       character*(*),parameter::coms(12*4)=[&
            "help     ",&    
+           "version  ",&      
            "[no]debug",&      
            "opt      ",&        
            "quit     ",&            
@@ -598,8 +622,8 @@ contains
            "save     ",&                 
            "load     ",&                 
            "prompt   ",&                  
-           "echo     ",&                 
            !
+           "echo     ",&                 
            "print    ",&                 
            "[no]dms  ",&                   
            "[no]eng  ",&                         
@@ -611,8 +635,8 @@ contains
            "bin      ",&                     
            "oct      ",&                  
            "dec      ",&               
-           "hex      ",&                  
            !
+           "hex      ",&                  
            "Bin      ",&
            "Oct      ",&                  
            "Dec      ",&                  
@@ -624,13 +648,12 @@ contains
            "deg      ",&                  
            "rad      ",&                  
            "ratio    ",&                      
-           "frac     ",&                
            !        
+           "frac     ",&                
            "stat     ",&                
            "data     ",&                     
            "clear    ",&                    
            "norm     ",&                
-           "         ",&
            "         ",&
            "         ",&
            "         ",&
