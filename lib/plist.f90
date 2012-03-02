@@ -435,7 +435,7 @@ contains
 
   subroutine dump_plist(pl,ent,name,out_unit)
     use fpio, only: dp,rp,cp,ztoa,rtoa
-    use misc, only: mess,messp
+    use misc, only: mess,messp,stdout
     use memio, only: cpstr,itoa,DISP_FMT_RAW,DISP_FMT_HEX
     type(t_plist),intent(in),target::pl
     integer,intent(in),optional::ent
@@ -453,8 +453,11 @@ contains
     pointer(px,x)
     pointer(pm,m)
     integer ou
-    ou=0
-    if(present(out_unit)) ou=out_unit
+    if(present(out_unit)) then
+       ou=out_unit
+    else
+       ou=stdout
+    end if
     i1=1
     i2=pl%n
     if(present(ent)) then
@@ -463,7 +466,7 @@ contains
           i2=ent
        end if
     end if
-    if(ou==0) call mess("#\tStatus:(Addr)\t\tName\tValue")
+    if(ou==stdout) call mess("#\tStatus:(Addr)\t\tName\tValue")
     pn => kth_node(pl,i1)
     do i=i1,i2
        v => pn%v

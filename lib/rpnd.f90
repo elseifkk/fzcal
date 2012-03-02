@@ -670,7 +670,7 @@ contains
 
   subroutine dump_rpnm(rpnc,ent,name,type,out_unit)
     use slist, only: slist_count,get_str_ptr,dump_slist
-    use misc, only: mess,messp
+    use misc, only: mess,messp,stdout
     use memio, only: cpstr,itoa
     type(t_rpnc),intent(in),target::rpnc
     integer,intent(in),optional::ent
@@ -687,7 +687,7 @@ contains
     if(present(out_unit)) then
        ou=out_unit
     else
-       ou=0
+       ou=stdout
     end if
     if(present(type)) then
        t=type
@@ -705,18 +705,18 @@ contains
     do i=i1,i2
        if(i>size(rpnc%rl%rpnm) &
             .or.get_str_ptr(rpnc%rl%s,i,ptr,len,code)/=0) then
-          if(ou==0) call mess("*** dump_rpnm: no such entry: "//trim(itoa(i)))
+          if(ou==stdout) call mess("*** dump_rpnm: no such entry: "//trim(itoa(i)))
           cycle
        end if
        rpnm=>rpnc%rl%rpnm(i)
        if(iand(code,SC_MAC)/=0) then
           if(t/=0.and.t/=SC_MAC) cycle
-          if(ou==0) call mess("MACRO entry: "//trim(itoa(i)))
+          if(ou==stdout) call mess("MACRO entry: "//trim(itoa(i)))
        else
           if(t/=0.and.t/=SC_FNC) cycle
-          if(ou==0) call mess("FUNCTION entry: "//trim(itoa(i)))
+          if(ou==stdout) call mess("FUNCTION entry: "//trim(itoa(i)))
           if(get_str_ptr(rpnm%pnames,2,ptr,len)/=0) then
-             if(ou==0) call mess("???") !<<<<<<<<<<<<<<<<<<<<
+             if(ou==stdout) call mess("???") !<<<<<<<<<<<<<<<<<<<<
              cycle !<<<<<<<<<
           end if
        end if
@@ -725,14 +725,14 @@ contains
           if(name/="".and.name/=cpstr(ptr,len)) cycle
        end if
 
-       if(ou==0) then
+       if(ou==stdout) then
           call mess("name: "//cpstr(ptr,len))
        else
           call messp(cpstr(ptr,len)//"=",ou)
        end if
 
        if(allocated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
-          if(ou==0) then
+          if(ou==stdout) then
              call mess("definition: "//cpstr(ptr,len))
           else
              if(t==SC_MAC) then
@@ -743,7 +743,7 @@ contains
              cycle
           end if
        else
-          if(ou==0) then
+          if(ou==stdout) then
              call mess("(empty)")
           else
              call mess("",ou)

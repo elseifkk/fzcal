@@ -52,13 +52,13 @@ program fzcalc
      if(fu==0) then
         if(command_argument_count()==0) then
            call messp(trim(prompt)//" ")
-           read(*,"(a)") str
+           call ins(str)
         else
            i=i+1
            if(i>command_argument_count()) exit
            call get_command_argument(i,str)
            if(trim(adjustl(str))=="-") then
-              read(*,"(a)") str
+              call ins(str)
            end if
         end if
      else
@@ -138,9 +138,9 @@ program fzcalc
      case(CID_SET_PROMPT)
         prompt=str(ka:kb)
      case(-CID_WRITE)
-        write(*,*) 
+        call mess("")
      case(CID_WRITE)
-        write(*,*) trim(str(ka:kb))
+        call mess(trim(str(ka:kb)))
      case(CID_DONE)
      case(CID_INV)
         call mess("Invalid command: "//trim(str))
@@ -211,12 +211,12 @@ contains
   subroutine write_hist(h)
     character*(*),intent(in)::h
     if(hu==0) return
-    write(hu,"(a)") trim(h)
+    call mess(trim(h),hu)
     flush(hu)
   end subroutine write_hist
 
   subroutine read_line()
-    read(fu,"(a)",iostat=istat) str
+    call ins(str,fu,istat)
   end subroutine read_line
 
 end program fzcalc
