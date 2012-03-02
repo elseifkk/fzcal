@@ -1,18 +1,24 @@
 module misc
 implicit none
 
+integer,parameter::stdin=5
+integer,parameter::stdout=6
+integer,parameter::stderr=0
+
 contains
 
-  subroutine ins(s,u)
+  subroutine ins(s,u,i)
     character*(*),intent(out)::s
     integer,intent(in),optional::u
+    integer,intent(out),optional::i
     integer unit,istat
     if(present(u)) then
        unit=u
     else 
-       unit=0
+       unit=stdin
     end if
     read(unit,10,iostat=istat) s
+    if(present(i)) i=istat
 10  format(a)
   end subroutine ins
 
@@ -23,7 +29,7 @@ contains
     if(present(u)) then
        unit=u
     else
-       unit=0
+       unit=stdout
     end if
     write(unit,10) s
 10  format(a,$)
@@ -36,7 +42,7 @@ contains
     if(present(u)) then
        unit=u
     else
-       unit=0
+       unit=stdout
     end if
     write(unit,10) s
 10  format(a)
