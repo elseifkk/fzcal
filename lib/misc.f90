@@ -3,6 +3,19 @@ implicit none
 
 contains
 
+  subroutine ins(s,u)
+    character*(*),intent(out)::s
+    integer,intent(in),optional::u
+    integer unit,istat
+    if(present(u)) then
+       unit=u
+    else 
+       unit=0
+    end if
+    read(unit,10,iostat=istat) s
+10  format(a)
+  end subroutine ins
+
   subroutine messp(s,u)
     character*(*),intent(in)::s
     integer,intent(in),optional::u
@@ -202,8 +215,8 @@ contains
     if(ask_overwrite) then
        inquire(file=f,exist=exist)
        if(exist) then
-          write(*,"(a,$)") "overwrite: "//trim(f)//" ? => "
-          read(*,*) ans
+          call messp("overwrite: "//trim(f)//" ? => ")
+          call ins(ans)
           if(ans/="Y".and.ans/="y") return
        end if
     end if

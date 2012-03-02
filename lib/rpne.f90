@@ -840,8 +840,10 @@ contains
     end subroutine alloc_vbuf
 
     subroutine set_par_ptr(ent) 
-      use slist, only: get_str_ptr,cpstr
+      use slist, only: get_str_ptr
       use plist, only: find_par
+      use memio, only: cpstr
+      use misc, only: mess
       integer,intent(out)::ent
       integer ptr,len,cid
       integer ptr0,len0
@@ -854,7 +856,7 @@ contains
       if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
       istat=find_par(fnc%pars,cpstr(ptr,len),ent=ent)
       if(istat/=0) then
-         write(*,*) "*** No such parameter: "//cpstr(ptr,len)
+         call mess("*** No such parameter: "//cpstr(ptr,len))
       end if
       if(fnc%que(j)%cid<0) then
          pz=get_par_loc(fnc%pars,ent)
@@ -944,8 +946,10 @@ contains
 
     subroutine set_par_ptr(ent)
       use fpio, only: cp
-      use slist, only: get_str_ptr,cpstr
+      use slist, only: get_str_ptr
       use plist, only: find_par
+      use memio, only: cpstr
+      use misc, only: mess
       integer,intent(out)::ent
       integer ptr,len,cid
       integer ptr0,len0
@@ -958,7 +962,7 @@ contains
       if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
       istat=find_par(mac%pars,cpstr(ptr,len),ent=ent)
       if(istat/=0) then
-         write(*,*) "*** No such parameter: "//cpstr(ptr,len)
+         call mess("*** No such parameter: "//cpstr(ptr,len))
          istat=RPNCERR_NOPAR
          return
       end if
@@ -978,6 +982,7 @@ contains
   recursive function input(rpnc,p,s,z) result(istat)
     use fpio, only: cp
     use rpnp, only: parse_formula
+    use misc, only: mess,messp,ins,is_set
     type(t_rpnc),intent(in),target::rpnc
     character*(*),intent(in)::p
     character*(*),intent(in)::s
@@ -986,15 +991,13 @@ contains
     integer istat
     type(t_rpnc) tmpc
 
-    write(*,*) "Input pending for: "//trim(p)
-    write(*,10) trim(s(2:))//"? > "
-10  format(x,a,$)
-    read(*,20,iostat=istat) expr
-20  format(a)
-    if(istat/=0) then
+    call mess("Input pending for: "//trim(p))
+    if(is_set(rpnc%opt,RPNCOPT_NO_STDIN)) then
        istat=RPNCERR_READ
-       return
+       return !<<<<<<<<<<<<<<<<<<<<<< 
     end if
+    call messp(trim(s(2:))//"? > ")
+    call ins(expr)
     if(len_trim(expr)==0) then
        istat=RPNCERR_NOENT
        return
@@ -1034,8 +1037,9 @@ contains
 
   recursive function eval(rpnc) result(istat)
     use fpio, only: cp
-    use misc, only: get_lo32,is_set
+    use misc, only: get_lo32,is_set,mess
     use plist, only: remove_dup,sort_par
+    use memio, only: itoa
     type(t_rpnc),intent(inout),target::rpnc
     integer i,istat,ec,ip1
     complex(cp) v
@@ -1090,7 +1094,7 @@ contains
        end select
 
        if(istat/=0) then
-          write(*,*) "*** Error in eval at que = ", i
+          call mess("*** Error in eval at que = "//trim(itoa(i)))
           exit
        end if
 

@@ -45,7 +45,6 @@ module slist
   public add_sc
   public get_str_ptr
   public try_add_str
-  public cpstr
   public find_str
   public rm_str
   public init_slist
@@ -83,11 +82,13 @@ contains
           call mcp(loc(sn%s),loc(sn_in%s),size(sn%s))
        end if
        sn%prev => prev
-       prev => sn
        nullify(sn%next)
        sn_in => sn_in%next
        if(.not.associated(sn_in)) exit
        allocate(sn%next)
+       prev => sn
+       sn => sn%next
+       sn%prev => prev
        cp_slist%n=cp_slist%n+1
     end do
   end function cp_slist
@@ -112,14 +113,6 @@ contains
     sl%n=0
   end subroutine uinit_slist
 
-  function cpstr(ptr,len)
-    use memio, only: mcp 
-    integer,intent(in)::ptr
-    integer,intent(in)::len
-    character(len=len) cpstr
-    call mcp(loc(cpstr),ptr,len)
-  end function cpstr
-      
   function kth_node(sl,k)
     type(t_slist),intent(in)::sl
     integer,intent(in)::k
@@ -379,7 +372,7 @@ contains
 
   subroutine dump_slist(sl)
     use misc, only: mess,messp
-    use memio, only: itoa,DISP_FMT_BIN
+    use memio, only: cpstr,itoa,DISP_FMT_BIN
     type(t_slist),intent(in)::sl
     integer i
     integer len
