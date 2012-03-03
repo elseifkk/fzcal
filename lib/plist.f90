@@ -22,55 +22,6 @@ module plist
   
   private
 
-  integer,parameter,public::PLERR_NOMEM = 1 
-  integer,parameter,public::PLERR_MEMOV = 2 
-  integer,parameter,public::PLERR_NOENT = 3 
-  integer,parameter,public::PLERR_RDONL = 4 
-  integer,parameter,public::PLERR_NOPAR = 5 
-  integer,parameter,public::PLERR_END   = 5 
-  
-  integer,parameter,public::PK_UNDEF = 0
-  integer,parameter,public::PK_COMP  = 1
-  integer,parameter,public::PK_REAL  = 2
-  integer,parameter,public::PK_DBLE  = 3
-  integer,parameter,public::PK_INT   = 4
-
-  integer,parameter::PS_NOP   = 0
-  integer,parameter::PS_REF   = Z"0001"
-  integer,parameter::PS_RO    = Z"0004"
-  integer,parameter::PS_DUP   = Z"0008"
-
-  type t_vbuf
-     integer::p  =0   ! pointer
-     integer::sta=0   ! parameter kind and flg
-     integer::pz =0   ! pointer to complex
-  end type t_vbuf
-
-  type t_pn
-     type(t_vbuf),pointer::v => null()
-     integer*1,allocatable::s(:)
-     type(t_pn),pointer::next => null()
-     type(t_pn),pointer::prev => null()
-  end type t_pn
-
-  type,public::t_plist
-     integer::n = 0
-     type(t_pn),pointer::pn => null()
-  end type t_plist
-  
-  interface rm_par
-     module procedure rm_par_s
-     module procedure rm_par_k
-  end interface
-  public rm_par
-  public rm_par_all
-
-  interface put_par
-     module procedure put_par_x
-     module procedure put_par_z
-     module procedure put_par_n
-  end interface
-
   interface add_par_by_value
      module procedure add_par_by_value_x
      module procedure add_par_by_value_z
@@ -78,6 +29,13 @@ module plist
   end interface
   public add_par_by_value
   public add_par_by_value_r
+
+  interface rm_par
+     module procedure rm_par_s
+     module procedure rm_par_k
+  end interface
+  public rm_par
+  public rm_par_all
 
   public add_par_by_reference
   public add_par_by_entry
@@ -92,6 +50,48 @@ module plist
   public sort_par
   public plist_count
 
+  type,public::t_plist
+     integer::n = 0
+     type(t_pn),pointer::pn => null()
+  end type t_plist
+
+  integer,parameter,public::PLERR_NOMEM = 1 
+  integer,parameter,public::PLERR_MEMOV = 2 
+  integer,parameter,public::PLERR_NOENT = 3 
+  integer,parameter,public::PLERR_RDONL = 4 
+  integer,parameter,public::PLERR_NOPAR = 5 
+  integer,parameter,public::PLERR_END   = 5 
+  
+  integer,parameter,public::PK_UNDEF = 0
+  integer,parameter,public::PK_COMP  = 1
+  integer,parameter,public::PK_REAL  = 2
+  integer,parameter,public::PK_DBLE  = 3
+  integer,parameter,public::PK_INT   = 4
+
+  interface put_par
+     module procedure put_par_x
+     module procedure put_par_z
+     module procedure put_par_n
+  end interface
+
+  type t_vbuf
+     integer::p  =0   ! pointer
+     integer::sta=0   ! parameter kind and flg
+     integer::pz =0   ! pointer to complex
+  end type t_vbuf
+
+  type t_pn
+     type(t_vbuf),pointer::v => null()
+     integer*1,allocatable::s(:)
+     type(t_pn),pointer::next => null()
+     type(t_pn),pointer::prev => null()
+  end type t_pn
+  
+  integer,parameter::PS_NOP   = 0
+  integer,parameter::PS_REF   = Z"0001"
+  integer,parameter::PS_RO    = Z"0004"
+  integer,parameter::PS_DUP   = Z"0008"
+
 contains
 
   function match_node(pl,s,k)
@@ -100,30 +100,30 @@ contains
     integer,intent(out)::k
     integer len
     type(t_pn),pointer::match_node
-    type(t_pn),pointer::cur
+    type(t_pn),pointer::pn
     integer i
     nullify(match_node)
     k=0
-    if(.not.associated(pl%pn)) return
-    cur => pl%pn
+    if(pl%n==0.or..not.associated(pl%pn)) return
+    pn => pl%pn
     len=len_trim(s)
     do i=1,pl%n
-       if(len==size(cur%s)) then
+       if(len==size(pn%s)) then
           if(is_matched()) then
              k=i
-             match_node => cur
+             match_node => pn
              return
           end if
        end if
-       cur => cur%next
-       if(.not.associated(cur)) return
+       pn => pn%next
+       if(.not.associated(pn)) return
     end do
   contains
     logical function is_matched()
       integer j
       is_matched=.false.
       do j=1,len
-         if(cur%s(j)/=iachar(s(j:j))) return 
+         if(pn%s(j)/=ichar(s(j:j))) return 
       end do
       is_matched=.true.
     end function is_matched
@@ -133,17 +133,17 @@ contains
     type(t_plist),intent(in)::pl
     integer,intent(in)::k
     type(t_pn),pointer::kth_node
-    type(t_pn),pointer::cur
+    type(t_pn),pointer::pn
     integer i
     nullify(kth_node)
     if(k>pl%n.or.k<=0) return
     if(.not.associated(pl%pn)) return
-    cur => pl%pn
+    pn => pl%pn
     do i=2,k
-       cur => cur%next
-       if(.not.associated(cur)) return
+       pn => pn%next
+       if(.not.associated(pn)) return
     end do
-    kth_node => cur
+    kth_node => pn
   end function kth_node
 
   function last_node(pl,k)
@@ -259,6 +259,10 @@ contains
     type(t_pn),pointer::pn,next
     integer i
     if(pl%n==0) return
+    if(.not.associated(pl%pn)) then
+       pl%n=0
+       return
+    end if
     pn => pl%pn
     do i=1,pl%n
        call uinit_pn(pn)
@@ -410,7 +414,7 @@ contains
     allocate(cp_plist%pn)
     cp_plist%n=1
     pn => cp_plist%pn
-    nullify(prev)
+    prev => pn
     do i=1,pl%n
        v_in => pn_in%v
        if(allocated(pn_in%s)) then
@@ -431,6 +435,7 @@ contains
        pn%prev => prev
        cp_plist%n=cp_plist%n+1
     end do
+    cp_plist%pn%prev => pn
   end function cp_plist
 
   subroutine dump_plist(pl,ent,name,out_unit)
@@ -475,7 +480,7 @@ contains
        if(present(name)) then
           if(name/=cpstr(ptr,len)) cycle
        end if
-       if(ou/=0) then
+       if(ou/=stdout) then
           call messp(cpstr(ptr,len)//"=",ou)
        else
           call messp(trim(itoa(i))//":\t["//trim(itoa(v%sta,cfmt="(Z6.6)"))//"]")
@@ -489,10 +494,10 @@ contains
        select case(get_pkind(v%sta))
        case(PK_COMP)
           pz=v%p
-          if(ou==0) then
+          if(ou==stdout) then
              call mess(trim(ztoa(z,fmt=DISP_FMT_RAW)),ou)
           else
-             call mess(trim(rtoa(realpart(z),fmt=DISP_FMT_RAW))//" + "//trim(rtoa(imagpart(z),fmt=DISP_FMT_RAW))//" i",ou)
+             call mess(trim(rtoa(realpart(z),fmt=DISP_FMT_RAW))//"+"//trim(rtoa(imagpart(z),fmt=DISP_FMT_RAW))//" i",ou)
           end if
        case(PK_REAL)
           px=v%p
@@ -619,9 +624,10 @@ contains
     put_par_at=0
   end function put_par_at
 
-  integer function try_add_par(pl,s,ent,force)
+  integer function try_add_par(pl,s,node,ent,force)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
+    type(t_pn),intent(out),pointer,optional::node
     integer,intent(out),optional::ent
     logical,intent(in),optional::force
     type(t_pn),pointer::pn,prev
@@ -629,12 +635,13 @@ contains
     integer k
     logical f
 
+    if(present(node)) nullify(node)
     if(present(ent)) ent=0
     if(pl%n==0) then
        k=0
        allocate(pl%pn)
-       nullify(prev)
        pn => pl%pn
+       prev => pn
     else
        pn => match_node(pl,s,k)
        if(k==0) then
@@ -642,13 +649,11 @@ contains
           allocate(pn%next)
           prev => pn
           pn => pn%next
-
        end if
     end if
     if(k==0) call init_node
 
-    v => pn%v
-
+    if(present(node)) node => pn
     if(present(ent)) ent=k
     if(present(force)) then
        f=force
@@ -656,6 +661,7 @@ contains
        f=.false.
     end if
 
+    v => pn%v
     if(is_read_only(v%sta).and..not.f) then
        try_add_par=PLERR_RDONL
        return
@@ -670,6 +676,7 @@ contains
         integer len
         nullify(pn%next)
         pn%prev => prev
+        pl%pn%prev => pn
         pl%n=pl%n+1
         k=pl%n
         len=len_trim(s)
@@ -695,12 +702,12 @@ contains
     type(t_pn),pointer::pn
     integer istat,k,flg,pk_set
     ent=0
-    istat=try_add_par(pl,s,k)
+    istat=try_add_par(pl,s,pn,k)
     if(istat/=0) then
        add_par_by_entry=istat
        return
     end if
-    pn => kth_node(pl,k)
+!    pn => kth_node(pl,k)
     v => pn%v
     if(present(ro).and.ro) then
        flg=PS_RO
@@ -730,12 +737,12 @@ contains
     integer istat,k,flg
     integer pk_set
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,k,force=.true.)
+    istat=try_add_par(pl,s,pn,k,force=.true.)
     if(istat/=0) then
        add_par_by_reference=istat
        return
     end if
-    pn => kth_node(pl,k)
+!    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=ior(PS_REF,PS_RO)
     else
@@ -766,12 +773,12 @@ contains
     type(t_pn),pointer::pn
     integer istat,k,flg
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,k)
+    istat=try_add_par(pl,s,pn,k)
     if(istat/=0) then
        add_par_by_value_x=istat
        return
     end if
-    pn => kth_node(pl,k)
+!    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=PS_RO
     else
@@ -796,12 +803,12 @@ contains
     type(t_pn),pointer::pn
     integer istat,k,flg
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,k)
+    istat=try_add_par(pl,s,pn,k)
     if(istat/=0) then
        add_par_by_value_r=istat
        return
     end if
-    pn => kth_node(pl,k)
+!    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=PS_RO
     else
@@ -825,12 +832,12 @@ contains
     type(t_pn),pointer::pn
     integer istat,k,flg
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,k)
+    istat=try_add_par(pl,s,pn,k)
     if(istat/=0) then
        add_par_by_value_n=istat
        return
     end if
-    pn => kth_node(pl,k)
+!    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=PS_RO
     else
@@ -855,12 +862,12 @@ contains
     type(t_pn),pointer::pn
     integer istat,k,flg
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,k)
+    istat=try_add_par(pl,s,pn,k)
     if(istat/=0) then
        add_par_by_value_z=istat
        return
     end if
-    pn => kth_node(pl,k)
+!x    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=PS_RO
     else

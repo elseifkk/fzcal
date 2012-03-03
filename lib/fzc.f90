@@ -100,7 +100,7 @@ contains
     pointer(ps,str)
     pr=ptr_rpnc
     ps=ptr_str
-    str=trim(rpn_sans(rpnc))//achar(0)
+    str=trim(rpn_sans(rpnc))//char(0)
   end subroutine fzc_get_str_ans
 
   subroutine fzc_set_opt(ptr_rpnc,opt)
