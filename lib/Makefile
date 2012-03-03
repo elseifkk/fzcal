@@ -36,7 +36,7 @@ LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
 #
 .ifdef _NETWALKER_
     FFLAGS += -D_NO_REAL10_ -D_NO_REAL16_ -D_NO_ASM_ -D_USE32_
-    OBJ = memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpnd.o rpnp.o rpne.o com.o
+    OBJ = memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpng.o rpnt.o rpnlist.o rpnd.o rpnp.o rpne.o com.o
     SOLIBOBJ = $(OBJ)
 .else
     USE64 != uname -m | grep -e x86_64 -e amd64 | wc -c
@@ -47,8 +47,8 @@ LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
         FFLAGS += -fdefault-integer-8
         AFLAGS += -f elf64 -m amd64
 .   endif
-    OBJ      = memioA.o   memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpnd.o rpnp.o rpne.o com.o
-    SOLIBOBJ = memioA-d.o memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpnd.o rpnp.o rpne.o com.o
+    OBJ      = memioA.o   memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpng.o rpnt.o rpnlist.o rpnd.o rpnp.o rpne.o com.o
+    SOLIBOBJ = memioA-d.o memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpng.o rpnt.o rpnlist.o rpnd.o rpnp.o rpne.o com.o
 .endif
 
 #

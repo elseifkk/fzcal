@@ -21,6 +21,15 @@ module rpne
   use rpnd
   implicit none
 
+  private 
+
+  public init_rpne
+  public eval
+  public rpn_sans
+  public rpn_ans
+  public rpn_rans
+  public rpn_dans
+
 contains
 
   subroutine init_rpne()
@@ -1094,7 +1103,9 @@ contains
        end select
 
        if(istat/=0) then
-          call mess("*** Error in eval at que = "//trim(itoa(i)))
+          call mess("*** Error in eval at que = " &
+               //trim(itoa(i))//", rc= "//trim(itoa(rpnc%rc)) &
+               //", code = "//trim(itoa(istat)))
           exit
        end if
 

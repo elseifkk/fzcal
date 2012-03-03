@@ -21,177 +21,10 @@ module rpnd
   use slist, only: t_slist
   use plist, only: t_plist
   use fpio, only: rp,cp
+  use rpng
+  use rpnt
+  use rpnlist
   implicit none
-
-  integer,parameter::RPNSTA_EMPTY  = -2
-  integer,parameter::RPNSTA_FNCSET = -1
-  integer,parameter::RPNSTA_OK     =  0
-
-  integer,parameter::RPNCERR_NOENT        =  1
-  integer,parameter::RPNCERR_NOOP         =  2
-  integer,parameter::RPNCERR_NOPAR        =  3
-  integer,parameter::RPNCERR_NOFNC        =  4
-  integer,parameter::RPNCERR_ADDPAR       =  5
-  integer,parameter::RPNCERR_INVASN       =  6
-  integer,parameter::RPNCERR_INVOP        =  7
-  integer,parameter::RPNCERR_INVFNC       =  8
-  integer,parameter::RPNCERR_PARSER       =  9
-  integer,parameter::RPNCERR_ADDSTR       = 10
-  integer,parameter::RPNCERR_MEMOV        = 11
-  integer,parameter::RPNCERR_RECOV        = 12
-  integer,parameter::RPNCERR_NARG         = 13
-  integer,parameter::RPNCERR_GETPAR       = 14
-  integer,parameter::RPNCERR_TOO_MANY_ARG = 15
-  integer,parameter::RPNCERR_TOO_FEW_ARG  = 16
-  integer,parameter::RPNCERR_NO_ARG       = 17
-  integer,parameter::RPNCERR_INVARG       = 18
-  integer,parameter::RPNCERR_INVFIG       = 19
-  integer,parameter::RPNCERR_READ         = 20
-
-  integer,parameter::RPN_REC_MAX     =  256
-  integer,parameter::NUM_VBUF_MIN    =   32
-  integer,parameter::NUM_PBUF_MIN    =   32
-  integer,parameter::NUM_RPNM_MIN    =    8
-  integer,parameter::LEN_RLIST_MIN   = 1024
-  integer,parameter::NUM_VS_MIN      =   32
-  integer,parameter::LEN_STR_MAX     = 1024
-  integer,parameter::LEN_FORMULA_MAX = LEN_STR_MAX
-
-  ! meta tid
-  integer,parameter::TID_FIN   =   999
-  integer,parameter::TID_UNDEF =  1000
-  integer,parameter::TID_INV   =   666
-  integer,parameter::TID_NOP   =     0
-
-  !! priority table begin
-  ! asign and conditional
-  integer,parameter::TID_ASN    =   1  ! =
-  integer,parameter::TID_ASNU   =  -1
-  integer,parameter::TID_AOP    =   2 
-  integer,parameter::TID_TOP1   =   3  ! ?
-  ! logical                     
-  integer,parameter::TID_LOP4    =  4  ! eq,neq
-  integer,parameter::TID_LOP3    =  5  ! or
-  integer,parameter::TID_LOP2    =  6  ! and
-  integer,parameter::TID_LOP1    =  7  ! not, ~
-  integer,parameter::TID_LOP1U   = -7  ! ~
-  integer,parameter::TID_ROP     =  8  ! ==, ~=, <=, >=,...
-  ! unary, binary and functions  
-  integer,parameter::TID_BOP1    =   9  ! +,-
-  integer,parameter::TID_BOP1U   =  -9  !
-  integer,parameter::TID_BOP2    =  10  ! *,/,&P,&C
-  integer,parameter::TID_BOP2U   = -10  !
-  integer,parameter::TID_UOP1    =  11  ! +a,-a,++a
-  integer,parameter::TID_BOP4    =  12  ! implicit * <<<<<<<<<<< 
-  integer,parameter::TID_BOP3    =  13  ! ^,**,e
-  integer,parameter::TID_BOP3U   = -13  !
-  integer,parameter::TID_UOP2    =  14  ! !,!!  
-  integer,parameter::TID_UOP3    =  15  ! a++  
-  integer,parameter::TID_UOP2U   = -15  ! 
-  integer,parameter::TID_IFNC    =  16  ! sin, cos,...
-  integer,parameter::TID_UFNC    =  17  !
-  integer,parameter::TID_PRI_MAX =  18  ! 
-  !! priority tabel end
-
-  ! braket and delimiters
-  integer,parameter::TID_SCL   =  64   ! ;
-  integer,parameter::TID_COL   =  65   ! : PUSHED!
-  integer,parameter::TID_IBRA  =  66   ! implicit (
-  integer,parameter::TID_BRA   =  67   ! ( PUSHED!
-  integer,parameter::TID_KET   =  69   ! )
-  integer,parameter::TID_QTN   =  70   ! "
-  integer,parameter::TID_QEND  =  71
-  integer,parameter::TID_QSTA  =  72   ! PUSHED!
-  integer,parameter::TID_COMA  =  73   ! ,
-  integer,parameter::TID_MASN  =  74   ! = for macro PUSHED!
-  integer,parameter::TID_DLM1  =  75   
-  integer,parameter::TID_DLM2  =  76   ! ket
-  integer,parameter::TID_BLK   =  77   ! space and tab
-  integer,parameter::TID_HKET  =  78   ! }
-  integer,parameter::TID_USCR  =  79   ! _
-  integer,parameter::TID_ISTA  =  80
-  integer,parameter::TID_IEND  =  81
-  !                                    
-  integer,parameter::TID_PAR   =  32   ! a,b,c,...
-  integer,parameter::TID_PARU  = -32   ! a,b,c,...
-  integer,parameter::TID_FIG   =  33   ! 1,2,3,...
-  integer,parameter::TID_VAR   =  34   ! fig in rbuf
-  integer,parameter::TID_MAC   =  36   
-  integer,parameter::TID_OP    =  37   ! operators
-  integer,parameter::TID_COP   =  38   
-  integer,parameter::TID_OPN   =  39   
-  integer,parameter::TID_APAR  =  40   ! par assign
-  integer,parameter::TID_AMAC  =  41   
-  integer,parameter::TID_AFNC  =  42   
-  integer,parameter::TID_DPAR  =  43   ! dummy par
-  integer,parameter::TID_END   =  44
-  integer,parameter::TID_ROVAR =  45 
-  integer,parameter::TID_LVAR_T = 46
-  integer,parameter::TID_LVAR_F = 47
-  integer,parameter::TID_LOP    = 48
-  integer,parameter::TID_SOP    = 49
-  integer,parameter::TID_POP    = 50
-  integer,parameter::TID_CPAR   = 51 ! copied par
-  integer,parameter::TID_NPAR   = 52 ! just assigned par
-  integer,parameter::TID_IOP    = 53 ! integral
-  integer,parameter::TID_IVAR1  = 54 ! dummy par in integrand x
-  integer,parameter::TID_IVAR1L = 55 ! dummy par in integrand b-x
-  integer,parameter::TID_IVAR1U = 56 ! dummy par in integrand x-a
-  integer,parameter::TID_AT     = 57 ! @
-  integer,parameter::TID_MSCL   = 58 ! ; in macro definition
-  integer,parameter::TID_SHRP   = 59 ! #
-  integer,parameter::TID_IGNORE = 60 
-  integer,parameter::TID_EMAC   = 61 ! $mac to be expanded
-
-  integer,parameter::LOID_NOT = 1
-  integer,parameter::LOID_AND = 2
-  integer,parameter::LOID_OR  = 3
-  integer,parameter::LOID_EQ  = 4
-  integer,parameter::LOID_NEQ = 5
-
-  type t_rrpnq
-     integer tid
-     integer p1,p2
-  end type t_rrpnq
-
-  type t_rpnq
-     integer tid
-     integer cid ! oid or fid or pointer to value
-  end type t_rpnq
-  
-  type t_rpnb
-     character(LEN_FORMULA_MAX) expr
-     integer len_expr
-     integer cur_pos
-     integer old_pos
-     integer old_tid
-     type(t_rrpnq),allocatable::que(:)
-     type(t_rrpnq),allocatable::buf(:)
-     integer p_buf,p_que
-     integer*8 opt
-  end type t_rpnb
-
-  type t_rpnm
-     type(t_rpnq),allocatable::que(:)  ! allocated
-     complex(cp),allocatable::vbuf(:)  ! allocated
-     integer,allocatable::p_vbuf       ! allocated
-     type(t_plist),pointer::pars       ! => rpnc%pars
-     complex(cp),pointer::answer       ! => rpnc%answer
-     complex(cp),pointer::tmpans       ! => rpnc%tmpans
-     type(t_slist),allocatable::pnames ! allocated
-     integer,allocatable::na               ! num arg
-  end type t_rpnm
-
-  type t_rpnlist
-     type(t_rpnm),allocatable::rpnm(:)
-     type(t_slist) s
-  end type t_rpnlist
-
-  type t_sd
-     real(rp),allocatable::ws(:)
-     complex(cp),allocatable::vs(:,:) ! n:2
-     integer p_vs
-  end type t_sd
 
   type t_rpnc
      type(t_rpnq),pointer::que(:)
@@ -210,63 +43,12 @@ module rpnd
      type(t_rpnq),pointer::ique(:)   ! backup of ifnc%que
   end type t_rpnc
 
-  integer*8,parameter::RPNCOPT_NOP             =  0
-  integer*8,parameter::RPNCOPT_DEBUG           =  Z"08000000"
-  integer*8,parameter::RPNCOPT_READY           =  Z"00000001"
-  integer*8,parameter::RPNCOPT_DEG             =  Z"00000002"
-  integer*8,parameter::RPNCOPT_NEW             =  Z"00000004"
-  integer*8,parameter::RPNCOPT_NO_AUTO_ADD_PAR =  Z"00000008"
-  integer*8,parameter::RPNCOPT_RATIO           =  Z"00000010"
-  integer*8,parameter::RPNCOPT_NO_WARN         =  Z"00000020"
-  integer*8,parameter::RPNCOPT_DAT             =  Z"00000040"
-  integer*8,parameter::RPNCOPT_STA             =  Z"00000080"
-  integer*8,parameter::RPNCOPT_OBIN            =  Z"00000100"
-  integer*8,parameter::RPNCOPT_OOCT            =  Z"00000200"
-  integer*8,parameter::RPNCOPT_OHEX            =  Z"00000400"
-  integer*8,parameter::RPNCOPT_OUTM = ior(RPNCOPT_OHEX,ior(RPNCOPT_OOCT,RPNCOPT_OBIN))     
-  integer*8,parameter::RPNCOPT_IBIN            =  Z"00000800"
-  integer*8,parameter::RPNCOPT_IOCT            =  Z"00001000"
-  integer*8,parameter::RPNCOPT_IHEX            =  Z"00002000"
-  integer*8,parameter::RPNCOPT_INM = ior(RPNCOPT_IHEX,ior(RPNCOPT_IOCT,RPNCOPT_IBIN))     
-  integer*8,parameter::RPNCOPT_BYTE            =  Z"00004000" ! for SI prefix k to be 1024
-  integer*8,parameter::RPNCOPT_NO_STDIN        =  Z"00008000"
-  integer*8,parameter::RPNCOPT_NO_STDOUT       =  Z"00010000"
-
-  integer,parameter::AID_NOP = 0
-  integer,parameter::OID_NOP = 0
-  integer,parameter::OID_CND = 1
-
-  integer,parameter::PID_yoc =  1
-  integer,parameter::PID_zep =  2
-  integer,parameter::PID_a   =  3
-  integer,parameter::PID_f   =  4
-  integer,parameter::PID_pi  =  5
-  integer,parameter::PID_n   =  6
-  integer,parameter::PID_u   =  7
-  integer,parameter::PID_mi  =  8
-  integer,parameter::PID_    =  9
-  integer,parameter::PID_k   = 10
-  integer,parameter::PID_M   = 11
-  integer,parameter::PID_G   = 12
-  integer,parameter::PID_T   = 13
-  integer,parameter::PID_P   = 14
-  integer,parameter::PID_E   = 15
-  integer,parameter::PID_Z   = 16
-  integer,parameter::PID_Y   = 17
-  integer,parameter::PID_END = 17
-  integer,parameter::PID_INPUT  = 18
-  integer,parameter::PID_EMAC   = 19
-
-  integer,parameter::SC_RO  = 1
-  integer,parameter::SC_MAC = 2
-  integer,parameter::SC_FNC = 4
+  integer,parameter::narg_max=32
 
   interface put_vbuf
      module procedure put_vbuf_r
      module procedure put_vbuf_z
   end interface put_vbuf
-
-  integer,parameter::narg_max=32
 
 contains
 
@@ -708,7 +490,12 @@ contains
           if(ou==stdout) call mess("*** dump_rpnm: no such entry: "//trim(itoa(i)))
           cycle
        end if
-       rpnm=>rpnc%rl%rpnm(i)
+       rpnm => rpnc%rl%rpnm(i)
+
+       if(present(name)) then
+          if(name/="".and.name/=cpstr(ptr,len)) cycle
+       end if
+
        if(iand(code,SC_MAC)/=0) then
           if(t/=0.and.t/=SC_MAC) cycle
           if(ou==stdout) call mess("MACRO entry: "//trim(itoa(i)))
@@ -719,10 +506,6 @@ contains
              if(ou==stdout) call mess("???") !<<<<<<<<<<<<<<<<<<<<
              cycle !<<<<<<<<<
           end if
-       end if
-
-       if(present(name)) then
-          if(name/="".and.name/=cpstr(ptr,len)) cycle
        end if
 
        if(ou==stdout) then
@@ -751,15 +534,15 @@ contains
           cycle
        end if
 
-       tmprpnc%que=>rpnm%que
-       tmprpnc%vbuf=>rpnm%vbuf
-       tmprpnc%p_vbuf=>rpnm%p_vbuf
-       tmprpnc%pars=>rpnm%pars
-       tmprpnc%answer=>rpnm%answer
-       tmprpnc%tmpans=>rpnm%tmpans
-       tmprpnc%rl=>rpnc%rl
-       tmprpnc%rc=>rpnc%rc
-       tmprpnc%pfs=>rpnc%pfs
+       tmprpnc%que    => rpnm%que
+       tmprpnc%vbuf   => rpnm%vbuf
+       tmprpnc%p_vbuf => rpnm%p_vbuf
+       tmprpnc%pars   => rpnm%pars
+       tmprpnc%answer => rpnm%answer
+       tmprpnc%tmpans => rpnm%tmpans
+       tmprpnc%rl     => rpnc%rl
+       tmprpnc%rc     => rpnc%rc
+       tmprpnc%pfs    => rpnc%pfs
        if(allocated(rpnm%na)) call mess("number of arguments = "//trim(itoa(rpnm%na)))
        call dump_rpnc(tmprpnc,i)
        call dump_slist(rpnm%pnames)
@@ -788,9 +571,9 @@ contains
     end if
     if(.not.present(mid).and.iand(rpnc%opt,RPNCOPT_READY)==0) then
        call mess("(not set)")
-       return
+!       return<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     end if
-    call mess("#\ttid\tcid\tvalue")
+    call mess("#\tTID\tCID\tValue")
     if(present(mid)) rpnm=>rpnc%rl%rpnm(mid)
     do i=1,size(rpnc%que)
        q => rpnc%que(i)
@@ -798,7 +581,7 @@ contains
        call messp(trim(itoa(i))//":\t"//trim(itoa(t))//"\t")
        select case(t)
        case(TID_VAR,TID_PAR,TID_CPAR,TID_FIG,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
-          call messp(trim(itoa(q%cid,DISP_FMT_HEX)))
+          call messp(trim(itoa(q%cid,DISP_FMT_HEX))//"\t")
           if(present(mid)) then
              if(t/=TID_FIG) then
                 istat=get_str_ptr(rpnm%pnames,q%cid,ptr,len)
@@ -809,31 +592,35 @@ contains
              end if
           else
              if(t==TID_CPAR) then
-                call messp(" (copied)")
+                call messp("(copied)")
                 pv=q%cid
                 z=v
              end if
              pv=q%cid
              z=v
              if(pv==0) then
-                call mess(" (undef)")
+                call mess("(undef)")
                 cycle
              end if
           end if
           call mess(trim(ztoa(z,fmt=DISP_FMT_RAW)))
        case(TID_DPAR)
-          call mess(trim(itoa(q%cid))//" (dummy par)")
+          call mess(trim(itoa(q%cid))//"\t(dummy par)")
        case default
           call mess(trim(itoa(q%cid,DISP_FMT_HEX)))
        end select
     end do
     call mess("vbuf dump:")
-    call mess("size used/alloc= "//trim(itoa(rpnc%p_vbuf))//"/"//trim(itoa(size(rpnc%vbuf))))
-    if(rpnc%p_vbuf>0) then
-       do i=1,rpnc%p_vbuf
-          call mess(trim(itoa(i))//":\t"//trim(itoa(loc(rpnc%vbuf(i)),DISP_FMT_HEX))&
-               //"\t"//trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW)))
-       end do
+    if(.not.associated(rpnc%vbuf)) then
+       call mess("(empty)")
+    else
+       call mess("size used/alloc= "//trim(itoa(rpnc%p_vbuf))//"/"//trim(itoa(size(rpnc%vbuf))))
+       if(rpnc%p_vbuf>0) then
+          do i=1,rpnc%p_vbuf
+             call mess(trim(itoa(i))//":\t"//trim(itoa(loc(rpnc%vbuf(i)),DISP_FMT_HEX))&
+                  //"\t"//trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW)))
+          end do
+       end if
     end if
     if(.not.present(mid)) call mess("")
   end subroutine dump_rpnc
@@ -842,14 +629,14 @@ contains
     use misc, only:  mess
     type(t_rpnb),intent(in),target::rpnb
     type(t_rrpnq),pointer::q(:)
-    call mess("rpnb que:\n#\ttid\tp1\tp2\texpr")
+    call mess("rpnb que:\n#\tTID\tp1\tp2\tExpr.")
     if(.not.allocated(rpnb%que).or.rpnb%p_que<1)  then
        call mess("(empty)")
     else
        q => rpnb%que
        call dump_q(rpnb%p_que)
     end if
-    call mess("rpnb buf:\n#\ttid\tp1\tp2\texpr")
+    call mess("rpnb buf:\n#\tTID\tp1\tp2\tExpr.")
     if(.not.allocated(rpnb%buf).or.rpnb%p_buf<1)  then
        call mess("(empty)")
     else
@@ -861,18 +648,28 @@ contains
       use misc, only: get_lo32,get_up32,messp
       use memio, only: itoa
       integer,intent(in)::n
-      integer i,p1lo,p2lo,p1up,p2up,tid
+      integer i,p1lo,p2lo,p1up,p2up,ltid,utid,tid
       do i=1,n
          p1lo=get_lo32(q(i)%p1)
          p2lo=get_lo32(q(i)%p2)
+         p1up=get_up32(q(i)%p1)
+         p2up=get_up32(q(i)%p2)
          tid=q(i)%tid
-         if(tid>0) tid=get_lo32(tid)
-         call messp(trim(itoa(i))//":\t"//trim(itoa(tid))//"\t"//trim(itoa(p1lo))//"\t"//trim(itoa(p2lo))//"\t")
+         if(tid>0) then
+            ltid=get_lo32(tid)
+            utid=get_up32(tid)
+         end if
+         call messp(trim(itoa(i))//":\t")
+         if(tid<=0) then
+            call messp(trim(itoa(tid))//"\t")
+         else
+            call messp(trim(itoa(utid))//":"//trim(itoa(ltid))//"\t")
+         end if
+         call messp(trim(itoa(p1up))//":"//trim(itoa(p1lo))//"\t" &
+              //trim(itoa(p2up))//":"//trim(itoa(p1lo))//"\t")
          if(q(i)%tid==TID_VAR) then
             call mess(rpnb%expr(p1lo:p2lo))
          else if(q(i)%tid==TID_AMAC) then
-            p1up=get_up32(q(i)%p1)
-            p2up=get_up32(q(i)%p2)
             call mess(rpnb%expr(p1lo:p2lo)//"\t"//rpnb%expr(p1up:p2up))
          else if(p1lo==0) then
             call mess("(no ref)")

@@ -152,7 +152,7 @@ contains
     p=pstr-1
     do i=1,len(s)
        p=p+1
-       if(c==achar(0)) exit
+       if(c==char(0)) exit
        s(i:i)=c
     end do
   end subroutine c2fstr
@@ -186,7 +186,7 @@ contains
        case(" ","\t")
           wc=wc+1
           if(wc>1) cycle
-       case(achar(0))
+       case(char(0))
           exit
        case default
           wc=0

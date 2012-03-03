@@ -21,6 +21,11 @@ module rpnp
   use rpnd
   implicit none
 
+  private
+  
+  public parse_formula
+  public init_rpnp
+
   character*(*),parameter::LOPS_NOT ="not"
   character*(*),parameter::LOPS_AND ="and"
   character*(*),parameter::LOPS_OR  ="or"
@@ -28,21 +33,21 @@ module rpnp
   character*(*),parameter::LOPS_NEQ ="neq" 
 
   character(*),parameter::spars=&
-       achar(1)//"n"//&
-       achar(3)//"ave"//&
-       achar(3)//"var"//&
-       achar(3)//"sum"//&
-       achar(4)//"sum2"//&
-       achar(4)//"uvar"//&
-       achar(5)//"ave_y"//&
-       achar(5)//"var_y"//&
-       achar(5)//"sum_y"//&
-       achar(6)//"sum2_y"//&
-       achar(6)//"uvar_y"//&
-       achar(6)//"sum_xy"//&
-       achar(1)//"a"//&
-       achar(1)//"b"//&
-       achar(0)
+       char(1)//"n"//&
+       char(3)//"ave"//&
+       char(3)//"var"//&
+       char(3)//"sum"//&
+       char(4)//"sum2"//&
+       char(4)//"uvar"//&
+       char(5)//"ave_y"//&
+       char(5)//"var_y"//&
+       char(5)//"sum_y"//&
+       char(6)//"sum2_y"//&
+       char(6)//"uvar_y"//&
+       char(6)//"sum_xy"//&
+       char(1)//"a"//&
+       char(1)//"b"//&
+       char(0)
   integer,parameter::SID_N       =  1
   integer,parameter::SID_AVE     =  2
   integer,parameter::SID_VAR     =  3
@@ -60,51 +65,51 @@ module rpnp
 
   integer,parameter::int_fncs_max_len=5
   character*(*),parameter::ffncs3= & ! function of function with 3 args
-       achar(6)//"deint_"//&
-       achar(6)//"reint_"//&
-       achar(6)//"siint_"//&
-       achar(0)
+       char(6)//"deint_"//&
+       char(6)//"reint_"//&
+       char(6)//"siint_"//&
+       char(0)
   character*(*),parameter::int_fncs=&
-       achar(3)//"ran"//&
-       achar(3)//"sin"//&
-       achar(3)//"cos"//&
-       achar(3)//"tan"//&
-       achar(4)//"sinh"//&
-       achar(4)//"cosh"//&
-       achar(4)//"tanh"//&
-       achar(4)//"asin"//&
-       achar(4)//"acos"//&
-       achar(4)//"atan"//&
-       achar(5)//"asinh"//&
-       achar(5)//"acosh"//&
-       achar(5)//"atanh"//&
-       achar(3)//"exp"//&
-       achar(3)//"log"//&
-       achar(2)//"ln"//&
-       achar(4)//"sqrt"//&
-       achar(4)//"cbrt"//&
-       achar(3)//"abs"//&
-       achar(3)//"int"//&
-       achar(4)//"frac"//&
-       achar(5)//"conjg"//&
-       achar(4)//"nint"//&
-       achar(2)//"re"//&
-       achar(2)//"im"//&
-       achar(3)//"mag"//&
-       achar(3)//"arg"//&
-       achar(5)//"gamma"//&
-       achar(6)//"lgamma"//&
-       achar(3)//"psy"//&
-       achar(3)//"mod"//&
-       achar(4)//"gami"//&
-       achar(3)//"min"//&
-       achar(3)//"max"//&
-       achar(3)//"sum"//&
-       achar(3)//"ave"//&
-       achar(3)//"var"//&
-       achar(4)//"uvar"//&
-       achar(4)//"sum2"//&
-       achar(0)
+       char(3)//"ran"//&
+       char(3)//"sin"//&
+       char(3)//"cos"//&
+       char(3)//"tan"//&
+       char(4)//"sinh"//&
+       char(4)//"cosh"//&
+       char(4)//"tanh"//&
+       char(4)//"asin"//&
+       char(4)//"acos"//&
+       char(4)//"atan"//&
+       char(5)//"asinh"//&
+       char(5)//"acosh"//&
+       char(5)//"atanh"//&
+       char(3)//"exp"//&
+       char(3)//"log"//&
+       char(2)//"ln"//&
+       char(4)//"sqrt"//&
+       char(4)//"cbrt"//&
+       char(3)//"abs"//&
+       char(3)//"int"//&
+       char(4)//"frac"//&
+       char(5)//"conjg"//&
+       char(4)//"nint"//&
+       char(2)//"re"//&
+       char(2)//"im"//&
+       char(3)//"mag"//&
+       char(3)//"arg"//&
+       char(5)//"gamma"//&
+       char(6)//"lgamma"//&
+       char(3)//"psy"//&
+       char(3)//"mod"//&
+       char(4)//"gami"//&
+       char(3)//"min"//&
+       char(3)//"max"//&
+       char(3)//"sum"//&
+       char(3)//"ave"//&
+       char(3)//"var"//&
+       char(4)//"uvar"//&
+       char(4)//"sum2"//&
+       char(0)
   integer,parameter::FID_RAN        =  1
   integer,parameter::FID_ARG0_END   =  1 !<<<<<<<<
   integer,parameter::FID_SIN        =  2
@@ -632,8 +637,6 @@ contains
        if(k>size(rpnc%rl%rpnm)) then
           call mess("add_rpnm_entry faild: buffer overflow")
           istat=RPNCERR_MEMOV
-       else
-          rpnc%que(i)%cid=k
        end if
     else
        call mess("*** try_add_str failed: code = "//trim(itoa(istat)))
@@ -650,8 +653,7 @@ contains
     integer istat
     integer i
     integer kf,km,ka,ke
-    integer ac,vc,pc,plen
-    integer tc
+    integer ac,tc
 
     ke=find_end()
     do i=k1,ke
@@ -662,7 +664,7 @@ contains
           exit
        end if
        rpnc%que(i)%cid=kf
-       rpnm=>rpnc%rl%rpnm(kf)
+       rpnm => rpnc%rl%rpnm(kf)
        if(allocated(rpnm%que)) deallocate(rpnm%que)
        if(allocated(rpnm%vbuf)) deallocate(rpnm%vbuf)       
        if(.not.allocated(rpnm%na)) allocate(rpnm%na)
@@ -681,15 +683,14 @@ contains
        ka=ke ! must be asn
        tc=(ke-1)-(km+1)+1 ! que must end with =
        rpnm%na=ac
-       if(tc==0) return !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-       rpnm%pars=>rpnc%pars
-       rpnm%answer=>rpnc%answer
-       rpnm%tmpans=>rpnc%tmpans
+       if(tc==0) stop "Empty function"
+       rpnm%pars   => rpnc%pars
+       rpnm%answer => rpnc%answer
+       rpnm%tmpans => rpnc%tmpans
        allocate(rpnm%que(tc))
        rpnm%que(1:tc)=rpnc%que(km+1:ke-1)
-       call count_var()
+       call alloc_vbuf()
        call init_pnames()
-       if(vc>0) allocate(rpnm%vbuf(vc))
        call cp_vbuf()
        exit
     end do
@@ -710,13 +711,14 @@ contains
     end function find_end
 
     subroutine init_pnames()
-      use slist, only: init_slist,add_str
+      use slist, only: init_slist,uinit_slist,add_str
       use misc, only: get_up32
-      if(allocated(rpnm%pnames)) deallocate(rpnm%pnames)
-      allocate(rpnm%pnames)
-      plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1&
-           +get_up32(rpnb%que(ka)%p2)-get_up32(rpnb%que(ka)%p1)+1
-      rpnm%pnames=init_slist()
+      if(allocated(rpnm%pnames)) then
+         call uinit_slist(rpnm%pnames)
+      else
+         allocate(rpnm%pnames)
+         rpnm%pnames=init_slist()
+      end if
       if(add_str(rpnm%pnames,supexpr(rpnb,i),SC_RO)/=0 &
            .or.add_str(rpnm%pnames,supexpr(rpnb,ka),SC_RO)/=0) &
            STOP "*** init_pnames: UNEXPECTED ERROR: add_str failed."
@@ -773,44 +775,32 @@ contains
       end do
     end subroutine cp_vbuf
 
-    subroutine count_var()
-      integer ii
+    subroutine alloc_vbuf()
+      integer ii,vc
       vc=0
-      pc=0
-      plen=0
       do ii=km,ke
-         select case(rpnc%que(ii)%tid)
-         case(TID_VAR,TID_PAR,TID_CPAR) 
-            if(rpnb%que(ii)%tid/=TID_FIG) then ! par
-               plen=plen+rpnb%que(ii)%p2-rpnb%que(ii)%p1+1
-               pc=pc+1
-            end if
-            vc=vc+1
-         case(TID_DPAR)
-            vc=vc+1
-         case(TID_MAC)
-            vc=vc+1
-         end select
+         if(rpnb%que(ii)%tid==TID_FIG) vc=vc+1
       end do
-    end subroutine count_var
+      if(vc>0) allocate(rpnm%vbuf(vc))
+    end subroutine alloc_vbuf
 
   end function set_function
 
   integer function set_macro(rpnb,rpnc,k1)
+    ! AMAC never be in AMAC
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
     type(t_rpnm),pointer::rpnm
     integer k,km,ke
-    integer i
-    integer tc,vc,plen,pc
-    integer istat
+    integer i,istat
+    integer tc
 
     ke=find_end()
     do i=k1,ke
        if(rpnc%que(i)%tid/=TID_AMAC) cycle
        k=find_qend() 
-! | k1   |      | k |   | ke |
+! | i    |      | k |   | ke |
 ! | AMAC | code | " | = | ;  |
        istat=add_rpnm_entry(rpnc,rpnb,i,SC_MAC,km)
        if(istat/=0) then
@@ -818,25 +808,23 @@ contains
           exit
        end if
        rpnc%que(i)%cid=km
-       rpnm=>rpnc%rl%rpnm(km)
+       rpnm => rpnc%rl%rpnm(km)
        if(allocated(rpnm%que)) deallocate(rpnm%que)
        if(allocated(rpnm%vbuf)) deallocate(rpnm%vbuf)
        tc=(k-1)-(i+1)+1
-       if(tc==0) exit ! empty macro
-       rpnm%pars=>rpnc%pars
-       rpnm%answer=>rpnc%answer
-       rpnm%tmpans=>rpnc%tmpans
+       if(tc==0) stop "Empty macro!"
+       rpnm%pars   => rpnc%pars
+       rpnm%answer => rpnc%answer
+       rpnm%tmpans => rpnc%tmpans
        allocate(rpnm%que(tc))
-       call count_var()
+       call alloc_vbuf()
        call init_pnames()
        rpnm%que(1:tc)=rpnc%que(i+1:i+1+tc-1)
-       if(vc>0) allocate(rpnm%vbuf(vc))
        call cp_vbuf()
        call check_mscl()
+       rpnc%que(i)%tid       = TID_MAC
+       rpnc%que(i+1:k+1)%tid = TID_NOP
     end do
-
-    rpnc%que(k1)%tid=TID_MAC
-    rpnc%que(k1+1:ke)%tid = TID_NOP
 
     set_macro=0
 
@@ -862,14 +850,16 @@ contains
     end function find_end
 
     subroutine init_pnames()
-      use slist, only: init_slist,add_str
+      use slist, only: init_slist,uinit_slist,add_str
       use misc, only: get_up32
-      if(allocated(rpnm%pnames)) deallocate(rpnm%pnames)
-      allocate(rpnm%pnames)
-      plen=plen+get_up32(rpnb%que(i)%p2)-get_up32(rpnb%que(i)%p1)+1
-      rpnm%pnames=init_slist()
+      if(allocated(rpnm%pnames)) then
+         call uinit_slist(rpnm%pnames)
+      else
+         allocate(rpnm%pnames)
+         rpnm%pnames=init_slist()
+      end if
       if(add_str(rpnm%pnames,supexpr(rpnb,i),ior(SC_RO,SC_MAC))/=0) &
-           STOP  "*** init_pnames: UNEXPECT3D ERROR: add_str failed"
+           STOP  "*** init_pnames: UNEXPECTED ERROR: add_str failed"
     end subroutine init_pnames
 
     subroutine cp_vbuf()
@@ -915,26 +905,14 @@ contains
       end do
     end subroutine cp_vbuf
     
-    subroutine count_var()
-      integer ii
+    subroutine alloc_vbuf()
+      integer ii,vc
       vc=0
-      plen=0
-      pc=0
       do ii=i+1,k-1
-         select case(rpnc%que(ii)%tid)
-         case(TID_VAR,TID_PAR,TID_CPAR) 
-            if(rpnb%que(ii)%tid/=TID_FIG) then ! par
-               plen=plen+rpnb%que(ii)%p2-rpnb%que(ii)%p1+1
-               pc=pc+1
-               if(rpnb%que(ii)%tid/=TID_APAR) vc=vc+1
-            else
-               vc=vc+1
-            end if
-         case(TID_MAC)
-            vc=vc+1 !<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-         end select
+         if(rpnb%que(ii)%tid==TID_FIG) vc=vc+1
       end do
-    end subroutine count_var
+      if(vc>0) allocate(rpnm%vbuf(vc))
+    end subroutine alloc_vbuf
     
     integer function find_qend()
       integer ii
@@ -1845,10 +1823,11 @@ contains
              exit
           else
              if(.not.check_narg_all()) exit
-             if(iand(qc,1)==1.and..not.amac) then
+             if(iand(qc,1)==1.and.amac) then !.not.amac) then
                 ! close "
                 call rpn_try_pop(rpnb,TID_QSTA)
                 call rpn_put(rpnb,TID_QEND,0,0)
+                amac=.false.
              end if
              if(amac) then
                 call rpn_pop_to(rpnb,TID_QSTA)
@@ -2419,7 +2398,7 @@ contains
          if(kk>=rpnb%len_expr) exit
          if(rpnb%expr(kk:kk)/="$") cycle
          pp1=kk+1
-         if(.not.is_alpha(iachar(rpnb%expr(pp1:pp1)))) return
+         if(.not.is_alpha(ichar(rpnb%expr(pp1:pp1)))) return
          pp2=get_end_of_par(rpnb,pp1)
          if(rpnc%rl%s%n==0) return
          jj=find_str(rpnc%rl%s,rpnb%expr(pp1:pp2))
