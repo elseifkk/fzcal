@@ -512,9 +512,23 @@ contains
 #if defined _VERSION_
       character*(*),parameter::v=_VERSION_
 #else
-      character*(*),parameter::v="Unknown"
+      character*(*),parameter::v="version unknown"
 #endif
-      call mess(v)
+#if defined __GNUC__
+#if defined __GNUC_MINOR__
+#if defined __GNUC_PATCHLEVEL__
+      character*(*),parameter::cv=char(__GNUC__+48)//"."//char(__GNUC_MINOR__+48)//"."//char(__GNUC_PATCHLEVEL__+48)
+#else
+      character*(*),parameter::cv=""
+#endif
+#else
+      character*(*),parameter::cv=""
+#endif
+#else
+      character*(*),parameter::cv=""
+#endif
+      call mess("fzcalc "//v)
+      call mess("gcc "//cv)
     end subroutine print_version
 
     subroutine cle_disp_opt(x)

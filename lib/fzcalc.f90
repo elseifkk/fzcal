@@ -112,8 +112,14 @@ program fzcalc
         call delete_par_all(rpnc)
      case(CID_PRI_DAT)
         call dump_sd(rpnc)
+     case(CID_DEL_MAC_ALL)
+        call delete_rpnm(rpnc,0,"",type=SC_MAC)
+     case(CID_DEL_FNC_ALL)
+        call delete_rpnm(rpnc,0,"",type=SC_FNC)
      case(CID_DEL_MAC)
+        call delete_rpnm(rpnc,n,str(ka:kb),type=SC_MAC)
      case(CID_DEL_FNC)
+        call delete_rpnm(rpnc,n,str(ka:kb),type=SC_FNC)
      case(CID_LOAD)
         if(fu/=0) cycle ! <<<<<<<<<<<<<<<<<<<<<<
         fu=123

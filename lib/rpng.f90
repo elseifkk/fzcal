@@ -29,8 +29,6 @@ module rpng
   integer,parameter::RPN_REC_MAX     =  256
   integer,parameter::NUM_VBUF_MIN    =   32
   integer,parameter::NUM_PBUF_MIN    =   32
-  integer,parameter::NUM_RPNM_MIN    =    8
-  integer,parameter::LEN_RLIST_MIN   = 1024
   integer,parameter::NUM_VS_MIN      =   32
   integer,parameter::LEN_STR_MAX     = 1024
   integer,parameter::LEN_FORMULA_MAX = LEN_STR_MAX

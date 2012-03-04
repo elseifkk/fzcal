@@ -390,13 +390,13 @@ contains
     end select
   end function get_tid
 
-  logical function is_usr_fnc(sl,f,ent)
-    use slist
-    type(t_slist),intent(in)::sl
+  logical function is_usr_fnc(rl,f,ent)
+    use rpnlist, only: find_rpnlist
+    type(t_rpnlist),intent(in)::rl
     character*(*),intent(in)::f
     integer,intent(out),optional::ent
     integer k
-    k=find_str(sl,f,target_code=SC_FNC)
+    k=find_rpnlist(rl,f,SC_FNC)
     if(present(ent)) ent=k
     if(k/=0) then
        is_usr_fnc=.true.
@@ -405,13 +405,13 @@ contains
     end if
   end function is_usr_fnc
   
-  integer function get_next(rpnb,p1,p2,sl)
+  integer function get_next(rpnb,p1,p2,rl)
     use slist, only: t_slist
     use misc, only: get_i32,is_alpha,is_numeric,is_number,&
          is_set
     type(t_rpnb),intent(inout)::rpnb
     integer,intent(out)::p1,p2
-    type(t_slist),intent(in)::sl
+    type(t_rpnlist),intent(in)::rl
     integer k,t,kf
     
     k=rpnb%cur_pos
@@ -529,7 +529,7 @@ contains
                   .and..not.(is_set(rpnb%opt,RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))) then
                 k=p2+1
                 if(rpnb%expr(k:k)=="(") then
-                   if(is_usr_fnc(sl,rpnb%expr(p1:p2),kf)) then
+                   if(is_usr_fnc(rl,rpnb%expr(p1:p2),kf)) then
                       t=get_i32(TID_UFNC,kf)
                    else if(is_int_fnc(rpnb%expr(p1:p2),kf)) then
                       t=get_i32(TID_IFNC,kf)
@@ -620,37 +620,13 @@ contains
     character(len=get_lo32(rpnb%que(i)%p2)-get_lo32(rpnb%que(i)%p1)+1) subexpr
     subexpr=rpnb%expr(get_lo32(rpnb%que(i)%p1):get_lo32(rpnb%que(i)%p2))
   end function subexpr
-  
-  integer function add_rpnm_entry(rpnc,rpnb,i,code,k)
-    use misc, only: get_lo32
-    use slist, only: try_add_str
-    use misc, only: mess
-    use memio, only: itoa
-    type(t_rpnc),intent(inout)::rpnc
-    type(t_rpnb),intent(in)::rpnb
-    integer i
-    integer,intent(in)::code
-    integer,intent(out)::k
-    integer istat
-    istat=try_add_str(rpnc%rl%s,subexpr(rpnb,i),code,k)
-    if(istat==0) then
-       if(k>size(rpnc%rl%rpnm)) then
-          call mess("add_rpnm_entry faild: buffer overflow")
-          istat=RPNCERR_MEMOV
-       end if
-    else
-       call mess("*** try_add_str failed: code = "//trim(itoa(istat)))
-       istat=RPNCERR_ADDSTR
-    end if
-    add_rpnm_entry=istat
-  end function add_rpnm_entry
-    
+      
   integer function set_function(rpnb,rpnc,k1)
+    use rpnlist, only: t_rpnm,add_rpnm_entry
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
     type(t_rpnm),pointer::rpnm
-    integer istat
     integer i
     integer kf,km,ka,ke
     integer ac,tc
@@ -658,16 +634,9 @@ contains
     ke=find_end()
     do i=k1,ke
        if(rpnc%que(i)%tid/=TID_AFNC) cycle
-       istat=add_rpnm_entry(rpnc,rpnb,i,SC_FNC,kf)
-       if(istat/=0) then
-          set_function=istat
-          exit
-       end if
-       rpnc%que(i)%cid=kf
-       rpnm => rpnc%rl%rpnm(kf)
+       call add_rpnm_entry(rpnc%rl,subexpr(rpnb,i),SC_FNC,kf,rpnm)
        if(allocated(rpnm%que)) deallocate(rpnm%que)
        if(allocated(rpnm%vbuf)) deallocate(rpnm%vbuf)       
-       if(.not.allocated(rpnm%na)) allocate(rpnm%na)
        if(i==k1) then
           ! | k1=i |   |   | ... | km |       | ke |
           ! | f    | x | y | arg | *  | codes | =  |
@@ -695,7 +664,8 @@ contains
        exit
     end do
     rpnc%que(k1:ke)%tid=TID_NOP
-    set_function=istat
+
+    set_function=0
 
   contains
     
@@ -713,15 +683,8 @@ contains
     subroutine init_pnames()
       use slist, only: init_slist,uinit_slist,add_str
       use misc, only: get_up32
-      if(allocated(rpnm%pnames)) then
-         call uinit_slist(rpnm%pnames)
-      else
-         allocate(rpnm%pnames)
-         rpnm%pnames=init_slist()
-      end if
-      if(add_str(rpnm%pnames,supexpr(rpnb,i),SC_RO)/=0 &
-           .or.add_str(rpnm%pnames,supexpr(rpnb,ka),SC_RO)/=0) &
-           STOP "*** init_pnames: UNEXPECTED ERROR: add_str failed."
+      call add_str(rpnm%pnames,supexpr(rpnb,i))
+      call add_str(rpnm%pnames,supexpr(rpnb,ka))
     end subroutine init_pnames
 
     integer function find_implicit_mul()
@@ -738,13 +701,12 @@ contains
     subroutine cp_vbuf()
       use fpio, only: cp
       use misc, only: get_up32,get_lo32
-      use slist, only: try_add_str
+      use slist, only: add_str
       integer ii,jj
       integer kp,asis
       type(t_rrpnq),pointer::qq
       complex(cp) v
       pointer(pv,v)
-      if(.not.allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
       rpnm%p_vbuf=0
       do ii=1,size(rpnm%que)
          select case(rpnm%que(ii)%tid)
@@ -757,8 +719,7 @@ contains
          if(qq%tid/=TID_FIG) then ! par
             asis=get_up32(qq%tid)
             if(asis/=0) qq%p1=qq%p1+1
-            if(try_add_str(rpnm%pnames,subexpr(rpnb,jj),SC_RO,ent=kp)/=0) &            
-                 STOP "*** cp_vbuf: UNEXPECTED ERROR: try_add_str failed"
+            call add_str(rpnm%pnames,subexpr(rpnb,jj),ent=kp)
             rpnm%que(ii)%tid=get_lo32(qq%tid)
             if(asis/=0) then
                qq%p1=qq%p1-1
@@ -788,12 +749,13 @@ contains
 
   integer function set_macro(rpnb,rpnc,k1)
     ! AMAC never be in AMAC
+    use rpnlist, only: t_rpnm,add_rpnm_entry
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
     type(t_rpnm),pointer::rpnm
     integer k,km,ke
-    integer i,istat
+    integer i
     integer tc
 
     ke=find_end()
@@ -802,13 +764,8 @@ contains
        k=find_qend() 
 ! | i    |      | k |   | ke |
 ! | AMAC | code | " | = | ;  |
-       istat=add_rpnm_entry(rpnc,rpnb,i,SC_MAC,km)
-       if(istat/=0) then
-          set_macro=istat
-          exit
-       end if
+       call add_rpnm_entry(rpnc%rl,subexpr(rpnb,i),SC_MAC,km,rpnm)
        rpnc%que(i)%cid=km
-       rpnm => rpnc%rl%rpnm(km)
        if(allocated(rpnm%que)) deallocate(rpnm%que)
        if(allocated(rpnm%vbuf)) deallocate(rpnm%vbuf)
        tc=(k-1)-(i+1)+1
@@ -852,18 +809,11 @@ contains
     subroutine init_pnames()
       use slist, only: init_slist,uinit_slist,add_str
       use misc, only: get_up32
-      if(allocated(rpnm%pnames)) then
-         call uinit_slist(rpnm%pnames)
-      else
-         allocate(rpnm%pnames)
-         rpnm%pnames=init_slist()
-      end if
-      if(add_str(rpnm%pnames,supexpr(rpnb,i),ior(SC_RO,SC_MAC))/=0) &
-           STOP  "*** init_pnames: UNEXPECTED ERROR: add_str failed"
+      call add_str(rpnm%pnames,supexpr(rpnb,i))
     end subroutine init_pnames
 
     subroutine cp_vbuf()
-      use slist, only: try_add_str
+      use slist, only: add_str
       use fpio, only: cp
       use misc, only: get_up32,get_lo32
       ! Reverts TID_VAR to FIG,PAR,APAR
@@ -874,7 +824,6 @@ contains
       type(t_rrpnq),pointer::qq
       complex(cp) v
       pointer(pv,v)
-      if(.not.allocated(rpnm%p_vbuf)) allocate(rpnm%p_vbuf)
       rpnm%p_vbuf=0
       do ii=1,tc
          select case(rpnm%que(ii)%tid)
@@ -887,8 +836,7 @@ contains
          if(qq%tid/=TID_FIG) then ! par
             asis=get_up32(qq%tid)
             if(asis/=0) qq%p1=qq%p1+1
-            if(try_add_str(rpnm%pnames,subexpr(rpnb,jj),SC_RO,ent=kp)/=0) &            
-                 STOP "*** cp_vbuf: UNEXPECTED ERROR: try_add_str failed"
+            call add_str(rpnm%pnames,subexpr(rpnb,jj),ent=kp)
             rpnm%que(ii)%tid=get_lo32(qq%tid) ! <<< TID_PAR or TID_APAR
             if(asis/=0) then
                qq%p1=qq%p1+1
@@ -1201,11 +1149,11 @@ contains
     end function check_sop
  
     logical function check_mac()
-      use slist, only: find_str
+      use rpnlist, only: rpnlist_count,find_rpnlist
       integer kk
       check_mac=.false.
       if(rpnlist_count(rpnc%rl)>0) then
-         kk=find_str(rpnc%rl%s,subexpr(rpnb,i))
+         kk=find_rpnlist(rpnc%rl,subexpr(rpnb,i),SC_MAC)
          if(kk>0) then
             q%tid=TID_MAC
             q%cid=kk
@@ -1806,7 +1754,7 @@ contains
     istat=0
 
     do 
-       tid=get_next(rpnb,p1,p2,rpnc%rl%s)
+       tid=get_next(rpnb,p1,p2,rpnc%rl)
        t=get_lo32(tid)
        select case(t)
        case(TID_BLK,TID_IGNORE)
@@ -2002,10 +1950,12 @@ contains
                 end if
              end if
           end if
-          if(sc/=0.and.rpnb%p_buf>1.and.get_up32(rpnb%buf(rpnb%p_buf-1)%tid)==FFID_DEINT) then
-             call rpn_put(rpnb,TID_IEND,0,0)
-             call set_idmy(rpnb%p_que)
-             sc=sc-1
+          if(sc/=0.and.rpnb%p_buf>1) then
+             if(get_up32(rpnb%buf(rpnb%p_buf-1)%tid)==FFID_DEINT) then
+                call rpn_put(rpnb,TID_IEND,0,0)
+                call set_idmy(rpnb%p_que)
+                sc=sc-1
+             end if
           end if
        case(TID_COL)
           clc=clc+1
@@ -2200,6 +2150,7 @@ contains
     end subroutine set_arg_read
 
     subroutine set_narg()
+      use rpnlist, only: kth_na
       integer na
       integer fid
       fid=get_up32(tid)
@@ -2223,7 +2174,7 @@ contains
             na=3
          end if
       case(TID_UFNC)
-         na=rpnc%rl%rpnm(get_up32(tid))%na
+         na=kth_na(rpnc%rl,get_up32(tid))
       end select
       p1=get_i32(p1,-na) ! negative for no arg read
       p2=get_i32(p2,-na)
@@ -2386,9 +2337,11 @@ contains
     end subroutine push_implicit_bra
 
     logical function expand_mac()
+      use rpnlist, only: rpnlist_count,find_rpnlist,t_rpnm
       use misc, only: is_alpha,replace
-      use slist, only: find_str,get_str_ptr
+      use slist, only: get_str_ptr
       use memio, only: cpstr
+      type(t_rpnm),pointer::rpnm
       integer kk,len,ptr,pp2,pp1
       integer jj
       expand_mac=.false.
@@ -2400,10 +2353,10 @@ contains
          pp1=kk+1
          if(.not.is_alpha(ichar(rpnb%expr(pp1:pp1)))) return
          pp2=get_end_of_par(rpnb,pp1)
-         if(rpnc%rl%s%n==0) return
-         jj=find_str(rpnc%rl%s,rpnb%expr(pp1:pp2))
+         if(rpnlist_count(rpnc%rl)==0) return
+         jj=find_rpnlist(rpnc%rl,rpnb%expr(pp1:pp2),SC_MAC,rpnm)
          if(jj<=0) return
-         if(get_str_ptr(rpnc%rl%rpnm(jj)%pnames,1,ptr,len)/=0) return
+         if(get_str_ptr(rpnm%pnames,1,ptr,len)/=0) return
          rpnb%len_expr=replace(rpnb%expr,kk,pp2-kk+1,cpstr(ptr,len),len)
          kk=kk-1
       end do

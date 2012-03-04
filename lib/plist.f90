@@ -94,6 +94,42 @@ module plist
 
 contains
 
+  subroutine set_pn(pn,s)
+    use memio, only: mcp
+    type(t_pn),intent(inout),pointer::pn
+    character*(*),intent(in)::s
+    integer len
+    len=len_trim(s)
+    allocate(pn%s(len))
+    call mcp(loc(pn%s),loc(s),len)
+    allocate(pn%v)
+    pn%v=init_vbuf()
+  end subroutine set_pn
+
+  function append_node(pl,s)
+    type(t_plist),intent(inout)::pl
+    character*(*),intent(in)::s
+    type(t_pn),pointer::append_node
+    type(t_pn),pointer::pn,prev
+    if(.not.associated(pl%pn)) then
+       pl%n=0
+       allocate(pl%pn)
+       prev => pl%pn
+       pn => pl%pn
+    else
+       pn => pl%pn%prev
+       allocate(pn%next)
+       prev => pn
+       pn => pn%next
+    end if
+    pn%prev => prev
+    nullify(pn%next)
+    pl%n=pl%n+1
+    pl%pn%prev => pn
+    call set_pn(pn,s)
+    append_node => pn
+  end function append_node
+
   function match_node(pl,s,k)
     type(t_plist),intent(in)::pl
     character*(*),intent(in)::s
@@ -145,26 +181,6 @@ contains
     end do
     kth_node => pn
   end function kth_node
-
-  function last_node(pl,k)
-    type(t_plist),intent(in)::pl
-    integer,intent(out),optional::k
-    type(t_pn),pointer::last_node
-    type(t_pn),pointer::cur
-    integer i
-    nullify(last_node)
-    if(present(k)) k=0
-    if(.not.associated(pl%pn)) return
-    cur => pl%pn
-    do i=1,pl%n
-       if(.not.associated(cur%next)) then
-          if(present(k)) k=i
-          last_node => cur
-          return
-       end if
-       cur => cur%next
-    end do
-  end function last_node
 
   pure integer function plist_count(pl)
     type(t_plist),intent(in)::pl
@@ -234,14 +250,18 @@ contains
     init_plist%n=0
   end function init_plist
 
+  function init_vbuf()
+    type(t_vbuf) init_vbuf
+    init_vbuf%sta=PK_UNDEF
+    init_vbuf%p=0
+    init_vbuf%pz=0
+  end function init_vbuf
+
   subroutine uinit_vbuf(v)
     type(t_vbuf),intent(inout)::v
     if(get_pkind(v%sta)/=PK_UNDEF) then
        if(is_value(v%sta).and.v%p/=0) call free(v%p)
        if(v%pz/=0) call free(v%pz)
-       v%sta=PK_UNDEF
-       v%p=0
-       v%pz=0
     end if
   end subroutine uinit_vbuf
 
@@ -273,12 +293,6 @@ contains
     end do
     pl%n=0
   end subroutine uinit_plist
-
-  subroutine mv_vbuf(v1,v2)
-    type(t_vbuf),intent(inout)::v1,v2
-    call cp_vbuf(v1,v2)
-    call uinit_vbuf(v1)
-  end subroutine mv_vbuf
 
   subroutine cp_vbuf(v1,v2)
     use memio, only: mcp
@@ -369,20 +383,20 @@ contains
   end function rm_par_s
 
   integer function rm_par_pn(pl,pn)
-    ! pn must be associated
     type(t_plist),intent(inout)::pl
     type(t_pn),intent(inout),pointer::pn
     type(t_vbuf),pointer::v
-    type(t_pn),pointer::prev,next
     v => pn%v
     if(is_read_only(v%sta)) then
        rm_par_pn=PLERR_RDONL
        return
     end if
-    next => pn%next
-    prev => pn%prev
-    if(associated(prev)) prev%next => next
-    if(associated(next)) next%prev => prev
+    pn%prev%next => pn%next
+    if(associated(pn%next)) then
+       pn%next%prev => pn%prev
+    else
+       pl%pn%prev => pn%prev
+    end if
     call uinit_pn(pn)
     deallocate(pn)
     pl%n=pl%n-1
@@ -630,66 +644,31 @@ contains
     type(t_pn),intent(out),pointer,optional::node
     integer,intent(out),optional::ent
     logical,intent(in),optional::force
-    type(t_pn),pointer::pn,prev
-    type(t_vbuf),pointer::v
+    type(t_pn),pointer::pn
     integer k
     logical f
-
     if(present(node)) nullify(node)
     if(present(ent)) ent=0
-    if(pl%n==0) then
-       k=0
-       allocate(pl%pn)
-       pn => pl%pn
-       prev => pn
+    pn => match_node(pl,s,k)
+    if(.not.associated(pn)) then
+       pn => append_node(pl,s)
+       k=pl%n
     else
-       pn => match_node(pl,s,k)
-       if(k==0) then
-          pn => last_node(pl)
-          allocate(pn%next)
-          prev => pn
-          pn => pn%next
+       if(present(force)) then
+          f=force
+       else
+          f=.false.
        end if
+       if(is_read_only(pn%v%sta).and..not.f) then
+          try_add_par=PLERR_RDONL
+          return
+       end if
+       call uinit_vbuf(pn%v)
+       pn%v=init_vbuf()
     end if
-    if(k==0) call init_node
-
     if(present(node)) node => pn
     if(present(ent)) ent=k
-    if(present(force)) then
-       f=force
-    else
-       f=.false.
-    end if
-
-    v => pn%v
-    if(is_read_only(v%sta).and..not.f) then
-       try_add_par=PLERR_RDONL
-       return
-    end if
-
     try_add_par=0
-
-    contains
-
-      subroutine init_node
-        use memio, only: mcp
-        integer len
-        nullify(pn%next)
-        pn%prev => prev
-        pl%pn%prev => pn
-        pl%n=pl%n+1
-        k=pl%n
-        len=len_trim(s)
-        if(len>0) then
-           allocate(pn%s(len))
-           call mcp(loc(pn%s),loc(s),len)
-        end if
-        allocate(pn%v)
-        pn%v%p=0
-        pn%v%sta=0
-        pn%v%pz=0
-      end subroutine init_node
-
   end function try_add_par
 
   integer function add_par_by_entry(pl,s,ent,ro,pk)
@@ -707,7 +686,6 @@ contains
        add_par_by_entry=istat
        return
     end if
-!    pn => kth_node(pl,k)
     v => pn%v
     if(present(ro).and.ro) then
        flg=PS_RO
@@ -742,7 +720,6 @@ contains
        add_par_by_reference=istat
        return
     end if
-!    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=ior(PS_REF,PS_RO)
     else
@@ -778,7 +755,6 @@ contains
        add_par_by_value_x=istat
        return
     end if
-!    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=PS_RO
     else
@@ -808,7 +784,6 @@ contains
        add_par_by_value_r=istat
        return
     end if
-!    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=PS_RO
     else
@@ -837,7 +812,6 @@ contains
        add_par_by_value_n=istat
        return
     end if
-!    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=PS_RO
     else
@@ -867,7 +841,6 @@ contains
        add_par_by_value_z=istat
        return
     end if
-!x    pn => kth_node(pl,k)
     if(present(ro).and.ro) then
        flg=PS_RO
     else

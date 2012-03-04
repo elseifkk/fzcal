@@ -22,13 +22,13 @@ module slist
 
   private
 
-  public get_sc
-  public set_sc
-  public add_sc
   public get_str_ptr
-  public try_add_str
-  public find_str
+  interface rm_str
+     module procedure rm_str_s
+     module procedure rm_str_k
+  end interface
   public rm_str
+
   public init_slist
   public add_str
   public cp_slist
@@ -43,7 +43,6 @@ module slist
 
   type t_sn
      integer*1,allocatable::s(:)
-     integer:: c = 0 
      type(t_sn),pointer::next => null()
      type(t_sn),pointer::prev => null() ! head%prev => tail
   end type t_sn
@@ -75,7 +74,6 @@ contains
     prev => sn
     sn_in => sl%sn
     do i=1,sl%n
-       sn%c=sn_in%c
        if(allocated(sn%s)) then
           allocate(sn%s(size(sn_in%s)))
           call mcp(loc(sn%s),loc(sn_in%s),size(sn_in%s))
@@ -95,10 +93,14 @@ contains
 
   function init_slist()
     type(t_slist) init_slist
-    ! for only new slist 
     init_slist%n=0
   end function init_slist
  
+  subroutine uinit_sn(sn)
+    type(t_sn),intent(inout)::sn
+    if(allocated(sn%s)) deallocate(sn%s)
+  end subroutine uinit_sn
+
   subroutine uinit_slist(sl)
     type(t_slist),intent(inout)::sl
     integer i
@@ -107,7 +109,7 @@ contains
     sn => sl%sn
     do i=1,sl%n
        if(.not.associated(sn)) exit
-       if(allocated(sn%s)) deallocate(sn%s)
+       call uinit_sn(sn)
        next => sn%next
        deallocate(sn)
        sn => next
@@ -123,8 +125,7 @@ contains
     type(t_sn),pointer::sn
     integer i
     nullify(kth_node)
-    if(k>sl%n.or.k<=0) return
-    if(.not.associated(sl%sn)) return
+    if(k>sl%n.or.k<=0.or..not.associated(sl%sn)) return
     sn => sl%sn
     do i=2,k
        sn => sn%next
@@ -133,246 +134,148 @@ contains
     kth_node => sn
   end function kth_node
 
-!!$  function last_node(sl,k)
-!!$    ! return k=0 if failed
-!!$    type(t_slist),intent(in)::sl
-!!$    integer,intent(out)::k
-!!$    type(t_sn),pointer::last_node
-!!$    type(t_sn),pointer::sn
-!!$    integer i
-!!$    nullify(last_node)
-!!$    k=0
-!!$    if(.not.associated(sl%sn)) return
-!!$    sn => sl%sn
-!!$    do i=1,sl%n
-!!$       if(.not.associated(sn)) return
-!!$       if(.not.associated(sn%next)) then
-!!$          k=i
-!!$          last_node => sn
-!!$          return
-!!$       end if
-!!$       sn => sn%next
-!!$    end do
-!!$  end function last_node
-  
-  integer function get_str_ptr(sl,k,ptr,len,code)
-    ! ptr maybe 0 even if returns 0
-    type(t_slist),intent(in)::sl
-    integer,intent(in)::k
-    integer,intent(out)::ptr
-    integer,intent(out),optional::len
-    integer,intent(out),optional::code
-    type(t_sn),pointer::sn
-
-    if(present(len)) len=0
-    if(present(code)) code=0
-    ptr=0
-    if(sl%n<k.or.k<=0) then
-       get_str_ptr=SLERR_NOENT
-       return
-    end if
-   
-    sn => kth_node(sl,k)
-    if(.not.associated(sn)) then
-       get_str_ptr=SLERR_NOENT
-       return
-    end if
-
-    if(allocated(sn%s)) then
-       ptr=loc(sn%s)
-       if(present(len)) len=size(sn%s)
-    end if
-    if(present(code)) code=sn%c
-
-    get_str_ptr=0
-
-  end function get_str_ptr
-
-  integer function get_sc(sl,k,code)
-    type(t_slist),intent(in)::sl
-    integer,intent(in)::k
-    integer,intent(out)::code
-    type(t_sn),pointer::sn
-    sn => kth_node(sl,k)
-    if(.not.associated(sn)) then
-       get_sc=SLERR_NOENT
-       return
-    end if
-    code=sn%c
-    get_sc=0
-  end function get_sc
-
-  integer function set_sc(sl,k,code)
-    type(t_slist),intent(in)::sl
-    integer,intent(in)::k
-    integer,intent(in)::code
-    type(t_sn),pointer::sn
-    sn => kth_node(sl,k)
-    if(.not.associated(sn)) then
-       set_sc=SLERR_NOENT
-       return
-    end if
-    sn%c=code
-    set_sc=0
-  end function set_sc
-
-  integer function add_sc(sl,k,code)
-    type(t_slist),intent(in)::sl
-    integer,intent(in)::k
-    integer,intent(in)::code
-    type(t_sn),pointer::sn
-    sn => kth_node(sl,k)
-    if(.not.associated(sn)) then
-       add_sc=SLERR_NOENT
-       return
-    end if
-    sn%c=ior(sn%c,code)
-    add_sc=0
-  end function add_sc
-  
-  integer function rm_str(sl,s,ent)
-    use memio, only: mcp
-    type(t_slist),intent(inout)::sl
-    character*(*),intent(inout),optional::s
-    integer,intent(inout),optional::ent
-    integer k
-    type(t_sn),pointer::sn
-
-    rm_str=SLERR_NOENT
-    if(present(s).and.s/="") then
-       k=find_str(sl,s,node=sn)
-       if(present(ent)) ent=k
-       if(k==0) return
-    else if(present(ent)) then
-       if(ent<=0.or.ent>sl%n) return
-       k=ent
-       sn => kth_node(sl,k)
-       if(.not.associated(sn)) return
-       if(present(s)) call mcp(loc(s),loc(sn%s),min(size(sn%s),len(s)))
-    else
-       return
-    end if
-
-    sn%prev%next => sn%next
-    sn%next%prev => sn%prev
-
-    deallocate(sn)
-    sl%n=sl%n-1
-
-    rm_str=0
-
-  end function rm_str
-
-  integer function try_add_str(sl,s,code,ent)
-    type(t_slist),intent(inout)::sl
-    character*(*),intent(in)::s
-    integer,intent(in)::code
-    integer,intent(out),optional::ent
-    integer k,istat
-    integer c
-    k=0
-    istat=0
-    if(sl%n>0) k=find_str(sl,s,found_code=c)
-    if(k==0) then
-       istat=add_str(sl,s,code,ent)
-    else
-       if(present(ent)) ent=k
-       if(c/=code) istat=set_sc(sl,k,code)
-    end if
-    try_add_str=istat
-  end function try_add_str
-
-  integer function add_str(sl,s,code,ent)
-    use memio, only: mcp
-    type(t_slist),intent(inout)::sl
-    character*(*),intent(in)::s
-    integer,intent(in)::code
-    integer,intent(out),optional::ent
-    integer len
-    type(t_sn),pointer::sn,prev
-
-    if(present(ent)) ent=0
-    len=len_trim(s)
-    if(len==0) then
-       add_str=SLERR_INVARG
-       return
-    end if
-
-    if(sl%n==0) then
-       allocate(sl%sn)
-       sn => sl%sn
-       prev => sn
-    else
-       sn => sl%sn%prev
-       allocate(sn%next)
-       prev => sn
-       sn => sn%next
-    end if
-    sl%n=sl%n+1
-
-    nullify(sn%next)
-    sn%prev => prev
-    sl%sn%prev => sn
-
-    if(present(ent)) ent=sl%n
-    sn%c=code
-    allocate(sn%s(len))
-    call mcp(loc(sn%s),loc(s),len)
-
-    add_str=0
-
-  end function add_str
-
-  integer function find_str(sl,s,target_code,found_code,ptr,node)
+  function match_node(sl,s,k)
+    ! returns null if failed
     type(t_slist),intent(in)::sl
     character*(*),intent(in)::s
-    integer,intent(in),optional::target_code
-    integer,intent(out),optional::found_code
-    integer,intent(out),optional::ptr
-    type(t_sn),intent(out),pointer,optional::node
-    integer i,len,tc
+    integer,intent(out),optional::k
+    type(t_sn),pointer::match_node
     type(t_sn),pointer::sn
-
-    find_str=0
-    if(present(found_code)) found_code=-1
-    if(present(ptr)) ptr=0
-    if(present(node)) nullify(node)
-    if(sl%n==0) return
-    len=len_trim(s)
-    if(len==0) return
-
-    if(present(target_code)) then
-       tc=target_code
-    else
-       tc=-1
-    end if
-
+    integer i,len
+    nullify(match_node)
+    if(present(k)) k=0
+    if(sl%n==0.or..not.associated(sl%sn)) return
     sn => sl%sn
+    len=len_trim(s)
     do i=1,sl%n
-       if(.not.associated(sn)) return
-       if(len==size(sn%s).and.is_matched()) then
-          find_str=i
-          if(present(found_code)) found_code=sn%c
-          if(present(ptr)) ptr=loc(sn%s)
-          if(present(node)) node => sn
+       if(allocated(sn%s).and.len==size(sn%s).and.is_matched()) then
+          match_node => sn
+          if(present(k)) k=i
           return
        end if
        sn => sn%next
+       if(.not.associated(sn)) return
     end do
-
   contains
-
     logical function is_matched()
       integer j
       is_matched=.false.
-      if(tc/=-1.and.tc/=sn%c) return
       do j=1,len
          if(sn%s(j)/=ichar(s(j:j))) return
       end do
       is_matched=.true.
     end function is_matched
+  end function match_node
 
-  end function find_str
+  function append_node(sl,s)
+    type(t_slist),intent(inout)::sl
+    character*(*),intent(in)::s
+    type(t_sn),pointer::append_node
+    type(t_sn),pointer::sn,prev
+    if(.not.associated(sl%sn)) then
+       sl%n=0
+       allocate(sl%sn)
+       prev => sl%sn
+       sn => sl%sn
+    else
+       sn => sl%sn%prev
+       allocate(sn%next)
+       sn => sn%next
+    end if
+    sl%sn%prev => sn
+    sl%n=sl%n+1
+    nullify(sn%next)
+    call set_sn(sn,s)
+    append_node => sn
+  end function append_node
+
+  subroutine set_sn(sn,s)
+    use memio, only: mcp
+    type(t_sn),intent(inout)::sn
+    character*(*),intent(in)::s
+    integer len
+    len=len_trim(s)
+    allocate(sn%s(len))
+    call mcp(loc(sn%s),loc(s),len)
+  end subroutine set_sn
+    
+  integer function get_str_ptr(sl,k,ptr,len)
+    ! ptr maybe 0 even if returns 0
+    type(t_slist),intent(in)::sl
+    integer,intent(in)::k
+    integer,intent(out)::ptr
+    integer,intent(out)::len
+    type(t_sn),pointer::sn
+    len=0
+    ptr=0
+    if(sl%n<k.or.k<=0) then
+       get_str_ptr=SLERR_NOENT
+       return
+    end if
+    sn => kth_node(sl,k)
+    if(.not.associated(sn)) then
+       get_str_ptr=SLERR_NOENT
+       return
+    end if
+    if(allocated(sn%s)) then
+       ptr=loc(sn%s)
+       len=size(sn%s)
+    end if
+    get_str_ptr=0
+  end function get_str_ptr
+
+  integer function rm_str_s(sl,s)
+    type(t_slist),intent(inout)::sl
+    character*(*),intent(in)::s
+    type(t_sn),pointer::sn
+    rm_str_s=SLERR_NOENT
+    if(sl%n==0.or..not.associated(sl%sn)) return
+    sn => match_node(sl,s)
+    if(.not.associated(sn)) return
+    call rm_str_sn(sl,sn)
+    rm_str_s=0
+  end function rm_str_s
+
+  integer function rm_str_k(sl,k)
+    type(t_slist),intent(inout)::sl
+    integer,intent(in)::k
+    type(t_sn),pointer::sn
+    rm_str_k=SLERR_NOENT
+    if(k<=0.or.k>sl%n) return
+    sn => kth_node(sl,k)
+    if(.not.associated(sn)) return
+    call rm_str_sn(sl,sn)
+    rm_str_k=0
+  end function rm_str_k
+
+  subroutine rm_str_sn(sl,sn)
+    type(t_slist),intent(inout)::sl
+    type(t_sn),intent(inout),pointer::sn
+    if(allocated(sn%s)) deallocate(sn%s)
+    sn%prev%next => sn%next
+    if(associated(sn%next)) then
+       sn%next%prev => sn%prev
+    else
+       sl%sn%prev => sn%prev
+    end if
+    deallocate(sn)
+    sl%n=sl%n-1
+  end subroutine rm_str_sn
+
+  subroutine add_str(sl,s,ent)
+    type(t_slist),intent(inout)::sl
+    character*(*),intent(in)::s
+    integer,intent(out),optional::ent
+    type(t_sn),pointer::sn
+    sn => match_node(sl,s,ent)
+    if(.not.associated(sn)) then
+       sn => append_node(sl,s)
+       if(present(ent)) ent=sl%n
+    else
+       call uinit_sn(sn)
+       call set_sn(sn,s)
+    end if
+  end subroutine add_str
 
   subroutine dump_slist(sl)
     use misc, only: mess,messp
@@ -387,7 +290,7 @@ contains
       return
     end if
 
-    call mess("#\tLen\tCode\tValue")
+    call mess("#\tLen\tValue")
 
     sn => sl%sn
     do i=1,sl%n
@@ -395,7 +298,6 @@ contains
           call mess("(no reference)")
        else
           call messp(trim(itoa(i))//":\t"//trim(itoa(size(sn%s)))//"\t")
-          call messp("["//trim(itoa(sn%c,cfmt="(B4.4)"))//"]\t")
           call mess(trim(cpstr(loc(sn%s),size(sn%s))))
        end if
        sn => sn%next
