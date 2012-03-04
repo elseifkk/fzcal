@@ -763,6 +763,7 @@ contains
   end function eval_i
 
   recursive function eval_uf(rpnc,i) result(istat)
+    use rpnlist, only: kth_rpnm, t_rpnm
     use fpio, only: cp
     use plist, only: get_par_loc
     type(t_rpnc),intent(inout),target::rpnc
@@ -778,7 +779,7 @@ contains
     logical dup
     type(t_rpnq),pointer::q
 
-    rpnm=>rpnc%rl%rpnm(rpnc%que(i)%cid)
+    rpnm => kth_rpnm(rpnc%rl,rpnc%que(i)%cid)
 
     if(i-1<rpnm%na) then
        istat=RPNCERR_NOOP
@@ -881,6 +882,7 @@ contains
   end function eval_uf
   
   recursive function eval_m(rpnc,i) result(istat)
+    use rpnlist, only: kth_rpnm, t_rpnm
     use plist, only: get_par_loc
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
@@ -892,7 +894,7 @@ contains
     logical dup
     type(t_rpnq),pointer::q
 
-    rpnm => rpnc%rl%rpnm(rpnc%que(i)%cid)
+    rpnm => kth_rpnm(rpnc%rl,rpnc%que(i)%cid)
     
     allocate(mac%que(size(rpnm%que)))
     allocate(mac%p_vbuf)

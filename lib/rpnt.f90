@@ -26,18 +26,7 @@ module rpnt
      integer p_buf,p_que
      integer*8 opt
   end type t_rpnb
-  
-  type t_rpnm
-     type(t_rpnq),allocatable::que(:)  ! allocated
-     complex(cp),allocatable::vbuf(:)  ! allocated
-     integer,allocatable::p_vbuf       ! allocated
-     type(t_plist),pointer::pars       ! => rpnc%pars
-     complex(cp),pointer::answer       ! => rpnc%answer
-     complex(cp),pointer::tmpans       ! => rpnc%tmpans
-     type(t_slist),allocatable::pnames ! allocated
-     integer,allocatable::na               ! num arg
-  end type t_rpnm
-    
+      
   type t_sd
      real(rp),allocatable::ws(:)
      complex(cp),allocatable::vs(:,:) ! n:2

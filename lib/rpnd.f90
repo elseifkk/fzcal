@@ -18,12 +18,11 @@
 ! *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 module rpnd
-  use slist, only: t_slist
   use plist, only: t_plist
   use fpio, only: rp,cp
   use rpng
   use rpnt
-  use rpnlist
+  use rpnlist, only: t_rpnlist
   implicit none
 
   type t_rpnc
@@ -51,71 +50,16 @@ module rpnd
   end interface put_vbuf
 
 contains
-
-  integer function rpnlist_count(rl)
-    use slist, only: slist_count
-    type(t_rpnlist),intent(in)::rl
-    rpnlist_count=slist_count(rl%s)
-  end function rpnlist_count
-
-  function init_rpnlist(nmax)
-    use slist, only: init_slist
-    type(t_rpnlist) init_rpnlist
-    integer,intent(in)::nmax
-    init_rpnlist%s=init_slist()
-    if(nmax>0) allocate(init_rpnlist%rpnm(nmax))
-  end function init_rpnlist
-
-  subroutine uinit_rpnms(n,rpnm)
-    use slist, only: uinit_slist
-    integer,intent(in)::n
-    type(t_rpnm),intent(inout)::rpnm(n)
-    integer i
-    do i=1,n
-       if(allocated (rpnm(i)%que))    deallocate(rpnm(i)%que)
-       if(allocated (rpnm(i)%vbuf))   deallocate(rpnm(i)%vbuf)
-       if(allocated (rpnm(i)%na))     deallocate(rpnm(i)%na)
-       if(associated(rpnm(i)%pars))   nullify(   rpnm(i)%pars)
-       if(associated(rpnm(i)%tmpans)) nullify(   rpnm(i)%tmpans)
-       if(associated(rpnm(i)%answer)) nullify(   rpnm(i)%answer)
-       if(allocated (rpnm(i)%p_vbuf)) deallocate(rpnm(i)%p_vbuf)
-       if(allocated (rpnm(i)%na))     deallocate(rpnm(i)%na)
-       call uinit_slist(rpnm(i)%pnames)
-    end do
-  end subroutine uinit_rpnms
-
-  subroutine uinit_rpnlist(rl)
-    use slist, only: uinit_slist
-    type(t_rpnlist),intent(inout),target::rl
-    call uinit_slist(rl%s)
-    if(.not.allocated(rl%rpnm)) return
-    call uinit_rpnms(size(rl%rpnm),rl%rpnm)
-  end subroutine uinit_rpnlist
   
-  integer function init_rpnc(npbuf_,szrlist_,nrpnm_)
+  integer function init_rpnc(cp)
      ! type(t_rpnc) function init_rpnc causes segmentation fault
     use zmath, only: zm_f1,zm_f2,zm_f3
     use fpio, only: czero,X2A_DEFAULT
+    use rpnlist, only: init_rpnlist
+    logical,intent(in),optional::cp
     type(t_rpnc) rpnc
     pointer(p,rpnc)
-    integer,intent(in),optional::npbuf_,szrlist_,nrpnm_
-    integer npbuf,szrlist,nrpnm
     p=malloc(sizeof(rpnc))
-    if(present(npbuf_)) then
-       npbuf=npbuf_
-    else
-       npbuf=NUM_PBUF_MIN
-    end if
-    if(present(szrlist_)) then
-       szrlist=szrlist_
-    else
-       szrlist=LEN_RLIST_MIN
-    end if
-    if(present(nrpnm_)) then
-       nrpnm=nrpnm_
-    else
-       nrpnm=NUM_RPNM_MIN
-    end if
     nullify(rpnc%que)
     nullify(rpnc%vbuf)
     allocate(rpnc%rl)
@@ -134,56 +78,21 @@ contains
     rpnc%pfs(1)=loc(zm_f1)
     rpnc%pfs(2)=loc(zm_f2)
     rpnc%pfs(3)=loc(zm_f3)
-    rpnc%pars=init_par(rpnc,npbuf)
-    rpnc%rl=init_rpnlist(nrpnm)
+    rpnc%pars=init_par(rpnc,cp)
+    rpnc%rl=init_rpnlist()
     rpnc%opt=ior(RPNCOPT_NOP,ishft(X2A_DEFAULT,32))
     init_rpnc=p
   end function init_rpnc
 
-  subroutine cp_rpnm(rpnm1,rpnm2)
-    use slist, only: cp_slist
-    type(t_rpnm),intent(in)::rpnm1
-    type(t_rpnm),intent(inout)::rpnm2
-    if(.not.allocated(rpnm2%que)) then
-       allocate(rpnm2%que(size(rpnm1%que)))
-       rpnm2%que=rpnm1%que
-    end if
-    if(.not.allocated(rpnm2%vbuf)) then
-       allocate(rpnm2%vbuf(size(rpnm1%vbuf)))
-       rpnm2%vbuf=rpnm1%vbuf
-    end if
-    if(.not.allocated(rpnm2%p_vbuf)) then 
-       allocate(rpnm2%p_vbuf)
-       rpnm2%p_vbuf=rpnm1%p_vbuf
-    end if
-    if(.not.allocated(rpnm2%pnames)) then
-       allocate(rpnm2%pnames)
-       rpnm2%pnames=cp_slist(rpnm1%pnames)
-    end if
-  end subroutine cp_rpnm
-
-  subroutine min_cp_rpnlist(rl1,rl2)
-    use slist, only: cp_slist
-    type(t_rpnlist),intent(in)::rl1
-    type(t_rpnlist),intent(inout)::rl2
-    integer i,nrl2
-    rl2%s=cp_slist(rl1%s)
-    nrl2=rpnlist_count(rl2)
-    if(nrl2<=0) return
-    allocate(rl2%rpnm(nrl2))
-    do i=1,nrl2
-       call cp_rpnm(rl1%rpnm(i),rl2%rpnm(i))
-    end do
-  end subroutine min_cp_rpnlist
-
   integer function cp_rpnc(rpnc_in)
+    use rpnlist, only: cp_rpnlist
     use plist, only: add_par_by_reference,cp_plist
     type(t_rpnc),intent(in)::rpnc_in
     type(t_rpnc) rpnc
     integer istat
     pointer(p,rpnc)
-    p=init_rpnc(0,0,0)
-    call min_cp_rpnlist(rpnc_in%rl,rpnc%rl)
+    p=init_rpnc(cp=.true.)
+    rpnc%rl=cp_rpnlist(rpnc_in%rl)
     rpnc%pars=cp_plist(rpnc_in%pars)
     istat=add_par_by_reference(rpnc%pars,"tmp",loc(rpnc%tmpans),.true.)
     istat=add_par_by_reference(rpnc%pars,"ans",loc(rpnc%answer),.true.)
@@ -191,6 +100,7 @@ contains
   end function cp_rpnc
 
   subroutine uinit_rpnc(rpnc)
+    use rpnlist, only: uinit_rpnlist
     type(t_rpnc),intent(inout)::rpnc
     if(associated(rpnc%que).and.size(rpnc%que)>0) deallocate(rpnc%que)
     if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) deallocate(rpnc%vbuf)
@@ -213,14 +123,20 @@ contains
     end if
   end subroutine uinit_rpnc
 
-  function init_par(rpnc,nmax)
+  function init_par(rpnc,cp)
     use plist, only: init_plist,add_par_by_reference,add_par_by_value
     type(t_plist) init_par
     type(t_rpnc),intent(in)::rpnc
-    integer,intent(in)::nmax
+    logical,intent(in),optional::cp
+    logical noset
     integer istat
+    if(present(cp)) then
+       noset=cp
+    else 
+       noset=.false.
+    end if
     init_par=init_plist()
-    if(nmax==0) return
+    if(noset) return
     istat=add_par_by_reference(init_par,"tmp",loc(rpnc%tmpans),.true.)
     istat=add_par_by_reference(init_par,"ans",loc(rpnc%answer),.true.)
     istat=add_par_by_value(init_par,"eps",epsilon(0.0_rp),.true.)    
@@ -252,6 +168,32 @@ contains
     istat=rm_par(rpnc%pars,trim(adjustl(s)))
     if(istat/=0) call mess("*** Error delete_par: "//trim(s)//": code = "//trim(itoa(istat)))
   end subroutine delete_par
+
+  subroutine delete_rpnm(rpnc,index,name,type)
+    use rpnlist, only: rm_rpnm_entry,rm_rpnm_entry_all
+    type(t_rpnc),intent(inout)::rpnc
+    integer,intent(in),optional::index
+    character*(*),intent(in),optional::name
+    integer,intent(in),optional::type
+    integer k,t,istat
+    if(present(index)) then
+       k=index
+    else
+       k=0
+    end if
+    if(present(type)) then
+       t=type
+    else
+       t=0
+    end if
+    if(present(name).and.len_trim(name)>0) then
+       istat=rm_rpnm_entry(rpnc%rl,name,t)
+    else if(k==0) then
+       call rm_rpnm_entry_all(rpnc%rl,t)
+    else
+       istat=rm_rpnm_entry(rpnc%rl,k)
+    end if
+  end subroutine delete_rpnm
 
   subroutine set_sd(ip1,ip2,rpnc)
     use fpio, only: rzero
@@ -427,6 +369,7 @@ contains
 
   subroutine save_fnc(rpnc,f)
     use misc, only: open_file
+    use rpnlist, only: rpnlist_count
     type(t_rpnc),intent(in)::rpnc
     character*(*),intent(in)::f
     integer i,ou
@@ -440,6 +383,7 @@ contains
 
   subroutine save_mac(rpnc,f)
     use misc, only: open_file
+    use rpnlist, only: rpnlist_count
     type(t_rpnc),intent(in)::rpnc
     character*(*),intent(in)::f
     integer i,ou
@@ -454,6 +398,7 @@ contains
     use slist, only: slist_count,get_str_ptr,dump_slist
     use misc, only: mess,messp,stdout
     use memio, only: cpstr,itoa
+    use rpnlist, only: rpnlist_count,kth_rpnlist,kth_rpnm,t_rpnm
     type(t_rpnc),intent(in),target::rpnc
     integer,intent(in),optional::ent
     character*(*),intent(in),optional::name
@@ -477,7 +422,7 @@ contains
        t=0
     end if
     i1=1
-    i2=slist_count(rpnc%rl%s)
+    i2=rpnlist_count(rpnc%rl)
     if(present(ent)) then
        if(ent>0) then
           i1=ent
@@ -485,12 +430,12 @@ contains
        end if
     end if
     do i=i1,i2
-       if(i>size(rpnc%rl%rpnm) &
-            .or.get_str_ptr(rpnc%rl%s,i,ptr,len,code)/=0) then
+       if(i>rpnlist_count(rpnc%rl) &
+            .or.kth_rpnlist(rpnc%rl,i,ptr,len,code)/=0) then
           if(ou==stdout) call mess("*** dump_rpnm: no such entry: "//trim(itoa(i)))
           cycle
        end if
-       rpnm => rpnc%rl%rpnm(i)
+       rpnm => kth_rpnm(rpnc%rl,i)
 
        if(present(name)) then
           if(name/="".and.name/=cpstr(ptr,len)) cycle
@@ -514,7 +459,7 @@ contains
           call messp(cpstr(ptr,len)//"=",ou)
        end if
 
-       if(allocated(rpnm%pnames).and.get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
+       if(get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
           if(ou==stdout) then
              call mess("definition: "//cpstr(ptr,len))
           else
@@ -543,7 +488,7 @@ contains
        tmprpnc%rl     => rpnc%rl
        tmprpnc%rc     => rpnc%rc
        tmprpnc%pfs    => rpnc%pfs
-       if(allocated(rpnm%na)) call mess("number of arguments = "//trim(itoa(rpnm%na)))
+       call mess("number of arguments = "//trim(itoa(rpnm%na)))
        call dump_rpnc(tmprpnc,i)
        call dump_slist(rpnm%pnames)
 
@@ -551,6 +496,7 @@ contains
   end subroutine dump_rpnm
   
   subroutine dump_rpnc(rpnc,mid)
+    use rpnlist, only: t_rpnm,kth_rpnm
     use fpio, only: DISP_FMT_RAW,ztoa
     use misc, only: get_lo32,mess,messp
     use slist, only: get_str_ptr
@@ -574,7 +520,7 @@ contains
 !       return<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     end if
     call mess("#\tTID\tCID\tValue")
-    if(present(mid)) rpnm=>rpnc%rl%rpnm(mid)
+    if(present(mid)) rpnm => kth_rpnm(rpnc%rl,mid)
     do i=1,size(rpnc%que)
        q => rpnc%que(i)
        t=get_lo32(q%tid)
