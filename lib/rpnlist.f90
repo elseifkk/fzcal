@@ -1,4 +1,5 @@
 module rpnlist
+  use fzcerr
   use fpio, only: cp
   use rpnt, only: t_rpnq
   use slist, only: t_slist
@@ -38,13 +39,11 @@ module rpnlist
      integer::p_vbuf = 0      
      integer::na     = 0                   ! num arg
   end type t_rpnm
-  
-  integer,parameter,public::RLERR_NOENT=1
 
   type t_rn
-     type(t_rpnm),pointer::rpnm => null()
      integer*1,allocatable::s(:)
      integer c
+     type(t_rpnm),pointer::rpnm => null()
      type(t_rn),pointer::next => null()
      type(t_rn),pointer::prev => null()
   end type t_rn
@@ -105,6 +104,7 @@ contains
        rn => next
     end do
     rl%n=0
+    nullify(rl%rn)
   end subroutine uinit_rpnlist
   
   function kth_node(rl,k)
@@ -165,7 +165,6 @@ contains
     integer,intent(in)::c
     type(t_rn),pointer::append_node
     type(t_rn),pointer::rn,prev
-    
     if(.not.associated(rl%rn)) then
        rl%n=0
        allocate(rl%rn)
@@ -177,7 +176,6 @@ contains
        prev => rn
        rn => rn%next
     end if
-
     rn%prev => prev
     nullify(rn%next)
     rl%n=rl%n+1
@@ -243,7 +241,7 @@ contains
     if(present(ptr)) ptr=0
     if(present(len)) len=0
     if(present(code)) code=0
-    kth_rpnlist=RLERR_NOENT
+    kth_rpnlist=FZCERR_NOENT
     rn => kth_node(rl,k)
     if(.not.associated(rn)) return
     if(present(ptr)) ptr=loc(rn%s)
@@ -343,7 +341,7 @@ contains
     character*(*),intent(in)::s
     integer,intent(in)::c
     type(t_rn),pointer::rn
-    rm_rpnm_entry_s=RLERR_NOENT
+    rm_rpnm_entry_s=FZCERR_NOENT
     if(rl%n==0) return
     rn => match_node(rl,s,c)
     if(.not.associated(rn)) return
@@ -355,7 +353,7 @@ contains
     type(t_rpnlist),intent(inout)::rl
     integer,intent(in)::k
     type(t_rn),pointer::rn
-    rm_rpnm_entry_k=RLERR_NOENT
+    rm_rpnm_entry_k=FZCERR_NOENT
     if(k<=0.or.k>rl%n) return
     rn => kth_node(rl,k)
     if(.not.associated(rn)) return
@@ -376,6 +374,7 @@ contains
     end if
     deallocate(rn)
     rl%n=rl%n-1
+    if(rl%n==0) nullify(rl%rn)
   end subroutine rm_rpnm_entry_rn
 
   subroutine rm_rpnm_entry_all(rl,code)

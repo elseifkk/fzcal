@@ -5,27 +5,6 @@ module rpng
   integer,parameter::RPNSTA_FNCSET = -1
   integer,parameter::RPNSTA_OK     =  0
   
-  integer,parameter::RPNCERR_NOENT        =  1
-  integer,parameter::RPNCERR_NOOP         =  2
-  integer,parameter::RPNCERR_NOPAR        =  3
-  integer,parameter::RPNCERR_NOFNC        =  4
-  integer,parameter::RPNCERR_ADDPAR       =  5
-  integer,parameter::RPNCERR_INVASN       =  6
-  integer,parameter::RPNCERR_INVOP        =  7
-  integer,parameter::RPNCERR_INVFNC       =  8
-  integer,parameter::RPNCERR_PARSER       =  9
-  integer,parameter::RPNCERR_ADDSTR       = 10
-  integer,parameter::RPNCERR_MEMOV        = 11
-  integer,parameter::RPNCERR_RECOV        = 12
-  integer,parameter::RPNCERR_NARG         = 13
-  integer,parameter::RPNCERR_GETPAR       = 14
-  integer,parameter::RPNCERR_TOO_MANY_ARG = 15
-  integer,parameter::RPNCERR_TOO_FEW_ARG  = 16
-  integer,parameter::RPNCERR_NO_ARG       = 17
-  integer,parameter::RPNCERR_INVARG       = 18
-  integer,parameter::RPNCERR_INVFIG       = 19
-  integer,parameter::RPNCERR_READ         = 20
-
   integer,parameter::RPN_REC_MAX     =  256
   integer,parameter::NUM_VBUF_MIN    =   32
   integer,parameter::NUM_PBUF_MIN    =   32

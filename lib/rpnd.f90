@@ -19,10 +19,11 @@
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 module rpnd
   use plist, only: t_plist
+  use rpnlist, only: t_rpnlist
   use fpio, only: rp,cp
   use rpng
   use rpnt
-  use rpnlist, only: t_rpnlist
+  use fzcerr
   implicit none
 
   type t_rpnc

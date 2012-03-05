@@ -18,6 +18,7 @@
 ! *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 module slist
+  use fzcerr
   implicit none
 
   private
@@ -47,11 +48,6 @@ module slist
      type(t_sn),pointer::prev => null() ! head%prev => tail
   end type t_sn
   
-  integer,parameter::SLERR_NOMEM  = 1
-  integer,parameter::SLERR_MEMOV  = 2
-  integer,parameter::SLERR_NOENT  = 3
-  integer,parameter::SLERR_INVARG = 4
-
 contains
   
   pure integer function slist_count(sl)
@@ -94,6 +90,7 @@ contains
   function init_slist()
     type(t_slist) init_slist
     init_slist%n=0
+    nullify(init_slist%sn)
   end function init_slist
  
   subroutine uinit_sn(sn)
@@ -115,6 +112,7 @@ contains
        sn => next
     end do
     sl%n=0
+    nullify(sl%sn)
   end subroutine uinit_slist
 
   function kth_node(sl,k)
@@ -209,12 +207,12 @@ contains
     len=0
     ptr=0
     if(sl%n<k.or.k<=0) then
-       get_str_ptr=SLERR_NOENT
+       get_str_ptr=FZCERR_NOENT
        return
     end if
     sn => kth_node(sl,k)
     if(.not.associated(sn)) then
-       get_str_ptr=SLERR_NOENT
+       get_str_ptr=FZCERR_NOENT
        return
     end if
     if(allocated(sn%s)) then
@@ -228,7 +226,7 @@ contains
     type(t_slist),intent(inout)::sl
     character*(*),intent(in)::s
     type(t_sn),pointer::sn
-    rm_str_s=SLERR_NOENT
+    rm_str_s=FZCERR_NOENT
     if(sl%n==0.or..not.associated(sl%sn)) return
     sn => match_node(sl,s)
     if(.not.associated(sn)) return
@@ -240,7 +238,7 @@ contains
     type(t_slist),intent(inout)::sl
     integer,intent(in)::k
     type(t_sn),pointer::sn
-    rm_str_k=SLERR_NOENT
+    rm_str_k=FZCERR_NOENT
     if(k<=0.or.k>sl%n) return
     sn => kth_node(sl,k)
     if(.not.associated(sn)) return
@@ -260,6 +258,7 @@ contains
     end if
     deallocate(sn)
     sl%n=sl%n-1
+    if(sl%n==0) nullify(sl%sn)
   end subroutine rm_str_sn
 
   subroutine add_str(sl,s,ent)
