@@ -18,6 +18,7 @@
 ! *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 ! * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 module plist
+  use fzcerr
   implicit none
   
   private
@@ -54,13 +55,6 @@ module plist
      integer::n = 0
      type(t_pn),pointer::pn => null()
   end type t_plist
-
-  integer,parameter,public::PLERR_NOMEM = 1 
-  integer,parameter,public::PLERR_MEMOV = 2 
-  integer,parameter,public::PLERR_NOENT = 3 
-  integer,parameter,public::PLERR_RDONL = 4 
-  integer,parameter,public::PLERR_NOPAR = 5 
-  integer,parameter,public::PLERR_END   = 5 
   
   integer,parameter,public::PK_UNDEF = 0
   integer,parameter,public::PK_COMP  = 1
@@ -292,6 +286,7 @@ contains
        if(.not.associated(pn)) exit
     end do
     pl%n=0
+    nullify(pl%pn)
   end subroutine uinit_plist
 
   subroutine cp_vbuf(v1,v2)
@@ -376,7 +371,7 @@ contains
     integer k
     pn => match_node(pl,s,k)
     if(k==0) then
-       rm_par_s=PLERR_NOENT
+       rm_par_s=FZCERR_NOENT
        return
     end if
     rm_par_s=rm_par_pn(pl,pn)
@@ -388,7 +383,7 @@ contains
     type(t_vbuf),pointer::v
     v => pn%v
     if(is_read_only(v%sta)) then
-       rm_par_pn=PLERR_RDONL
+       rm_par_pn=FZCERR_RDONL
        return
     end if
     pn%prev%next => pn%next
@@ -400,6 +395,7 @@ contains
     call uinit_pn(pn)
     deallocate(pn)
     pl%n=pl%n-1
+    if(pl%n==0) nullify(pl%pn)
     rm_par_pn=0
   end function rm_par_pn
 
@@ -409,7 +405,7 @@ contains
     type(t_pn),pointer::pn
     pn => kth_node(pl,k)
     if(.not.associated(pn)) then
-       rm_par_k=PLERR_NOENT
+       rm_par_k=FZCERR_NOENT
        return
     end if
     rm_par_k=rm_par_pn(pl,pn)
@@ -549,12 +545,12 @@ contains
     if(present(ent)) ent=0
     pn => match_node(pl,s,k)
     if(k==0) then
-       find_par=PLERR_NOENT
+       find_par=FZCERR_NOENT
        return
     end if
     v => pn%v
     if(present(zout)) then
-       find_par=PLERR_NOENT
+       find_par=FZCERR_NOENT
        select case(get_pkind(v%sta))
        case(PK_COMP)
           pz=v%p
@@ -613,13 +609,13 @@ contains
     type(t_vbuf),pointer::v
     type(t_pn),pointer::pn
     if(k>pl%n.or.k<=0) then
-       put_par_at=PLERR_NOPAR
+       put_par_at=FZCERR_NOPAR
        return
     end if
     pn => kth_node(pl,k)
     v => pn%v
     if(is_read_only(v%sta)) then
-       put_par_at=PLERR_RDONL
+       put_par_at=FZCERR_RDONL
        return
     end if
     select case(get_pkind(v%sta))
@@ -632,7 +628,7 @@ contains
     case(PK_INT)
        call put_par(v,int(realpart(z)))
     case(PK_UNDEF)
-       put_par_at=PLERR_NOENT
+       put_par_at=FZCERR_NOENT
        return
     end select
     put_par_at=0
@@ -660,7 +656,7 @@ contains
           f=.false.
        end if
        if(is_read_only(pn%v%sta).and..not.f) then
-          try_add_par=PLERR_RDONL
+          try_add_par=FZCERR_RDONL
           return
        end if
        call uinit_vbuf(pn%v)
@@ -923,7 +919,7 @@ contains
     pointer(px,x)
     pointer(pm,m)
     if(k>pl%n.or.k<=0) then
-       get_par=PLERR_NOPAR
+       get_par=FZCERR_NOPAR
        return
     end if
     pn => kth_node(pl,k)
@@ -942,7 +938,7 @@ contains
        pm=v%p
        zout=complex(real(m,kind=rp),rzero)
     case(PK_UNDEF)
-       get_par=PLERR_NOENT
+       get_par=FZCERR_NOENT
        return
     end select
     get_par=0

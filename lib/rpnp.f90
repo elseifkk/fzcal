@@ -961,19 +961,19 @@ contains
        case(TID_UFNC)
           q%tid=TID_UFNC
           q%cid=get_up32(qq%tid)
-          if(get_up32(qq%p1)/=0) istat=RPNCERR_NARG ! <<<<<<<<<
+          if(get_up32(qq%p1)/=0) istat=FZCERR_NARG ! <<<<<<<<<
        case(TID_APAR) ! asign a parameter.
           q%tid=TID_PAR
           istat=add_par_by_entry(rpnc%pars,subexpr(rpnb,i),k)
           if(istat==0) then
              q%cid=get_par_loc(rpnc%pars,k)
           else
-             if(istat==PLERR_RDONL) then
+             if(istat==FZCERR_RDONL) then
                 call mess("*** Parameter is read-only: "//subexpr(rpnb,i))
              else
                 call mess("*** add_par_by_entry failed: code = "//trim(itoa(istat)))
              end if
-             istat=RPNCERR_ADDPAR
+             istat=FZCERR_ADDPAR
           end if
           !
           ! operands
@@ -985,7 +985,7 @@ contains
              q%cid=-q%cid !<<<<<<<<<<<<<<<<<<<<<<<<<
           else
              istat=read_fig()
-             if(istat/=0) istat=RPNCERR_INVFIG
+             if(istat/=0) istat=FZCERR_INVFIG
              call put_vbuf(rpnc,i,x)
           end if
        case(TID_PAR)
@@ -1120,7 +1120,7 @@ contains
                  rpnb%expr(get_lo32(qqq%p1):get_lo32(qqq%p2)),&
                  zz)
             if(istat/=0) then
-               proc_input=RPNCERR_READ
+               proc_input=FZCERR_READ
                exit
             end if
          end if
@@ -1175,23 +1175,23 @@ contains
          ! par may not already exist
          istat=add_par_by_entry(rpnc%pars,subexpr(rpnb,i),kk)
          if(istat/=0) then
-            if(istat==PLERR_RDONL) then
+            if(istat==FZCERR_RDONL) then
                call mess("*** Parameter is read-only: "//subexpr(rpnb,i))
             else
                call mess("*** add_par_by_entry failed: code = "//trim(itoa(istat)))
             end if
-            istat=RPNCERR_ADDPAR
+            istat=FZCERR_ADDPAR
          end if
       else if(istat/=0) then
          call mess("*** No such parameter: "//subexpr(rpnb,i))
-         istat=RPNCERR_NOPAR
+         istat=FZCERR_NOPAR
       end if
       if(istat==0) then
          q%tid=TID_PAR
          q%cid=get_par_loc(rpnc%pars,kk,dup)
          if(q%cid==0) then
             call mess("*** get_par failed: code = "//trim(itoa(istat)))
-            istat=RPNCERR_GETPAR
+            istat=FZCERR_GETPAR
          else
             if(dup) q%tid=TID_CPAR
          end if
@@ -1204,7 +1204,7 @@ contains
       m=get_up32(qq%p2)
       if(m/=narg_max) then
          if(get_up32(qq%p1)/=0) then
-            istat=RPNCERR_NARG
+            istat=FZCERR_NARG
             return
          end if
          if(get_up32(qq%tid)<=FID_END) then
@@ -1257,7 +1257,7 @@ contains
             exit
          end select
       end do
-      istat=RPNCERR_PARSER
+      istat=FZCERR_PARSER
     end subroutine find_delim
 
     integer function get_sid(sid)
@@ -1724,7 +1724,7 @@ contains
        if(present(p2)) q%p2=get_i32(q%p2,p2)
        set_tid_par=0
     case default
-       set_tid_par=RPNCERR_PARSER
+       set_tid_par=FZCERR_PARSER
     end select
   end function set_tid_par
 
@@ -1766,7 +1766,7 @@ contains
                 istat=RPNSTA_EMPTY
              else if(told/=TID_UNDEF) then
                 ! if TID_UNDEF ;#
-                istat=RPNCERR_PARSER
+                istat=FZCERR_PARSER
              end if
              exit
           else
@@ -1798,7 +1798,7 @@ contains
              end if
           end if
        case(TID_INV,TID_UNDEF)
-          istat=RPNCERR_PARSER
+          istat=FZCERR_PARSER
        case(TID_PAR)
           pc=pc+1
           call set_arg_read()
@@ -1820,7 +1820,7 @@ contains
             TID_ROP) 
           oc=oc+1
           if(.not.was_operand()) then
-             istat=RPNCERR_PARSER        
+             istat=FZCERR_PARSER        
           else if(t==TID_TOP1) then
              tc=tc+1
              otc=otc+1
@@ -1835,7 +1835,7 @@ contains
           case(TID_FIG,TID_PAR,TID_KET)
              call rpn_try_push(rpnb,t,p1,p2)
           case default
-             istat=RPNCERR_PARSER
+             istat=FZCERR_PARSER
           end select
        case(TID_UOP1,TID_LOP1)
           oc=oc+1
@@ -1847,7 +1847,7 @@ contains
           case(TID_SCL,TID_BOP1,TID_BOP2,TID_BOP3,TID_BRA,TID_UNDEF)
              t=TID_UOP1
           case default
-             istat=RPNCERR_PARSER
+             istat=FZCERR_PARSER
           end select
           if(istat==0) call rpn_try_push(rpnb,t,p1,p2)
        case(TID_BRA)
@@ -1859,7 +1859,7 @@ contains
           call rpn_push(rpnb,t,p1,p2)
       case(TID_HKET)
           if(.not.was_operand()) then
-             istat=RPNCERR_PARSER
+             istat=FZCERR_PARSER
           else
              if(.not.check_narg_all()) exit ! not checked 
              call rpn_pop_all_bra(rpnb)
@@ -1867,7 +1867,7 @@ contains
           kc=bc
        case(TID_KET)
           if(.not.was_operand()) then
-             istat=RPNCERR_PARSER
+             istat=FZCERR_PARSER
           else
              call rpn_try_pop(rpnb,TID_BRA,bc-kc,p1)
              if(.not.check_narg(0,.true.,terr)) then
@@ -1887,7 +1887,7 @@ contains
              istat=set_tid_par(rpnb,TID_APAR)
              call rpn_try_push(rpnb,t,p1,p2)
           else
-             istat=RPNCERR_PARSER
+             istat=FZCERR_PARSER
           end if
        case(TID_ASN)
           ac=ac+1
@@ -1897,7 +1897,7 @@ contains
              if(check_assignable()) then
                 istat=set_tid_par(rpnb,TID_APAR)
              else
-                istat=RPNCERR_PARSER
+                istat=FZCERR_PARSER
              end if
           end if
           if(istat==0) then
@@ -1910,7 +1910,7 @@ contains
           if(and(qc,1)/=0) then
              ! the first "
              if(told/=TID_ASN) then
-                istat=RPNCERR_PARSER
+                istat=FZCERR_PARSER
              else
                 ! m="
                 ! q    s      q     s
@@ -1923,7 +1923,7 @@ contains
              end if
           else
              if(.not.was_operand()) then
-                istat=RPNCERR_PARSER
+                istat=FZCERR_PARSER
              else
                 if(.not.check_narg_all(TID_QSTA)) exit ! check unclosed ket of fnc 
                 call rpn_try_pop(rpnb,TID_QSTA)
@@ -1935,7 +1935,7 @@ contains
        case(TID_COMA)
           cc=cc+1
           if(.not.was_operand()) then
-             istat=RPNCERR_PARSER
+             istat=FZCERR_PARSER
           else
              call rpn_pop_until(rpnb,TID_BRA,.true.)
              if(.not.check_narg(1,.false.,terr)) then
@@ -1965,14 +1965,14 @@ contains
                 call rpn_pop_until(rpnb,TID_TOP1)
                 call rpn_push(rpnb,t,p1,p2)
              else
-                istat=RPNCERR_PARSER
+                istat=FZCERR_PARSER
              end if
           else
              if(clc<=1) then
                 call rpn_pop_all(rpnb)
                 call rpn_put(rpnb,t,p1,p2)
              else
-                istat=RPNCERR_PARSER
+                istat=FZCERR_PARSER
              end if
           end if
        case(TID_IFNC,TID_UFNC)
@@ -1987,7 +1987,7 @@ contains
           pfnc_opened=rpnb%p_buf
           if(get_up32(tid)==FFID_DEINT) then
              if(sc/=0) then
-                istat=RPNCERR_PARSER
+                istat=FZCERR_PARSER
                 exit
              end if
              sc=sc+1
@@ -2112,17 +2112,17 @@ contains
                   b%p1=get_i32(get_lo32(b%p1),na-1)
                   if(close) then
                      if(na/=1.and.namax/=narg_max) then
-                        istat=RPNCERR_TOO_FEW_ARG
+                        istat=FZCERR_TOO_FEW_ARG
                      end if
                      b%p2=get_i32(get_lo32(b%p2),namax)
                   else if(na==1) then
-                     istat=RPNCERR_TOO_MANY_ARG
+                     istat=FZCERR_TOO_MANY_ARG
                   end if
                else if(namax/=0) then
-                  istat=RPNCERR_TOO_MANY_ARG
+                  istat=FZCERR_TOO_MANY_ARG
                end if
             else
-               istat=RPNCERR_NO_ARG
+               istat=FZCERR_NOARG
             end if
          end if
       case(TID_BOP4) 
@@ -2183,7 +2183,7 @@ contains
     logical function check_end()
       check_end=(kc-bc<=0)
       if(.not.check_end) then
-         istat=RPNCERR_PARSER
+         istat=FZCERR_PARSER
       else if(pfasn/=0) then
          call set_par_dummy()
       end if
@@ -2224,7 +2224,7 @@ contains
       pfasn=rpnb%p_que
       if(pc-1/=cc.or.set_dummy_par(first)<0) then
          is_fnc_asn=.false.
-         istat=RPNCERR_PARSER
+         istat=FZCERR_PARSER
       else
          if(p_q1==1) then
             ii=1
