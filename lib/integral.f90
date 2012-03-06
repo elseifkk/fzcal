@@ -108,7 +108,6 @@ contains
     end function is_converged
     
     logical function do_sum(x)
-      use fpio, only: is_nan
       real(rp),intent(in)::x
       real(rp) az12
       real(rp) x1(3),x2(3)
@@ -123,7 +122,7 @@ contains
       z1=f(ptr_c,3,x1)*phi
       z2=f(ptr_c,3,x2)*phi
       az12=abs(z1)+abs(z2)
-      if(is_nan(az12)) then
+      if(isnan(az12)) then
          do_sum=.false.
          return
       end if
