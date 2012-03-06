@@ -446,7 +446,7 @@ contains
        end if
        if(t==TID_BOP1U) then
           select case(rpnb%old_tid)
-          case(TID_BRA,TID_BOP3,TID_ASN,TID_AOP,&
+          case(TID_BRA,TID_BOP3,TID_ASN,TID_AOP,TID_BLK, &
                TID_COMA,TID_TOP1,TID_COL,TID_SCL,TID_UNDEF) ! plus in (+, ^+ and e+ are unary
              t=TID_UOP1
           case(TID_UOP1,TID_BOP2,TID_BOP1)

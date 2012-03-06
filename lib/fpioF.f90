@@ -84,16 +84,6 @@ contains
     nan=a/b
   end function nan
 
-  ! workaround
-  logical function is_nan(x)
-    real(rp),intent(in)::x
-    if(x*rzero/=rzero) then
-       is_nan=.true.
-    else
-       is_nan=.false.
-    end if
-  end function is_nan
-
   logical function is_integer_z(z,n)
     complex(cp),intent(in)::z
     integer*8,intent(out),optional::n
@@ -295,7 +285,7 @@ contains
     integer p1
     ! 12345..
     ! +x.xx..E+xxxx
-    if(is_nan(x)) then
+    if(isnan(x)) then
        xtos=NAN_STR
        return
     end if
