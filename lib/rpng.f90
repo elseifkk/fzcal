@@ -1,22 +1,24 @@
 module rpng
   implicit none
-
+  
+  integer,parameter::RPNSTA_LOAD   = -5
+  integer,parameter::RPNSTA_COMSET = -4
+  integer,parameter::RPNSTA_EXIT   = -3
   integer,parameter::RPNSTA_EMPTY  = -2
   integer,parameter::RPNSTA_FNCSET = -1
   integer,parameter::RPNSTA_OK     =  0
   
   integer,parameter::RPN_REC_MAX     =  256
-  integer,parameter::NUM_VBUF_MIN    =   32
-  integer,parameter::NUM_PBUF_MIN    =   32
   integer,parameter::NUM_VS_MIN      =   32
   integer,parameter::LEN_STR_MAX     = 1024
   integer,parameter::LEN_FORMULA_MAX = LEN_STR_MAX
 
   ! meta tid
-  integer,parameter::TID_FIN   =   999
-  integer,parameter::TID_UNDEF =  1000
-  integer,parameter::TID_INV   =   666
   integer,parameter::TID_NOP   =     0
+  integer,parameter::TID_FIN   =   100
+  integer,parameter::TID_UNDEF =   101
+  integer,parameter::TID_INV   =   102
+  integer,parameter::TID_LAST  =   103
 
   !! priority table begin
   ! asign and conditional
@@ -48,25 +50,6 @@ module rpng
   integer,parameter::TID_PRI_MAX =  18  ! 
   !! priority tabel end
 
-  ! braket and delimiters
-  integer,parameter::TID_SCL   =  64   ! ;
-  integer,parameter::TID_COL   =  65   ! : PUSHED!
-  integer,parameter::TID_IBRA  =  66   ! implicit (
-  integer,parameter::TID_BRA   =  67   ! ( PUSHED!
-  integer,parameter::TID_KET   =  69   ! )
-  integer,parameter::TID_QTN   =  70   ! "
-  integer,parameter::TID_QEND  =  71
-  integer,parameter::TID_QSTA  =  72   ! PUSHED!
-  integer,parameter::TID_COMA  =  73   ! ,
-  integer,parameter::TID_MASN  =  74   ! = for macro PUSHED!
-  integer,parameter::TID_DLM1  =  75   
-  integer,parameter::TID_DLM2  =  76   ! ket
-  integer,parameter::TID_BLK   =  77   ! space and tab
-  integer,parameter::TID_HKET  =  78   ! }
-  integer,parameter::TID_USCR  =  79   ! _
-  integer,parameter::TID_ISTA  =  80
-  integer,parameter::TID_IEND  =  81
-  !                                    
   integer,parameter::TID_PAR   =  32   ! a,b,c,...
   integer,parameter::TID_PARU  = -32   ! a,b,c,...
   integer,parameter::TID_FIG   =  33   ! 1,2,3,...
@@ -98,6 +81,35 @@ module rpng
   integer,parameter::TID_IGNORE = 60 
   integer,parameter::TID_EMAC   = 61 ! $mac to be expanded
 
+  ! braket and delimiters
+  integer,parameter::TID_SCL   =  64   ! ;
+  integer,parameter::TID_COL   =  65   ! : PUSHED!
+  integer,parameter::TID_IBRA  =  66   ! implicit (
+  integer,parameter::TID_BRA   =  67   ! ( PUSHED!
+  integer,parameter::TID_KET   =  69   ! )
+  integer,parameter::TID_QTN   =  70   ! "
+  integer,parameter::TID_QEND  =  71
+  integer,parameter::TID_QSTA  =  72   ! PUSHED!
+  integer,parameter::TID_COMA  =  73   ! ,
+  integer,parameter::TID_MASN  =  74   ! = for macro PUSHED!
+  integer,parameter::TID_DLM1  =  75   
+  integer,parameter::TID_DLM2  =  76   ! ket
+  integer,parameter::TID_BLK   =  77   ! space and tab
+  integer,parameter::TID_HKET  =  78   ! }
+  integer,parameter::TID_USCR  =  79   ! _
+  integer,parameter::TID_ISTA  =  80
+  integer,parameter::TID_IEND  =  81
+  integer,parameter::TID_COM   =  82
+  integer,parameter::TID_SQ1   =  83 ! first '
+  integer,parameter::TID_SQ2   =  84 ! last '
+  integer,parameter::TID_DQ1   =  85 ! first "
+  integer,parameter::TID_DQ2   =  86 ! last "
+
+  character*1,parameter::STID_SQ1  = char(1) ! first '
+  character*1,parameter::STID_SQ2  = char(4) ! last '
+  character*1,parameter::STID_DQ1  = char(2) ! first " 
+  character*1,parameter::STID_DQ2  = char(3) ! last "
+
   integer,parameter::LOID_NOT = 1
   integer,parameter::LOID_AND = 2
   integer,parameter::LOID_OR  = 3
@@ -125,6 +137,10 @@ module rpng
   integer*8,parameter::RPNCOPT_BYTE            =  Z"00004000" ! for SI prefix k to be 1024
   integer*8,parameter::RPNCOPT_NO_STDIN        =  Z"00008000"
   integer*8,parameter::RPNCOPT_NO_STDOUT       =  Z"00010000"
+  integer*8,parameter::RPNCOPT_EXECOM          =  Z"00020000"
+  integer*8,parameter::RPNCOPT_ECHO            =  Z"00040000"
+  integer*8,parameter::RPNCOPT_HIST            =  Z"00080000"
+  integer*8,parameter::RPNCOPT_PRINT_REQ       =  Z"00100000"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0

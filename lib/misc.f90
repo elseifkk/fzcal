@@ -1,12 +1,27 @@
 module misc
-implicit none
+  implicit none
+  
+  interface is_alpha
+     module procedure is_alpha_c
+     module procedure is_alpha_i
+  end interface
 
-integer,parameter::stdin=5
-integer,parameter::stdout=6
-integer,parameter::stderr=0
+  interface is_number
+     module procedure is_number_c
+     module procedure is_number_i
+  end interface
 
+  interface is_numeric
+     module procedure is_numeric_c
+     module procedure is_numeric_i
+  end interface
+  
+  integer,parameter::stdin=5
+  integer,parameter::stdout=6
+  integer,parameter::stderr=0
+  
 contains
-
+  
   subroutine ins(s,u,i)
     character*(*),intent(out)::s
     integer,intent(in),optional::u
@@ -19,6 +34,7 @@ contains
     end if
     read(unit,10,iostat=istat) s
     if(present(i)) i=istat
+    if(istat/=0) s=""
 10  format(a)
   end subroutine ins
 
@@ -95,12 +111,16 @@ contains
     end select
   end function is_symbol
 
-  pure logical function is_alpha(a)
-    integer,intent(in)::a
-    integer b
-    b=ior(a,32)
-    is_alpha=(b>=97.and.b<=122)
-  end function is_alpha
+  pure logical function is_alpha_c(c)
+    character*1,intent(in)::c
+    is_alpha_c=is_alpha_i(ichar(c))
+  end function is_alpha_c
+  pure logical function is_alpha_i(i)
+    integer,intent(in)::i
+    integer j
+    j=ior(i,32)
+    is_alpha_i=(j>=97.and.j<=122)
+  end function is_alpha_i
   
   pure logical function is_hex_number(a)
     integer,intent(in)::a
@@ -117,15 +137,23 @@ contains
     is_bin_number=(a>=48.and.a<=49)
   end function is_bin_number
 
-  pure logical function is_number(a)
-    integer,intent(in)::a
-    is_number=(a>=48.and.a<=57)
-  end function is_number
+  pure logical function is_number_c(c)
+    character*1,intent(in)::c
+    is_number_c=is_number_i(ichar(c))
+  end function is_number_c
+  pure logical function is_number_i(i)
+    integer,intent(in)::i
+    is_number_i=(i>=48.and.i<=57)
+  end function is_number_i
   
-  pure logical function is_numeric(a)
-    integer,intent(in)::a
-    is_numeric=(is_number(a).or.a==46)
-  end function is_numeric
+  pure logical function is_numeric_c(c)
+    character*1,intent(in)::c
+    is_numeric_c=is_numeric_i(ichar(c))
+  end function is_numeric_c
+  pure logical function is_numeric_i(i)
+    integer,intent(in)::i
+    is_numeric_i=(is_number_i(i).or.i==46)
+  end function is_numeric_i
 
   pure character*4 function i2str(i)
     integer,intent(in)::i
@@ -176,28 +204,33 @@ contains
     replace=ls2+ls1-ln
   end function replace
 
-  integer function strip(s)
-    character*(*),intent(inout)::s
+  integer function strip(sin,sout)
+    character*(*),intent(in)::sin
+    character*(*),intent(out)::sout
     integer i,k,wc
+    logical first
     k=0
     wc=0
-    do i=1,len(s)
-       select case(s(i:i))
+    first=.true.
+    do i=1,len(sin)
+       select case(sin(i:i))
        case(" ","\t")
+          if(first) cycle
           wc=wc+1
           if(wc>1) cycle
        case(char(0))
           exit
        case default
           wc=0
+          first=.false.
        end select
        k=k+1
-       if(k/=i) s(k:k)=s(i:i)
+       sout(k:k)=sin(i:i)
     end do
-    if(wc/=0) k=k-1
+    if(wc/=0) k=k-1 ! remove the last blank
     strip=k
   end function strip
-
+  
   integer function get_open_unit()
     integer unit
     logical opened
@@ -211,12 +244,27 @@ contains
     end do
   end function get_open_unit
 
-  integer function open_file(f,print_error,ask_overwrite)
+  integer function open_file(f,print_error,ask_overwrite,stat,acce)
     character*(*),intent(in)::f
     logical,intent(in)::print_error,ask_overwrite
+    character*(*),intent(in),optional::stat,acce
     integer istat,unit
     logical exist
     character ans
+    character(len=16) s,a
+    character(len=256) iomsg
+
+    if(present(stat)) then
+       s=stat
+    else
+       s="unknown"
+    end if
+    if(present(acce)) then
+       a=acce
+    else
+       a="sequential"
+    end if
+
     open_file=0
     if(ask_overwrite) then
        inquire(file=f,exist=exist)
@@ -226,10 +274,12 @@ contains
           if(ans/="Y".and.ans/="y") return
        end if
     end if
+
     unit=get_open_unit()
-    open(unit=unit,file=f,iostat=istat)
+    open(unit=unit,file=f,iostat=istat,status=s,iomsg=iomsg,access=a)
     if(istat/=0) then
-       if(print_error) write(*,*) "*** open_file: Error: opening file: "//trim(f)//": code = ",istat 
+       if(print_error) write(*,*) "*** open_file: Error: opening file: "//trim(f)//"\n" &
+            //"*** "//trim(iomsg)
        open_file=0
        return
     else

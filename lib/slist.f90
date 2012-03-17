@@ -24,6 +24,7 @@ module slist
   private
 
   public get_str_ptr
+  public get_str_len
   interface rm_str
      module procedure rm_str_s
      module procedure rm_str_k
@@ -197,14 +198,36 @@ contains
     call mcp(loc(sn%s),loc(s),len)
   end subroutine set_sn
     
+  integer function get_str_len(sl,k,len)
+    ! ptr maybe 0 even if returns 0
+    type(t_slist),intent(in)::sl
+    integer,intent(in)::k
+    integer,intent(out)::len
+    type(t_sn),pointer::sn
+    len=0
+    if(sl%n<k.or.k<=0) then
+       get_str_len=FZCERR_NOENT
+       return
+    end if
+    sn => kth_node(sl,k)
+    if(.not.associated(sn)) then
+       get_str_len=FZCERR_NOENT
+       return
+    end if
+    if(allocated(sn%s)) then
+       len=size(sn%s)
+    end if
+    get_str_len=0
+  end function get_str_len
+
   integer function get_str_ptr(sl,k,ptr,len)
     ! ptr maybe 0 even if returns 0
     type(t_slist),intent(in)::sl
     integer,intent(in)::k
     integer,intent(out)::ptr
-    integer,intent(out)::len
+    integer,intent(out),optional::len
     type(t_sn),pointer::sn
-    len=0
+    if(present(len)) len=0
     ptr=0
     if(sl%n<k.or.k<=0) then
        get_str_ptr=FZCERR_NOENT
@@ -217,7 +240,7 @@ contains
     end if
     if(allocated(sn%s)) then
        ptr=loc(sn%s)
-       len=size(sn%s)
+       if(present(len)) len=size(sn%s)
     end if
     get_str_ptr=0
   end function get_str_ptr

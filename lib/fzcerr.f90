@@ -22,4 +22,9 @@ module fzcerr
   integer,parameter::FZCERR_READ         = 20
   integer,parameter::FZCERR_NOMEM        = 21
   integer,parameter::FZCERR_RDONL        = 22 
+  integer,parameter::FZCERR_TOO_LONG_STR = 23 
+  integer,parameter::FZCERR_INVCOM       = 24
+  integer,parameter::FZCERR_NOFILE       = 25
+  integer,parameter::FZCERR_EMPTY_INPUT  = 26
 end module fzcerr
+

@@ -31,8 +31,12 @@ module fzc
 contains
 
   size_t function fzc_init()
+    type(t_rpnc) rpnc
+    pointer(prpnc,rpnc)
     call init_rpne
-    fzc_init=init_rpnc()
+    prpnc=malloc(sizeof(rpnc))
+    rpnc=init_rpnc()
+    fzc_init=prpnc
   end function fzc_init
 
   subroutine fzc_uinit(pfzc)
@@ -41,14 +45,18 @@ contains
     pointer(prpnc,rpnc)
     prpnc=pfzc
     call uinit_rpnc(rpnc)
+    call free(prpnc)
   end subroutine fzc_uinit
 
   size_t function fzc_cp(ptr_rpnc)
     size_t,intent(in),value::ptr_rpnc
-    type(t_rpnc) rpnc_in
-    pointer(pr,rpnc_in)
-    pr=ptr_rpnc
-    fzc_cp=cp_rpnc(rpnc_in)
+    type(t_rpnc) rpnc,rpnc_in
+    pointer(prpnc_in,rpnc_in)
+    pointer(prpnc,rpnc)
+    prpnc=malloc(sizeof(rpnc))
+    prpnc_in=ptr_rpnc
+    rpnc=cp_rpnc(rpnc_in)
+    fzc_cp=prpnc
   end function fzc_cp
 
   retint function fzc_set_formula(ptr_rpnc,ptr_formula)
@@ -56,38 +64,26 @@ contains
     character(LEN_FORMULA_MAX) f
     pointer(pf,f)
     type(t_rpnc) rpnc
-    pointer(pr,rpnc)
+    pointer(prpnc,rpnc)
     pf=ptr_formula
-    pr=ptr_rpnc
-    fzc_set_formula=int(parse_formula(rpnc,f),kind=C_INT)
+    prpnc=ptr_rpnc
+    fzc_set_formula=int(set_formula(rpnc,f),kind=C_INT)
   end function fzc_set_formula
-
-  retint function fzc_proc_com(ptr_rpnc,ptr_com)
-    use com
-    size_t,intent(in),value::ptr_rpnc,ptr_com
-    character(LEN_FORMULA_MAX) c
-    pointer(pc,c)
-    type(t_rpnc) rpnc
-    pointer(pr,rpnc)
-    pr=ptr_rpnc
-    pc=ptr_com
-    fzc_proc_com=int(parse_command(rpnc,c),kind=C_INT)
-  end function fzc_proc_com
 
   retint function fzc_eval(ptr_rpnc)
     size_t,intent(in),value::ptr_rpnc
     type(t_rpnc) rpnc
-    pointer(p,rpnc)
-    p=ptr_rpnc
-    fzc_eval=int(eval(rpnc),kind=C_INT)
+    pointer(prpnc,rpnc)
+    prpnc=ptr_rpnc
+    fzc_eval=int(rpn_run(rpnc),kind=C_INT)
   end function fzc_eval
 
   real(dp) function fzc_get_ans(ptr_rpnc)
     use fpio, only: dp
     size_t,intent(in),value::ptr_rpnc
     type(t_rpnc) rpnc
-    pointer(p,rpnc)
-    p=ptr_rpnc
+    pointer(prpnc,rpnc)
+    prpnc=ptr_rpnc
     fzc_get_ans=real(rpn_rans(rpnc),kind=dp)
   end function fzc_get_ans
 
@@ -95,10 +91,10 @@ contains
     use fpio, only: LEN_STR_ANS_MAX
     size_t,intent(in),value::ptr_rpnc,ptr_str
     type(t_rpnc) rpnc
-    pointer(pr,rpnc)
+    pointer(prpnc,rpnc)
     character(LEN_STR_ANS_MAX) str
     pointer(ps,str)
-    pr=ptr_rpnc
+    prpnc=ptr_rpnc
     ps=ptr_str
     str=trim(rpn_sans(rpnc))//char(0)
   end subroutine fzc_get_str_ans
@@ -107,8 +103,8 @@ contains
     size_t,intent(in),value::ptr_rpnc
     int_t,intent(in),value::opt
     type(t_rpnc) rpnc
-    pointer(p,rpnc)
-    p=ptr_rpnc
+    pointer(prpnc,rpnc)
+    prpnc=ptr_rpnc
     rpnc%opt=ior(rpnc%opt,opt)
   end subroutine fzc_set_opt
 
@@ -116,8 +112,8 @@ contains
     size_t,intent(in),value::ptr_rpnc
     int_t,intent(in),value::opt
     type(t_rpnc) rpnc
-    pointer(p,rpnc)
-    p=ptr_rpnc
+    pointer(prpnc,rpnc)
+    prpnc=ptr_rpnc
     rpnc%opt=iand(rpnc%opt,not(opt))
   end subroutine fzc_cle_opt
 
@@ -128,8 +124,8 @@ contains
     int_t,intent(in),value::pk
     character(LEN_STR_MAX) name
     type(t_rpnc) rpnc
-    pointer(pr,rpnc)
-    pr=ptr_rpnc
+    pointer(prpnc,rpnc)
+    prpnc=ptr_rpnc
     call c2fstr(ptr_str,name)
     fzc_regist_parameter=&
          int(add_par_by_reference(rpnc%pars,trim(adjustl(name)),ptr_var,ro=.true.,pk=int(pk)),kind=C_INT)
@@ -137,9 +133,9 @@ contains
 
   subroutine fzc_cle_dat(ptr_rpnc)
     size_t,intent(in),value::ptr_rpnc
-    type(t_rpnc) rpnc
-    pointer(pr,rpnc)
-    pr=ptr_rpnc
+    type(t_rpnc)::rpnc
+    pointer(prpnc,rpnc)
+    prpnc=ptr_rpnc
     call reset_sd(rpnc%sd)
   end subroutine fzc_cle_dat
 

@@ -376,6 +376,7 @@ contains
     end if
 
     sd=iand(opt,int(Z"FF"))
+    if(sd<=0) sd=max_digit
     if(is_uset(X2A_FIX)) then
        sd=min(max(sd,min_digit),len)
        d=sd

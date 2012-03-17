@@ -322,7 +322,7 @@ contains
        end if
        if(associated(rn_in%rpnm)) then
           allocate(rn%rpnm)
-          rn%rpnm=rn_in%rpnm
+          rn%rpnm=cp_rpnm(rn_in%rpnm)
        end if
        rn_in => rn_in%next
        if(.not.associated(rn_in)) exit
