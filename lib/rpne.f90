@@ -29,6 +29,11 @@ module rpne
   public rpn_ans
   public rpn_rans
   public rpn_dans
+  public rpn_run
+  public get_formula
+  public open_hist
+
+  integer::hist_unit=0
 
 contains
 
@@ -36,6 +41,41 @@ contains
     use rpnp, only: init_rpnp
     call init_rpnp(loc(input))
   end subroutine init_rpne
+
+  subroutine open_hist(on)
+    use misc, only: open_file
+    logical,intent(in)::on
+    character*(*),parameter::histfile=".fzcalc-hist"
+    character(len=LEN_STR_MAX) f
+    if(on.and.hist_unit==0) then
+       call getenv("HOME",f)
+       if(f/="") then
+          f=trim(adjustl(f))//"/"//histfile
+       else
+          f=histfile
+       end if
+       hist_unit=open_file(f,.true.,.false.,acce="append")
+    else if(hist_unit/=0) then
+       close(hist_unit)
+    end if
+  end subroutine open_hist
+  
+  integer function get_formula(rpnc)
+    use memio, only: cpstr
+    use misc, only: messp,ins
+    use rpnp, only: set_formula
+    type(t_rpnc),intent(inout)::rpnc
+    character(len=LEN_FORMULA_MAX) s
+    integer istat
+    if(associated(rpnc%prompt).and.size(rpnc%prompt)>0) &
+         call messp(cpstr(loc(rpnc%prompt(1)),size(rpnc%prompt)))
+    call ins(s,i=istat)
+    if(istat/=0) then
+       get_formula=FZCERR_READ
+       return
+    end if
+    get_formula=set_formula(rpnc,s)
+  end function get_formula
 
   character(LEN_STR_ANS_MAX) function rpn_sans(rpnc)
     use memio, only: DISP_FMT_BIN,DISP_FMT_OCT,DISP_FMT_HEX,itoa
@@ -665,23 +705,13 @@ contains
     nc=i2-i1+1
     allocate(rpnc%ifnc)
     ifnc => rpnc%ifnc
+    ifnc=cp_rpnc(rpnc,deep=.false.)
+
     allocate(ifnc%que(nc),rpnc%ique(nc))
-    allocate(ifnc%p_vbuf)
-    allocate(ifnc%ip)
-    allocate(ifnc%rc)
     ifnc%ip     = 1
     ifnc%rc     = rpnc%rc
     ifnc%que    = rpnc%que(i1:i2)
     ifnc%p_vbuf = 0
-    nullify(ifnc%vbuf)
-
-    ifnc%pars   => rpnc%pars
-    ifnc%answer => rpnc%answer
-    ifnc%tmpans => rpnc%tmpans
-    ifnc%rl     => rpnc%rl
-    ifnc%pfs    => rpnc%pfs
-    ifnc%opt    => rpnc%opt
-    ifnc%sd     => rpnc%sd
 
     call alloc_vbuf
     call set_var
@@ -697,13 +727,9 @@ contains
     call set_result(rpnc,i,ans,2,ods)
     rpnc%que(i1:i2)%tid=TID_NOP
 
-    deallocate(ifnc%que,rpnc%ique)
-    if(associated(ifnc%vbuf).and.size(ifnc%vbuf)>0) &
-         deallocate(ifnc%vbuf)
-    deallocate(ifnc%p_vbuf)
-    deallocate(ifnc%ip)
-    deallocate(ifnc%rc)
-    deallocate(rpnc%ifnc)
+    call uinit_rpncq(rpnc%ique)
+    call uinit_rpnc(ifnc,deep=.false.)
+    deallocate(rpnc%ique)
 
     istat=0
 
@@ -789,23 +815,13 @@ contains
     istat=get_operands(rpnc,i,rpnm%na,ks=ods)
     if(istat/=0) return
 
+    fnc=cp_rpnc(rpnc,deep=.false.)
     allocate(fnc%que(size(rpnm%que)))
-    allocate(fnc%p_vbuf)
-    allocate(fnc%ip)
     fnc%ip     = 1
+    fnc%rc     = rpnc%rc
     fnc%que    = rpnm%que
     fnc%p_vbuf = 0
-    nullify(fnc%vbuf)
     call alloc_vbuf
-
-    fnc%pars   => rpnc%pars
-    fnc%answer => rpnc%answer
-    fnc%tmpans => rpnc%tmpans
-    fnc%rl     => rpnc%rl
-    fnc%rc     => rpnc%rc
-    fnc%pfs    => rpnc%pfs
-    fnc%opt    => rpnc%opt
-    fnc%sd     => rpnc%sd
 
     istat=0
     do j=1,size(fnc%que)
@@ -834,11 +850,7 @@ contains
     if(istat==0)&
        call set_result(rpnc,i,fnc%answer,rpnm%na,ods)
 
-    deallocate(fnc%que)
-    if(associated(fnc%vbuf).and.size(fnc%vbuf)>0) &
-         deallocate(fnc%vbuf)
-    deallocate(fnc%p_vbuf)
-    deallocate(fnc%ip)
+    call uinit_rpnc(fnc,deep=.false.)
 
   contains
     
@@ -895,24 +907,14 @@ contains
     type(t_rpnq),pointer::q
 
     rpnm => kth_rpnm(rpnc%rl,rpnc%que(i)%cid)
-    
+
+    mac=cp_rpnc(rpnc,deep=.false.)    
     allocate(mac%que(size(rpnm%que)))
-    allocate(mac%p_vbuf)
-    allocate(mac%ip)
     mac%ip     = 1
+    mac%rc     = rpnc%rc
     mac%que    = rpnm%que
     mac%p_vbuf = 0
-    nullify(mac%vbuf)
     call alloc_vbuf
-
-    mac%pars   => rpnc%pars
-    mac%answer => rpnc%answer
-    mac%tmpans => rpnc%tmpans
-    mac%rl     => rpnc%rl
-    mac%rc     => rpnc%rc
-    mac%pfs    => rpnc%pfs
-    mac%opt    => rpnc%opt
-    mac%sd     => rpnc%sd
 
     istat=0
     do j=1,size(mac%que)
@@ -941,11 +943,7 @@ contains
        end if
     end if
 
-    deallocate(mac%que)
-    if(associated(mac%vbuf).and.size(mac%vbuf)>0) &
-         deallocate(mac%vbuf)
-    deallocate(mac%p_vbuf)
-    deallocate(mac%ip)
+    call uinit_rpnc(mac,deep=.false.)
 
   contains
 
@@ -992,8 +990,8 @@ contains
 
   recursive function input(rpnc,p,s,z) result(istat)
     use fpio, only: cp
-    use rpnp, only: parse_formula
-    use misc, only: mess,messp,ins,is_set
+    use rpnp, only: set_formula
+    use misc, only: mess,messp,ins,is_set,is_not_set
     type(t_rpnc),intent(in),target::rpnc
     character*(*),intent(in)::p
     character*(*),intent(in)::s
@@ -1001,58 +999,32 @@ contains
     character(LEN_FORMULA_MAX) expr
     integer istat
     type(t_rpnc) tmpc
-
-    call mess("Input pending for: "//trim(p))
-    if(is_set(rpnc%opt,RPNCOPT_NO_STDIN)) then
-       istat=FZCERR_READ
-       return !<<<<<<<<<<<<<<<<<<<<<< 
-    end if
-    call messp(trim(s(2:))//"? > ")
+    tmpc=cp_rpnc(rpnc,deep=.false.)
+    call messp("Input pending for: "//trim(p)//"\n"//trim(s(2:))//"? > ")
     call ins(expr)
-    if(len_trim(expr)==0) then
-       istat=FZCERR_NOENT
-       return
-    end if
-    expr=adjustl(expr)
-
-    nullify(tmpc%que)
-    nullify(tmpc%vbuf)
-    tmpc%rl     => rpnc%rl
-    tmpc%tmpans => rpnc%tmpans
-    tmpc%answer => rpnc%answer
-    tmpc%pars   => rpnc%pars
-    allocate(tmpc%p_vbuf)
-    tmpc%opt    => rpnc%opt
-    tmpc%sd     => rpnc%sd
-    allocate(tmpc%ip)
-    allocate(tmpc%rc)
-    tmpc%pfs    => rpnc%pfs
-    tmpc%ifnc   => rpnc%ifnc
-    tmpc%ique   => rpnc%ique
-    
-    istat=parse_formula(tmpc,expr)
+    istat=set_formula(tmpc,expr)
     if(istat==0) then
-       tmpc%rc=rpnc%rc+1 ! <<<
-       istat=eval(tmpc) 
+       istat=rpn_run(tmpc)
        if(istat==0) then
-          z=tmpc%answer
+          tmpc%rc=rpnc%rc+1 ! <<<
+          istat=eval(tmpc) 
+          if(istat==0) then
+             z=tmpc%answer
+          end if
        end if
     end if
-    deallocate(tmpc%ip)
-    deallocate(tmpc%rc)
-    deallocate(tmpc%p_vbuf)
-    if(associated(tmpc%que).and.size(tmpc%que)>0) deallocate(tmpc%que)
-    if(associated(tmpc%vbuf).and.size(tmpc%vbuf)>0) deallocate(tmpc%vbuf)
-
+    call uinit_rpnc(tmpc,deep=.false.)
   end function input
 
   recursive function eval(rpnc) result(istat)
     use fpio, only: cp
-    use misc, only: get_lo32,is_set,mess
+    use misc, only: get_lo32,get_up32,is_set,mess
     use plist, only: remove_dup,sort_par
-    use memio, only: itoa
-    type(t_rpnc),intent(inout),target::rpnc
-    integer i,istat,ec,ip1
+    use memio, only: itoa,CPSTR
+    use com
+    type(t_rpnc),intent(inout)::rpnc
+    type(t_rpnq),pointer::q
+    integer i,istat,ec,ip1,t
     complex(cp) v
     pointer(pv,v)
 
@@ -1070,8 +1042,11 @@ contains
     do 
        i=i+1
        if(i>size(rpnc%que)) exit
+       t=rpnc%que(i)%tid
+       if(t==TID_NOP) cycle
+       q => rpnc%que(i)
        ec=ec+1
-       select case(get_lo32(rpnc%que(i)%tid))
+       select case(get_lo32(t))
        case(TID_OP,TID_OPN,TID_AOP)
           istat=eval_n(rpnc,i)
        case(TID_LOP)
@@ -1091,9 +1066,12 @@ contains
        case(TID_IOP)
           istat=eval_i(rpnc,i)
        case(TID_ISTA)
-          i=i+rpnc%que(i)%cid+1
+          i=i+q%cid+1
+       case(TID_COM)
+          call mess(cpstr(q%cid,get_up32(q%tid)))
+          ec=ec-1
        case(TID_END)
-          if(rpnc%rc==1.and.rpnc%que(i)%cid/=0) then
+          if(rpnc%rc==1.and.q%cid/=0) then
              ! multiple ";"  will exit the loop
              ec=ec-1
              exit
@@ -1101,11 +1079,27 @@ contains
              ec=0
           end if
        case default
+          if(is_command(t)) then
+             istat=exe_com(rpnc,i)
+             if(istat==0) then
+                istat=RPNSTA_COMSET
+             else
+                select case(istat)
+                case(CID_EXIT)
+                   istat=RPNSTA_EXIT
+                case(CID_LOAD)
+                   istat=load()
+                case default
+                   istat=FZCERR_INVCOM
+                end select
+             end if
+          end if
           ec=ec-1
        end select
 
        if(istat/=0) then
-          call mess("*** Error in eval at que = " &
+          if(istat>0) &
+               call mess("*** Error in eval at que = " &
                //trim(itoa(i))//", rc= "//trim(itoa(rpnc%rc)) &
                //", code = "//trim(itoa(istat)))
           exit
@@ -1136,6 +1130,31 @@ contains
 
   contains
     
+    integer function load()
+      use misc, only: open_file,ins
+      use rpnp, only: set_formula
+      type(t_rpnc) tmpc
+      integer u,is
+      character(LEN_FORMULA_MAX) s
+      load=RPNSTA_OK
+      u=open_file(cpstr(q%cid,get_up32(q%tid)),.true.,.false.,"old")
+      if(u==0) then
+         load=FZCERR_NOFILE
+         return
+      end if
+      tmpc=cp_rpnc(rpnc,deep=.false.)
+      do
+         call ins(s,u,is)
+         if(is/=0) exit
+         load=set_formula(tmpc,s)
+         if(load/=0) exit
+         load=rpn_run(tmpc)
+         if(load/=0) exit
+      end do
+      call uinit_rpnc(tmpc,deep=.false.)
+      close(u)
+    end function load
+
     subroutine set_newpar
       use misc, only: cle_opt
       integer ii
@@ -1172,4 +1191,54 @@ contains
     
   end function eval
 
+  recursive function rpn_run(rpnc) result(istat)
+    use rpnp, only: parse_formula
+    type(t_rpnc),intent(inout)::rpnc
+    integer istat
+    integer p2
+    p2=0
+    do
+       istat=parse_formula(rpnc,p2)
+       if(istat==0) then
+          istat=eval(rpnc)
+          if(istat==0) then
+             call print_ans
+             call write_hist
+          else if(istat>0) then
+             exit
+          else
+             select case(istat)
+             case(RPNSTA_EXIT)
+                exit
+             end select
+          end if
+       else if(istat>0) then
+          exit
+       else if(istat<0) then
+          select case(istat)
+          case(RPNSTA_EMPTY)
+          case(RPNSTA_FNCSET)
+          end select
+       end if
+       if(p2==0) exit
+    end do
+
+  contains
+
+    subroutine print_ans()
+      use misc, only: is_not_set,is_set,mess
+      if(is_not_set(rpnc%opt,RPNCOPT_NO_STDOUT) &
+           .and.(p2==0.or.is_set(rpnc%opt,RPNCOPT_PRINT_REQ))) &
+           call mess(trim(rpn_sans(rpnc)))
+    end subroutine print_ans
+
+    subroutine write_hist()
+      use misc, only: mess,is_not_set
+      if(hist_unit==0.or.is_not_set(rpnc%opt,RPNCOPT_HIST)) return
+      call mess(rpnc%expr(1:rpnc%len_expr),hist_unit)
+      flush(hist_unit)
+    end subroutine write_hist
+    
+  end function rpn_run
+  
 end module rpne

@@ -484,11 +484,15 @@ contains
     if(ou==stdout) call mess("#\tStatus:(Addr)\t\tName\tValue")
     pn => kth_node(pl,i1)
     do i=i1,i2
+       if(.not.associated(pn)) exit
        v => pn%v
        ptr=loc(pn%s)
        len=size(pn%s)
        if(present(name)) then
-          if(name/=cpstr(ptr,len)) cycle
+          if(name/="".and.name/=cpstr(ptr,len)) then
+             call next
+             cycle
+          end if
        end if
        if(ou/=stdout) then
           call messp(cpstr(ptr,len)//"=",ou)
@@ -519,9 +523,15 @@ contains
           pm=v%p
           call mess(trim(rtoa(real(m,kind=rp),fmt=DISP_FMT_RAW)),ou)
        end select
-       pn => pn%next
-       if(.not.associated(pn)) exit
+       call next
     end do
+    
+  contains
+    
+    subroutine next()
+      pn => pn%next
+    end subroutine next
+    
   end subroutine dump_plist
 
   integer function find_par(pl,s,zout,ent)

@@ -1,3 +1,8 @@
+
+
+
+
+
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 ! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
@@ -64,6 +69,7 @@ contains
     integer,intent(in)::ptr
     integer,intent(in)::len
     character(len=len) cpstr
+    if(len==0.or.ptr==0) return
     call mcp(loc(cpstr),ptr,len)
   end function cpstr
       

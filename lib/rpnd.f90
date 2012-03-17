@@ -27,20 +27,23 @@ module rpnd
   implicit none
 
   type t_rpnc
-     type(t_rpnq),pointer::que(:)
-     complex(cp),pointer::vbuf(:)
-     integer,pointer::p_vbuf
-     type(t_plist),pointer::pars
-     complex(cp),pointer::answer
-     complex(cp),pointer::tmpans
-     type(t_rpnlist),pointer::rl
-     integer,pointer::rc ! recursion count
-     integer*8,pointer::opt
-     integer,pointer::pfs(:)
-     type(t_sd),pointer::sd 
-     integer,pointer::ip
-     type(t_rpnc),pointer::ifnc      ! integrand
-     type(t_rpnq),pointer::ique(:)   ! backup of ifnc%que
+     type(t_rpnq),pointer::que(:)  
+     complex(cp),pointer::vbuf(:)  
+     integer,pointer::p_vbuf       
+     type(t_plist),pointer::pars   
+     type(t_rpnlist),pointer::rl   
+     complex(cp),pointer::answer   
+     complex(cp),pointer::tmpans   
+     integer,pointer::pfs(:)       
+     type(t_sd),pointer::sd        
+     type(t_rpnc),pointer::ifnc     ! integrand
+     type(t_rpnq),pointer::ique(:)  ! backup of ifnc%que
+     integer,pointer::rc            ! recursion count
+     integer,pointer::ip           
+     integer*8,pointer::opt        
+     integer*1,pointer::prompt(:)  
+     character(LEN_FORMULA_MAX),pointer::expr
+     integer,pointer::len_expr
   end type t_rpnc
 
   integer,parameter::narg_max=32
@@ -52,75 +55,145 @@ module rpnd
 
 contains
   
-  integer function init_rpnc(cp)
-     ! type(t_rpnc) function init_rpnc causes segmentation fault
+  subroutine set_prompt(rpnc,pr)
+    use memio, only: mcp
+    type(t_rpnc),intent(inout)::rpnc
+    character*(*),intent(in)::pr
+    if(associated(rpnc%prompt).and.size(rpnc%prompt)>0) &
+         deallocate(rpnc%prompt)
+    if(len(pr)==0) return
+    allocate(rpnc%prompt(len(pr)))
+    call mcp(loc(rpnc%prompt),loc(pr),len(pr))
+  end subroutine set_prompt
+
+  function init_rpnc(cp) 
     use zmath, only: zm_f1,zm_f2,zm_f3
     use fpio, only: czero,X2A_DEFAULT
     use rpnlist, only: init_rpnlist
+    type(t_rpnc) init_rpnc
     logical,intent(in),optional::cp
-    type(t_rpnc) rpnc
-    pointer(p,rpnc)
-    p=malloc(sizeof(rpnc))
-    nullify(rpnc%que)
-    nullify(rpnc%vbuf)
-    allocate(rpnc%rl)
-    allocate(rpnc%tmpans)
-    allocate(rpnc%answer)
-    allocate(rpnc%pars)
-    allocate(rpnc%p_vbuf)
-    allocate(rpnc%rc)
-    allocate(rpnc%opt)
-    allocate(rpnc%sd)
-    allocate(rpnc%ip)
-    allocate(rpnc%pfs(3))
-    nullify(rpnc%ifnc)
-    nullify(rpnc%ique)
-    rpnc%answer=czero
-    rpnc%pfs(1)=loc(zm_f1)
-    rpnc%pfs(2)=loc(zm_f2)
-    rpnc%pfs(3)=loc(zm_f3)
-    rpnc%pars=init_par(rpnc,cp)
-    rpnc%rl=init_rpnlist()
-    rpnc%opt=ior(RPNCOPT_NOP,ishft(X2A_DEFAULT,32))
-    init_rpnc=p
+    nullify(init_rpnc%que)
+    nullify(init_rpnc%vbuf)
+    allocate(init_rpnc%rl)
+    allocate(init_rpnc%tmpans)
+    allocate(init_rpnc%answer)
+    allocate(init_rpnc%pars)
+    allocate(init_rpnc%p_vbuf)
+    allocate(init_rpnc%rc)
+    allocate(init_rpnc%opt)
+    allocate(init_rpnc%sd)
+    allocate(init_rpnc%ip)
+    allocate(init_rpnc%pfs(3))
+    nullify(init_rpnc%ifnc)
+    nullify(init_rpnc%ique)
+    nullify(init_rpnc%prompt)
+    nullify(init_rpnc%expr)
+    nullify(init_rpnc%len_expr)
+    init_rpnc%answer=czero
+    init_rpnc%pfs(1)=loc(zm_f1)
+    init_rpnc%pfs(2)=loc(zm_f2)
+    init_rpnc%pfs(3)=loc(zm_f3)
+    init_rpnc%pars=init_par(init_rpnc,cp)
+    init_rpnc%rl=init_rpnlist()
+    init_rpnc%opt=ior(RPNCOPT_NOP,ishft(X2A_DEFAULT,32))
   end function init_rpnc
 
-  integer function cp_rpnc(rpnc_in)
+  function cp_rpnc(rpnc_in,deep)
     use rpnlist, only: cp_rpnlist
     use plist, only: add_par_by_reference,cp_plist
+    type(t_rpnc) cp_rpnc
     type(t_rpnc),intent(in)::rpnc_in
-    type(t_rpnc) rpnc
+    logical,intent(in),optional::deep
     integer istat
-    pointer(p,rpnc)
-    p=init_rpnc(cp=.true.)
-    rpnc%rl=cp_rpnlist(rpnc_in%rl)
-    rpnc%pars=cp_plist(rpnc_in%pars)
-    istat=add_par_by_reference(rpnc%pars,"tmp",loc(rpnc%tmpans),.true.)
-    istat=add_par_by_reference(rpnc%pars,"ans",loc(rpnc%answer),.true.)
-    cp_rpnc=p
+    logical dcp
+    if(present(deep)) then
+       dcp=deep
+    else
+       dcp=.false.
+    end if
+    if(dcp) then
+       cp_rpnc=init_rpnc(cp=.true.)
+       cp_rpnc%rl=cp_rpnlist(rpnc_in%rl)
+       cp_rpnc%pars=cp_plist(rpnc_in%pars)
+       cp_rpnc%opt=rpnc_in%opt
+       istat=add_par_by_reference(cp_rpnc%pars,"tmp",loc(cp_rpnc%tmpans),.true.)
+       istat=add_par_by_reference(cp_rpnc%pars,"ans",loc(cp_rpnc%answer),.true.)
+    else
+       nullify(cp_rpnc%que)
+       nullify(cp_rpnc%vbuf)
+       allocate(cp_rpnc%p_vbuf)
+       allocate(cp_rpnc%ip)
+       allocate(cp_rpnc%rc)
+       cp_rpnc%rl     => rpnc_in%rl
+       cp_rpnc%tmpans => rpnc_in%tmpans
+       cp_rpnc%answer => rpnc_in%answer
+       cp_rpnc%pars   => rpnc_in%pars
+       cp_rpnc%opt    => rpnc_in%opt
+       cp_rpnc%sd     => rpnc_in%sd
+       cp_rpnc%pfs    => rpnc_in%pfs
+       cp_rpnc%ifnc   => rpnc_in%ifnc
+       cp_rpnc%ique   => rpnc_in%ique
+       cp_rpnc%prompt => rpnc_in%prompt
+       nullify(cp_rpnc%ifnc)
+       nullify(cp_rpnc%ique)
+       nullify(cp_rpnc%prompt)
+       nullify(cp_rpnc%expr)
+       nullify(cp_rpnc%len_expr)
+    end if
   end function cp_rpnc
 
-  subroutine uinit_rpnc(rpnc)
+  pure logical function is_command(tid)
+    use misc, only: get_lo32
+    integer,intent(in)::tid
+    is_command=get_lo32(tid)>TID_LAST
+  end function is_command
+
+  subroutine uinit_rpncq(q)
+    type(t_rpnq),intent(inout)::q(:)
+    integer i
+    do i=1,size(q)
+       if(is_command(q(i)%tid).and.q(i)%cid/=0) call free(q(i)%cid)
+    end do
+  end subroutine uinit_rpncq
+
+  subroutine uinit_rpnc(rpnc,deep)
     use rpnlist, only: uinit_rpnlist
     type(t_rpnc),intent(inout)::rpnc
-    if(associated(rpnc%que).and.size(rpnc%que)>0) deallocate(rpnc%que)
-    if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) deallocate(rpnc%vbuf)
-    if(associated(rpnc%tmpans)) deallocate(rpnc%tmpans)
-    if(associated(rpnc%answer)) deallocate(rpnc%answer)
-    if(associated(rpnc%pars)) then
-       call uinit_par(rpnc)
-       deallocate(rpnc%pars)
+    logical,intent(in),optional::deep
+    logical dcp
+    if(present(deep)) then
+       dcp=deep
+    else
+       dcp=.false.
     end if
+    if(associated(rpnc%que).and.size(rpnc%que)>0) then
+       call uinit_rpncq(rpnc%que)
+       deallocate(rpnc%que)
+    end if
+    if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) deallocate(rpnc%vbuf)
     if(associated(rpnc%p_vbuf)) deallocate(rpnc%p_vbuf)
     if(associated(rpnc%rc)) deallocate(rpnc%rc)
-    if(associated(rpnc%rl)) then
-       call uinit_rpnlist(rpnc%rl)
-       deallocate(rpnc%rl)
-    end if
-    if(associated(rpnc%pfs)) deallocate(rpnc%pfs)
-    if(associated(rpnc%sd)) then
-       call uinit_sd(rpnc%sd)
-       deallocate(rpnc%sd)
+    if(associated(rpnc%ip)) deallocate(rpnc%ip)
+    if(associated(rpnc%expr)) deallocate(rpnc%expr)
+    if(associated(rpnc%len_expr)) deallocate(rpnc%len_expr)
+    if(dcp) then
+       if(associated(rpnc%tmpans)) deallocate(rpnc%tmpans)
+       if(associated(rpnc%answer)) deallocate(rpnc%answer)
+       if(associated(rpnc%pars)) then
+          call uinit_par(rpnc)
+          deallocate(rpnc%pars)
+       end if
+       if(associated(rpnc%rl)) then
+          call uinit_rpnlist(rpnc%rl)
+          deallocate(rpnc%rl)
+       end if
+       if(associated(rpnc%pfs)) deallocate(rpnc%pfs)
+       if(associated(rpnc%sd)) then
+          call uinit_sd(rpnc%sd)
+          deallocate(rpnc%sd)
+       end if
+       if(associated(rpnc%prompt).and.size(rpnc%prompt)>0) &
+            deallocate(rpnc%prompt)
     end if
   end subroutine uinit_rpnc
 
@@ -395,6 +468,15 @@ contains
     end do
   end subroutine save_mac
 
+  subroutine dump_par(rpnc,ent,name,out_unit)
+    use plist, only: dump_plist
+    type(t_rpnc),intent(in)::rpnc
+    integer,intent(in),optional::ent
+    character*(*),intent(in),optional::name
+    integer,intent(in),optional::out_unit
+    call dump_plist(rpnc%pars,ent,trim(adjustl(name)),out_unit)
+  end subroutine dump_par
+
   subroutine dump_rpnm(rpnc,ent,name,type,out_unit)
     use slist, only: slist_count,get_str_ptr,dump_slist
     use misc, only: mess,messp,stdout
@@ -518,7 +600,7 @@ contains
     end if
     if(.not.present(mid).and.iand(rpnc%opt,RPNCOPT_READY)==0) then
        call mess("(not set)")
-!       return<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+       return
     end if
     call mess("#\tTID\tCID\tValue")
     if(present(mid)) rpnm => kth_rpnm(rpnc%rl,mid)
@@ -577,14 +659,14 @@ contains
     type(t_rpnb),intent(in),target::rpnb
     type(t_rrpnq),pointer::q(:)
     call mess("rpnb que:\n#\tTID\tp1\tp2\tExpr.")
-    if(.not.allocated(rpnb%que).or.rpnb%p_que<1)  then
+    if(rpnb%p_que<1)  then
        call mess("(empty)")
     else
        q => rpnb%que
        call dump_q(rpnb%p_que)
     end if
     call mess("rpnb buf:\n#\tTID\tp1\tp2\tExpr.")
-    if(.not.allocated(rpnb%buf).or.rpnb%p_buf<1)  then
+    if(rpnb%p_buf<1)  then
        call mess("(empty)")
     else
        q => rpnb%buf
@@ -613,7 +695,7 @@ contains
             call messp(trim(itoa(utid))//":"//trim(itoa(ltid))//"\t")
          end if
          call messp(trim(itoa(p1up))//":"//trim(itoa(p1lo))//"\t" &
-              //trim(itoa(p2up))//":"//trim(itoa(p1lo))//"\t")
+              //trim(itoa(p2up))//":"//trim(itoa(p2lo))//"\t")
          if(q(i)%tid==TID_VAR) then
             call mess(rpnb%expr(p1lo:p2lo))
          else if(q(i)%tid==TID_AMAC) then

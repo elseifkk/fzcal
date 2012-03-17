@@ -12,17 +12,17 @@ module rpnt
   
   type t_rpnq
      integer tid
-     integer cid ! oid or fid or pointer to value
+     integer cid
   end type t_rpnq
   
+  integer,parameter::NUM_RRPNQ_MAX=1024
   type t_rpnb
-     character(LEN_FORMULA_MAX) expr
-     integer len_expr
+     character(LEN_FORMULA_MAX),pointer::expr => null()
+     integer,pointer::len_expr => null()
      integer cur_pos
-     integer old_pos
      integer old_tid
-     type(t_rrpnq),allocatable::que(:)
-     type(t_rrpnq),allocatable::buf(:)
+     type(t_rrpnq) que(NUM_RRPNQ_MAX)
+     type(t_rrpnq) buf(NUM_RRPNQ_MAX)
      integer p_buf,p_que
      integer*8 opt
   end type t_rpnb

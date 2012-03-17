@@ -23,6 +23,7 @@ module rpnp
 
   private
   
+  public set_formula
   public parse_formula
   public init_rpnp
 
@@ -163,6 +164,11 @@ module rpnp
 
   integer ptr_input
 
+  interface get_end_of_par
+     module procedure get_end_of_par_b
+     module procedure get_end_of_par_s
+  end interface
+
 contains
   
   subroutine init_rpnp(pinput)
@@ -171,7 +177,7 @@ contains
   end subroutine init_rpnp
 
   integer function get_end_of_fig(rpnb,k_)
-    use misc, only: is_numeric,is_bin_number,is_oct_number,is_hex_number,&
+    use misc, only: is_numeric_i,is_bin_number,is_oct_number,is_hex_number,&
          is_set,is_not_set
     type(t_rpnb),intent(in)::rpnb
     integer,intent(in)::k_
@@ -191,7 +197,7 @@ contains
     end if
     
     if(is_not_set(rpnb%opt,RPNCOPT_INM)) then
-       pf=loc(is_numeric)
+       pf=loc(is_numeric_i)
     else if(is_set(rpnb%opt,RPNCOPT_IBIN)) then
        pf=loc(is_bin_number)
     else if(is_set(rpnb%opt,RPNCOPT_IOCT)) then
@@ -225,9 +231,17 @@ contains
     
   end function get_end_of_fig
   
-  integer function get_end_of_par(rpnb,k_,force_alpha)
-    use misc, only: is_alpha,is_number,is_symbol
+  integer function get_end_of_par_b(rpnb,k_,force_alpha)
     type(t_rpnb),intent(in)::rpnb
+    integer,intent(in)::k_
+    logical,intent(in),optional::force_alpha
+    get_end_of_par_b=get_end_of_par_s(rpnb%len_expr,rpnb%expr,k_,force_alpha)
+  end function get_end_of_par_b
+
+  integer function get_end_of_par_s(lens,s,k_,force_alpha)
+    use misc, only: is_alpha,is_number,is_symbol
+    integer,intent(in)::lens
+    character*(*),intent(in)::s
     integer,intent(in)::k_
     logical,intent(in),optional::force_alpha
     integer a,k
@@ -235,20 +249,20 @@ contains
     k=k_
     alpha=present(force_alpha).and.force_alpha
     do
-       if(k>=rpnb%len_expr) then
-          get_end_of_par=k
+       if(k>=lens) then
+          get_end_of_par_s=k
           return
        end if
        k=k+1
-       a=ichar(rpnb%expr(k:k))
+       a=ichar(s(k:k))
        if(.not.is_alpha(a)) then
           if(alpha.or.(.not.is_number(a).and..not.is_symbol(a))) then
-             get_end_of_par=k-1
+             get_end_of_par_s=k-1
              return
           end if
        end if
     end do
-  end function get_end_of_par
+  end function get_end_of_par_s
   
   logical function is_lop(s,t)
     character*(*),intent(in)::s
@@ -361,6 +375,10 @@ contains
        get_tid=TID_KET
     case("=")
        get_tid=TID_ASNU
+    case(STID_DQ1)
+       get_tid=TID_DQ1
+    case(STID_DQ2)
+       get_tid=TID_DQ2
     case("""")
        get_tid=TID_QTN
     case(",")
@@ -385,6 +403,8 @@ contains
        get_tid=TID_AT
     case("#")
        get_tid=TID_SHRP
+    case(".")
+       get_tid=TID_COM
     case default
        get_tid=TID_UNDEF
     end select
@@ -405,7 +425,7 @@ contains
     end if
   end function is_usr_fnc
   
-  integer function get_next(rpnb,p1,p2,rl)
+  recursive integer function get_next(rpnb,p1,p2,rl) result(rettid)
     use slist, only: t_slist
     use misc, only: get_i32,is_alpha,is_numeric,is_number,&
          is_set
@@ -416,7 +436,7 @@ contains
     
     k=rpnb%cur_pos
     if(k>=rpnb%len_expr.or.k<0) then
-       get_next=TID_FIN
+       rettid=TID_FIN
        return
     end if
     
@@ -434,8 +454,14 @@ contains
     
     select case(t)
     case(TID_UOP2U)
-       if(next_char(1)=="!") p2=p2+1
-       t=TID_UOP2
+       select case(rpnb%old_tid)
+       case(TID_UNDEF,TID_BLK,TID_SCL)
+          t=TID_COM
+          call end_com
+       case default
+          if(next_char(1)=="!") p2=p2+1
+          t=TID_UOP2
+       end select
     case(TID_BOP1U)
        if(k<rpnb%len_expr-1.and.next_char(1)=="=") then             
           t=TID_AOP
@@ -505,7 +531,12 @@ contains
     case(TID_AT)
        p2=get_end_of_par(rpnb,p1,.true.)
        if(p1==p2) then
-          t=TID_INV
+          if(next_char(1)=="?") then
+             call insert_str
+             t=get_next(rpnb,p1,p2,rl)
+          else
+             t=TID_INV
+          end if
        else
           t=get_i32(TID_PAR,PID_INPUT)
        end if
@@ -570,20 +601,86 @@ contains
           call skip_tid(t)
           if(p2==rpnb%len_expr) t=TID_FIN
        end if
-    case(TID_SHRP)
-       if(p1==1.and.p2<rpnb%len_expr.and.next_char(1)=="$") then
-          ! meta command
+!!$    case(TID_SHRP)
+!!$       if(p1==1.and.p2<rpnb%len_expr.and.next_char(1)=="$") then
+!!$          ! meta command
+!!$       else
+!!$          t=TID_FIN
+!!$       end if
+    case(TID_COM)
+       if(p1==rpnb%len_expr) then
+          t=TID_INV
        else
-          t=TID_FIN
+          select case(rpnb%old_tid)
+          case(TID_BLK,TID_UNDEF,TID_COM)
+             call end_com
+          case default
+             t=TID_INV
+          end select
        end if
+    case(TID_BLK)
+       call skip_tid(TID_BLK)
     end select
     
     rpnb%old_tid=t
-    get_next=t
+    rettid=t
     rpnb%cur_pos=p2
     
   contains
     
+    subroutine end_com()
+      integer ii
+      logical sq,dq
+      sq=.false.
+      dq=.false.
+      do ii=p1+1,rpnb%len_expr
+         select case(rpnb%expr(ii:ii))
+         case(STID_SQ1)
+            sq=.true.
+         case(STID_SQ2)
+            sq=.false.
+         case(STID_DQ1)
+            dq=.true.
+         case(STID_DQ2)
+            dq=.false.
+         case(";")
+            if(.not.dq.and..not.sq) then
+               p2=ii
+               call skip_tid(TID_SCL)
+               return
+            end if
+         end select
+      end do
+      p2=rpnb%len_expr
+    end subroutine end_com
+
+    subroutine insert_str
+      use misc, only: ins,mess,messp
+      character(len=LEN_FORMULA_MAX) str
+      integer ls,istat
+      call mess("Input pending for:")
+      call mess(rpnb%expr(1:rpnb%len_expr))
+      call mess(repeat(" ",k-1)//"^^")
+      call messp("=> ")
+      call ins(str,i=istat)
+      if(istat==0) then
+         str=adjustl(str)
+         ls=len_trim(str)
+         if(k>1) then
+            str=rpnb%expr(1:k-1)//str(1:ls)
+            ls=ls+k-1
+         end if
+         if(k+2<=rpnb%len_expr) then
+            str=str(1:ls)//rpnb%expr(k+2:rpnb%len_expr)
+            ls=ls+rpnb%len_expr-(k+2)+1
+         end if
+         rpnb%expr=str(1:ls)
+         rpnb%len_expr=ls
+      else
+         rpnb%expr(k:k+1)=""
+      end if
+    end subroutine insert_str
+
     subroutine skip_tid(tid)
       integer,intent(in)::tid
       integer i
@@ -600,7 +697,11 @@ contains
       integer,intent(in)::inc
       integer kk
       kk=k+inc
-      next_char=rpnb%expr(kk:kk)
+      if(kk<=rpnb%len_expr) then
+         next_char=rpnb%expr(kk:kk)
+      else
+         next_char=char(0)
+      end if
     end function next_char
 
   end function get_next
@@ -1057,6 +1158,8 @@ contains
        case(TID_COL) ! only for dat mode
           q%tid=TID_COL
           q%cid=0
+       case(TID_COM)
+          call set_com()          
        case default
           call mess("que="//trim(itoa(i)//", tid="//trim(itoa(qq%tid))))
           STOP "*** build_rpnc: UNEXPECTED ERROR: unexpected tid in rpnb"
@@ -1080,6 +1183,28 @@ contains
     build_rpnc=istat
 
   contains
+
+    subroutine set_com()
+      use memio, only: mcp
+      integer ll,pp1,pa1,pa2
+      pa1=get_up32(qq%p1)
+      pa2=get_up32(qq%p2)
+      if(pa1>0.and.pa2>0) then
+         ll=pa2-pa1+1
+      else
+         ll=0
+      end if
+      q%tid=get_i32(get_up32(qq%tid),ll)
+      if(ll>0) then
+         pp1=get_lo32(qq%p1)
+         pa1=pa1+pp1-1
+         pa2=pa2+pp1-1
+         q%cid=malloc(ll)
+         call mcp(q%cid,loc(rpnb%expr(pa1:pa1)),ll)
+      else
+         q%cid=0
+      end if
+    end subroutine set_com
 
     integer function proc_input(ii2)
       use fpio, only: cp
@@ -1728,73 +1853,74 @@ contains
     end select
   end function set_tid_par
 
-  integer function parse_formula(rpnc,formula)
-    use misc, only: get_i32,get_lo32,get_up32,is_set,is_not_set,cle_opt
+  integer function parse_formula(rpnc,pnext)
+    ! return value
+    ! 0<: error code: FZCERR_*
+    !  0: success and ready to eval
+    ! 0>: success and no need eval: RPNSTA_*
+    use com
+    use misc, only: get_i32,get_lo32,get_up32,is_set,is_not_set,cle_opt,set_opt
     type(t_rpnc),intent(inout)::rpnc
-    character*(*),intent(in)::formula
+    integer,intent(inout)::pnext
     type(t_rpnb),target::rpnb
     integer istat
     integer t,told,btold
     integer tid,tidold,btidold
     integer p1,p2
     integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc,sc,otc
-    logical amac,integ
+    logical amac
     integer pfasn
     integer p_q1
     integer pfnc_opened
     integer terr,p1err,p2err
     integer nvbuf
+    integer pfsta
 
-    call init_rpnb(formula)
+    call init_rpnb()
 
-    call cle_opt(rpnc%opt,RPNCOPT_READY)
+    call cle_opt(rpnc%opt,RPNCOPT_PRINT_REQ)
 
     nvbuf=0
     call init_stat()
     istat=0
+    pfsta=pnext
 
     do 
        tid=get_next(rpnb,p1,p2,rpnc%rl)
+       pnext=p2
        t=get_lo32(tid)
        select case(t)
        case(TID_BLK,TID_IGNORE)
           cycle
+       case(TID_COM)
+          if(set_com()) exit
+          istat=FZCERR_PARSER
        case(TID_FIN,TID_SCL)
-          nvbuf=nvbuf+fc+oc+fnc+pc ! pc includes macro which needs vbuf       
-          if(.not.was_operand().or.(tc/=clc.and.is_not_set(rpnc%opt,RPNCOPT_DAT))) then
-             if(nvbuf==0) then
-                istat=RPNSTA_EMPTY
-             else if(told/=TID_UNDEF) then
-                ! if TID_UNDEF ;#
-                istat=FZCERR_PARSER
-             end if
-             exit
+          if(.not.check_end()) exit
+          if(.not.check_narg_all()) exit
+          if(amac) then
+             call rpn_pop_to(rpnb,TID_QSTA)
           else
-             if(.not.check_narg_all()) exit
-             if(iand(qc,1)==1.and.amac) then !.not.amac) then
-                ! close "
+             call rpn_pop_all(rpnb)
+          end if
+          if(t==TID_FIN) then
+             pnext=0
+             if(amac) then
                 call rpn_try_pop(rpnb,TID_QSTA)
                 call rpn_put(rpnb,TID_QEND,0,0)
                 amac=.false.
              end if
-             if(amac) then
-                call rpn_pop_to(rpnb,TID_QSTA)
-             else
-                call rpn_pop_all(rpnb)
-             end if
-          end if
-          if(.not.check_end()) exit
-          if(t==TID_FIN) then
+             if(is_set(rpnc%opt,RPNCOPT_ECHO)) &
+                  call echo(p2)
              exit
-          else
-             if(.not.amac) then
-                call rpn_put(rpnb,TID_SCL,p1,p2) ! <<<<<<<<<<<<
-             else
+          else ! TID_SCL
+             if(amac) then
                 call rpn_put(rpnb,TID_MSCL,p1,p2) ! <<<<<<<<<<<<
-             end if
-             if(.not.amac) then
-                call init_stat
-                cycle
+             else
+                if(is_set(rpnc%opt,RPNCOPT_ECHO)) &
+                     call echo(p1-1)
+                if(p1/=p2) call set_opt(rpnc%opt,RPNCOPT_PRINT_REQ)
+                exit
              end if
           end if
        case(TID_INV,TID_UNDEF)
@@ -1902,35 +2028,34 @@ contains
           end if
           if(istat==0) then
              call rpn_try_push(rpnb,t,p1,p2)
-             if(next_chr()/="""") call push_implicit_bra() ! a=b=c=1 is a=(b=(c=(1
+             if(next_chr()/=STID_DQ1) call push_implicit_bra() ! a=b=c=1 is a=(b=(c=(1
           end if
-       case(TID_QTN)
+!       case(TID_QTN)
+       case(TID_DQ1)
           qc=qc+1
-          ! macro definition cannot have macro definition inside!
-          if(and(qc,1)/=0) then
-             ! the first "
-             if(told/=TID_ASN) then
-                istat=FZCERR_PARSER
-             else
-                ! m="
-                ! q    s      q     s
-                ! APAR =  ->  AMAC  MASN
-                !                  QSTA
-                istat=set_tid_par(rpnb,TID_AMAC,p1+1,find_chr(rpnb%expr(p1+1:rpnb%len_expr),"""")+p1-1)
-                rpnb%buf(rpnb%p_buf)%tid=TID_MASN ! it must be TID_ASN
-                call rpn_push(rpnb,TID_QSTA,p1,p2)
-                amac=.true.
-             end if
+          ! the first "
+          if(told/=TID_ASN) then
+             istat=FZCERR_PARSER
           else
-             if(.not.was_operand()) then
-                istat=FZCERR_PARSER
-             else
-                if(.not.check_narg_all(TID_QSTA)) exit ! check unclosed ket of fnc 
-                call rpn_try_pop(rpnb,TID_QSTA)
-                call rpn_put(rpnb,TID_QEND,p1,p2)
-                call rpn_pop(rpnb) ! pop MASN
-                amac=.false.
-             end if
+             ! m="
+             ! q    s      q     s
+             ! APAR =  ->  AMAC  MASN
+             !                   QSTA
+             istat=set_tid_par(rpnb,TID_AMAC,p1+1,find_chr(p1+1,STID_DQ2)-1)
+             rpnb%buf(rpnb%p_buf)%tid=TID_MASN ! it must be TID_ASN
+             call rpn_push(rpnb,TID_QSTA,p1,p2)
+             amac=.true.
+          end if
+       case(TID_DQ2)
+          qc=qc+1
+          if(.not.was_operand()) then
+             istat=FZCERR_PARSER
+          else
+             if(.not.check_narg_all(TID_QSTA)) exit ! check unclosed ket of fnc 
+             call rpn_try_pop(rpnb,TID_QSTA)
+             call rpn_put(rpnb,TID_QEND,p1,p2)
+             call rpn_pop(rpnb) ! pop MASN
+             amac=.false.
           end if
        case(TID_COMA)
           cc=cc+1
@@ -1991,7 +2116,6 @@ contains
                 exit
              end if
              sc=sc+1
-             integ=.true.
              call rpn_put(rpnb,TID_ISTA,0,0)
           end if
        case default
@@ -2022,13 +2146,41 @@ contains
     
   contains
     
+    logical function set_com()
+      integer cid,pp2,ii
+      integer pa1,pa2
+      pp2=p2
+      do ii=p2,p1,-1
+         if(rpnb%expr(ii:ii)/=";") then
+            pp2=ii
+            exit
+         end if
+      end do
+      cid=parse_command(rpnb%expr(p1:pp2),pa1,pa2)
+      if(cid>0) then
+         call rpn_put(rpnb, &
+              get_i32(TID_COM,cid+TID_LAST), &
+              get_i32(p1,pa1), &
+              get_i32(pp2,pa2))
+         set_com=.true.
+      else
+         set_com=.false.
+     end if
+   end function set_com
+
+    subroutine echo(pp2)
+      use misc, only: mess,is_not_set
+      integer,intent(in)::pp2
+      if(is_not_set(rpnc%opt,RPNCOPT_NO_STDOUT)) &
+           call mess(rpnb%expr(pfsta+1:pp2))
+    end subroutine echo
+    
     subroutine init_stat()
       btold=TID_UNDEF
       told=TID_UNDEF
       tidold=TID_UNDEF
       btidold=TID_UNDEF
       amac=.false.
-      integ=.false.
       pfnc_opened=0
       pfasn=0
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
@@ -2181,11 +2333,17 @@ contains
     end subroutine set_narg
 
     logical function check_end()
-      check_end=(kc-bc<=0)
-      if(.not.check_end) then
-         istat=FZCERR_PARSER
-      else if(pfasn/=0) then
-         call set_par_dummy()
+      nvbuf=nvbuf+fc+oc+fnc+pc ! pc includes macro which needs vbuf 
+      if(nvbuf==0) then
+         check_end=.true.
+         istat=RPNSTA_EMPTY
+      else
+         check_end=(kc-bc<=0).and.was_operand().and.(tc==clc.or.is_set(rpnc%opt,RPNCOPT_DAT))
+         if(.not.check_end) then
+            istat=FZCERR_PARSER
+         else if(pfasn/=0) then
+            call set_par_dummy()
+         end if
       end if
     end function check_end
 
@@ -2302,13 +2460,17 @@ contains
       set_dummy_par=dummy_count
     end function set_dummy_par
 
-    integer function find_chr(str,chr)
-      character*(*),intent(in)::str
+    integer function find_chr(pos,chr)
+      integer,intent(in)::pos
       character*1,intent(in)::chr
-      find_chr=index(str,chr)
-      if(find_chr==0) find_chr=len_trim(str)
-    end function find_chr
-
+      find_chr=index(rpnb%expr(pos:),chr)
+      if(find_chr==0) then
+         find_chr=rpnb%len_expr
+      else
+         find_chr=find_chr+pos-1
+       end if
+     end function find_chr
+       
     logical function was_operand()
       select case(told)
       case(TID_UNDEF,TID_BOP1,TID_BOP2,TID_BOP3,TID_UOP1,TID_AOP,&
@@ -2336,46 +2498,13 @@ contains
       call rpn_push(rpnb,TID_IBRA,0,0) 
     end subroutine push_implicit_bra
 
-    logical function expand_mac()
-      use rpnlist, only: rpnlist_count,find_rpnlist,t_rpnm
-      use misc, only: is_alpha,replace
-      use slist, only: get_str_ptr
-      use memio, only: cpstr
-      type(t_rpnm),pointer::rpnm
-      integer kk,len,ptr,pp2,pp1
-      integer jj
-      expand_mac=.false.
-      kk=0
-      do 
-         kk=kk+1
-         if(kk>=rpnb%len_expr) exit
-         if(rpnb%expr(kk:kk)/="$") cycle
-         pp1=kk+1
-         if(.not.is_alpha(ichar(rpnb%expr(pp1:pp1)))) return
-         pp2=get_end_of_par(rpnb,pp1)
-         if(rpnlist_count(rpnc%rl)==0) return
-         jj=find_rpnlist(rpnc%rl,rpnb%expr(pp1:pp2),SC_MAC,rpnm)
-         if(jj<=0) return
-         if(get_str_ptr(rpnm%pnames,1,ptr,len)/=0) return
-         rpnb%len_expr=replace(rpnb%expr,kk,pp2-kk+1,cpstr(ptr,len),len)
-         kk=kk-1
-      end do
-      expand_mac=.true.
-    end function expand_mac
-
-    subroutine init_rpnb(s)
-      use misc, only: strip
-      character*(*),intent(in)::s
-      rpnb%expr=s(1:min(LEN_FORMULA_MAX,len(s)))
-      rpnb%len_expr=strip(rpnb%expr)
-      if(.not.expand_mac()) STOP "hogee"
-      rpnb%cur_pos=0
-      rpnb%old_pos=0
-      rpnb%old_tid=TID_UNDEF ! <<<<<<<<<<<<<<
+    subroutine init_rpnb()
+      rpnb%expr => rpnc%expr
+      rpnb%len_expr => rpnc%len_expr
+      rpnb%cur_pos=pnext
+      rpnb%old_tid=TID_UNDEF
       rpnb%p_buf=0
       rpnb%p_que=0
-      allocate(rpnb%que(rpnb%len_expr*2)) ! << at most
-      allocate(rpnb%buf(rpnb%len_expr*2)) ! << at most
       rpnb%opt=rpnc%opt
     end subroutine init_rpnb
         
@@ -2388,5 +2517,186 @@ contains
     end function next_chr
     
   end function parse_formula
+
+  integer function set_formula(rpnc,f)
+    use misc, only: cle_opt
+    type(t_rpnc),intent(inout)::rpnc
+    character*(*),intent(in)::f
+    integer i,k
+    logical wc,dq,sq,dup,esc
+
+    call cle_opt(rpnc%opt,RPNCOPT_READY)
+    if(.not.associated(rpnc%expr)) allocate(rpnc%expr)
+    if(.not.associated(rpnc%len_expr)) allocate(rpnc%len_expr)
+    dup=.false.
+    wc=.true.
+    dq=.false.
+    sq=.false.
+    esc=.false.
+    k=0
+    set_formula=0
+    i=0
+    do 
+       i=i+1
+       if(i>len(f)) exit
+       select case(f(i:i))
+       case("\\")
+          esc=.not.esc
+          if(esc) cycle
+       case("#")
+          if(.not.sq.and..not.esc) exit
+       case("$")
+          wc=.false.
+          if(.not.sq.and..not.esc) then
+             select case(exp_mac())
+             case(1)
+                cycle
+             case(-1)
+                return
+             end select
+          end if
+       case("'")
+          wc=.false.
+          if(.not.dq.and..not.esc) then
+             select case(proc_q("'",sq))
+             case(1)
+                if(.not.putc(STID_SQ1)) return
+                cycle
+             case(2)
+                if(.not.putc(STID_SQ2)) return
+                cycle          
+             case(-1)
+                cycle
+             end select
+          end if
+       case("""")
+          wc=.false.
+          if(.not.sq.and..not.esc) then
+             select case(proc_q("""",dq))
+             case(1)
+                if(.not.putc(STID_DQ1)) return
+                cycle
+             case(2)
+                if(.not.putc(STID_DQ2)) return
+                cycle          
+             case(-1)
+                cycle
+             end select
+          end if
+       case(" ","\t")
+          if(.not.sq.and.wc.and..not.esc) cycle
+          wc=.true.
+          if(.not.putc(" ")) return
+          cycle
+       case(char(0))
+          exit
+       case default
+          wc=.false.
+       end select
+       if(.not.putc(f(i:i))) return
+    end do
+    if(wc) k=k-1
+    if(sq) then
+       if(.not.putc(STID_SQ2)) return
+    else if(dq) then
+       if(.not.putc(STID_DQ2)) return
+    end if
+    rpnc%len_expr=k
+    if(k==0) set_formula=FZCERR_EMPTY_INPUT    
+
+  contains
+    
+    integer function proc_q(c,q)
+      character*1,intent(in)::c
+      logical,intent(inout)::q
+      proc_q=0
+      if(.not.dup) then
+         if(q) then
+            call check_dup(c)
+            if(.not.dup) then
+               if(i<len(f)) then
+                  if(is_quote(f(i+1:i+1))) then
+                     proc_q=2
+                  end if
+               else
+                  proc_q=2
+               end if
+            end if
+         else
+            if(i>1) then
+               if(is_quote(f(i-1:i-1))) then
+                  proc_q=1
+               end if
+            else
+               proc_q=1
+            end if
+         end if
+         if(.not.dup.and.proc_q/=0) q=.not.q
+      else
+         dup=.false.
+         proc_q=-1
+      end if
+    end function proc_q
+
+    logical function is_quote(c)
+      use misc, only: is_alpha,is_numeric
+      character*1,intent(in)::c
+      is_quote=(.not.is_alpha(c) &
+           .and..not.is_numeric(c) &
+           .and.c/="""" &
+           .and.c/="'")
+    end function is_quote
+
+    logical function putc(c)
+      character*1,intent(in)::c
+      k=k+1
+      if(k>LEN_FORMULA_MAX) then
+         set_formula=FZCERR_TOO_LONG_STR
+         putc=.false.
+         return
+      end if
+      rpnc%expr(k:k)=c
+      putc=.true.
+      esc=.false.
+    end function putc
+
+    subroutine check_dup(c)
+      character*1,intent(in)::C
+      if(i<len(f)) then
+         if(f(i+1:i+1)==c) then
+            dup=.true.
+         end if
+      end if
+    end subroutine check_dup
+
+    integer function exp_mac()
+      use rpnlist, only: rpnlist_count,find_rpnlist,t_rpnm
+      use misc, only: is_alpha
+      use slist, only: get_str_ptr
+      use memio, only: cpstr
+      integer pp1,pp2,jj,p,l
+      type(t_rpnm),pointer::rpnm
+      exp_mac=0
+      if(rpnlist_count(rpnc%rl)==0) return
+      pp1=i+1
+      if(pp1>len(f)) return
+      if(.not.is_alpha(ichar(f(pp1:pp1)))) return
+      pp2=get_end_of_par(len(f),f,pp1)
+      jj=find_rpnlist(rpnc%rl,f(pp1:pp2),SC_MAC,rpnm)
+      if(jj<=0) return
+      if(get_str_ptr(rpnm%pnames,1,p,l)/=0) return
+      if(k+l+1>LEN_FORMULA_MAX) then
+         set_formula=FZCERR_TOO_LONG_STR
+         exp_mac=-1
+         return
+      end if
+      k=k+1
+      rpnc%expr(k:)=cpstr(p,l)
+      k=k+l-1
+      i=i+(pp2-pp1+1)
+      exp_mac=1
+    end function exp_mac
+
+  end function set_formula
 
 end module rpnp
