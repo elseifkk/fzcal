@@ -22,31 +22,31 @@ module rpng
 
   !! priority table begin
   ! asign and conditional
-  integer,parameter::TID_ASN    =   1  ! =
+  integer,parameter::TID_ASN    =   1  !R =
   integer,parameter::TID_ASNU   =  -1
-  integer,parameter::TID_AOP    =   2 
-  integer,parameter::TID_TOP1   =   3  ! ?
+  integer,parameter::TID_AOP    =   2  !R
+  integer,parameter::TID_TOP1   =   3  !R ?
   ! logical                     
-  integer,parameter::TID_LOP4    =  4  ! eq,neq
-  integer,parameter::TID_LOP3    =  5  ! or
-  integer,parameter::TID_LOP2    =  6  ! and
-  integer,parameter::TID_LOP1    =  7  ! not, ~
+  integer,parameter::TID_LOP4    =  4  !L eq,neq
+  integer,parameter::TID_LOP3    =  5  !L or
+  integer,parameter::TID_LOP2    =  6  !L and
+  integer,parameter::TID_LOP1    =  7  !R not, ~
   integer,parameter::TID_LOP1U   = -7  ! ~
-  integer,parameter::TID_ROP     =  8  ! ==, ~=, <=, >=,...
+  integer,parameter::TID_ROP     =  8  !L ==, ~=, <=, >=,...
   ! unary, binary and functions  
-  integer,parameter::TID_BOP1    =   9  ! +,-
+  integer,parameter::TID_BOP1    =   9  !L +,-
   integer,parameter::TID_BOP1U   =  -9  !
-  integer,parameter::TID_BOP2    =  10  ! *,/,&P,&C
+  integer,parameter::TID_BOP2    =  10  !L *,/,&P,&C
   integer,parameter::TID_BOP2U   = -10  !
-  integer,parameter::TID_UOP1    =  11  ! +a,-a,++a
-  integer,parameter::TID_BOP4    =  12  ! implicit * <<<<<<<<<<< 
-  integer,parameter::TID_BOP3    =  13  ! ^,**,e
+  integer,parameter::TID_UOP1    =  11  !R +a,-a,++a
+  integer,parameter::TID_BOP4    =  12  !L implicit * <<<<<<<<<<< 
+  integer,parameter::TID_BOP3    =  13  !R ^,**,e
   integer,parameter::TID_BOP3U   = -13  !
-  integer,parameter::TID_UOP2    =  14  ! !,!!  
-  integer,parameter::TID_UOP3    =  15  ! a++  
+  integer,parameter::TID_UOP2    =  14  !L !,!!  
+  integer,parameter::TID_UOP3    =  15  !L a++  
   integer,parameter::TID_UOP2U   = -15  ! 
-  integer,parameter::TID_IFNC    =  16  ! sin, cos,...
-  integer,parameter::TID_UFNC    =  17  !
+  integer,parameter::TID_IFNC    =  16  !L sin, cos,...
+  integer,parameter::TID_UFNC    =  17  !L
   integer,parameter::TID_PRI_MAX =  18  ! 
   !! priority tabel end
 
@@ -170,5 +170,29 @@ module rpng
   integer,parameter::SC_RO  = 1
   integer,parameter::SC_MAC = 2
   integer,parameter::SC_FNC = 4
+
+#if defined _VERSION_
+      character*(*),parameter::version=_VERSION_
+#else
+      character*(*),parameter::version="?"
+#endif
+      character*(*),parameter::bname="fzcalc-"//version
+#if defined __GNUC__
+#if defined __GNUC_MINOR__
+#if defined __GNUC_PATCHLEVEL__
+      character*(*),parameter::cversion=char(__GNUC__+48)//"."//char(__GNUC_MINOR__+48)//"."//char(__GNUC_PATCHLEVEL__+48)
+      character*(*),parameter::cname="gcc-"//cversion
+#else
+      character*(*),parameter::cname="gcc"
+      character*(*),parameter::cversion=""
+#endif
+#else
+      character*(*),parameter::cname="gcc"
+      character*(*),parameter::cversion=""
+#endif
+#else
+      character*(*),parameter::cname="?"
+      character*(*),parameter::cversion=""
+#endif
 
 end module rpng

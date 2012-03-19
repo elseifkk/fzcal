@@ -25,6 +25,7 @@ module rpnt
      type(t_rrpnq) buf(NUM_RRPNQ_MAX)
      integer p_buf,p_que
      integer*8 opt
+     integer err
   end type t_rpnb
       
   type t_sd
