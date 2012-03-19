@@ -581,14 +581,14 @@ contains
   subroutine dump_rpnc(rpnc,mid)
     use rpnlist, only: t_rpnm,kth_rpnm
     use fpio, only: DISP_FMT_RAW,ztoa
-    use misc, only: get_lo32,mess,messp
+    use misc, only: get_lo32,get_up32,mess,messp
     use slist, only: get_str_ptr
     use memio, only: cpstr,itoa, DISP_FMT_HEX
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in),optional::mid
     type(t_rpnm),pointer::rpnm
     type(t_rpnq),pointer::q
-    integer i,t,istat
+    integer i,tlo,tup,istat
     integer ptr,len
     complex(cp) z
     complex(cp) v
@@ -606,13 +606,14 @@ contains
     if(present(mid)) rpnm => kth_rpnm(rpnc%rl,mid)
     do i=1,size(rpnc%que)
        q => rpnc%que(i)
-       t=get_lo32(q%tid)
-       call messp(trim(itoa(i))//":\t"//trim(itoa(t))//"\t")
-       select case(t)
+       tlo=get_lo32(q%tid)
+       tup=get_up32(q%tid)
+       call messp(trim(itoa(i))//":\t"//trim(itoa(tup))//":"//trim(itoa(tlo))//"\t")
+       select case(tlo)
        case(TID_VAR,TID_PAR,TID_CPAR,TID_FIG,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
           call messp(trim(itoa(q%cid,DISP_FMT_HEX))//"\t")
           if(present(mid)) then
-             if(t/=TID_FIG) then
+             if(tlo/=TID_FIG) then
                 istat=get_str_ptr(rpnm%pnames,q%cid,ptr,len)
                 call mess(cpstr(ptr,len))
                 cycle
@@ -620,7 +621,7 @@ contains
                 z=rpnm%vbuf(q%cid)
              end if
           else
-             if(t==TID_CPAR) then
+             if(tlo==TID_CPAR) then
                 call messp("(copied)")
                 pv=q%cid
                 z=v

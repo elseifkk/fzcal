@@ -29,6 +29,7 @@ program fzcalc
   rpnc=init_rpnc()
   call init_rpne
   call open_hist(.true.)
+  call set_prompt(rpnc,bname//"> ")
 
   main: do
 

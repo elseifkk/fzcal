@@ -335,6 +335,56 @@ contains
     if(present(sz)) sz=sz_
   end function palloc
 
+  subroutine change_pkind(v,pk) ! never called and not checked
+    use fpio, only: dp,rp,cp,czero,rzero
+    type(t_vbuf),intent(inout)::v
+    integer,intent(in)::pk
+    integer pk_now
+    real(rp) x
+    real(dp) r
+    complex(cp) z
+    integer n
+    complex(cp) val
+    pointer(px,x)
+    pointer(pr,r)
+    pointer(pz,z)
+    pointer(pn,n)
+    pk_now=get_pkind(v%sta)
+    if(pk_now==pk) return
+    select case(pk_now)
+    case(PK_COMP)
+       pz=v%p
+       val=z
+    case(PK_REAL)
+       px=v%p
+       val=complex(x,rzero)
+    case(PK_DBLE)
+       pr=v%p
+       val=complex(real(r,kind=rp),rzero)
+    case(PK_INT)
+       pn=v%p
+       val=complex(real(n,kind=rp),rzero)
+    case(PK_UNDEF)
+       val=czero
+    end select
+    call alloc_par(v,pk)
+    select case(pk)
+    case(PK_COMP)
+       pz=v%p
+       z=val
+    case(PK_REAL)
+       px=v%p
+       x=realpart(val)
+    case(PK_DBLE)
+       pr=v%p
+       x=real(realpart(val),kind=dp)
+    case(PK_INT)
+       pn=v%p
+       n=int(realpart(val))
+    case(PK_UNDEF)
+    end select
+  end subroutine change_pkind
+
   subroutine alloc_par(v,pk)
     type(t_vbuf),intent(inout)::v
     integer,intent(in)::pk
@@ -644,21 +694,25 @@ contains
     put_par_at=0
   end function put_par_at
 
-  integer function try_add_par(pl,s,node,ent,force)
+  integer function try_add_par(pl,s,node,ent,force,new,init)
     type(t_plist),intent(inout)::pl
     character*(*),intent(in)::s
     type(t_pn),intent(out),pointer,optional::node
     integer,intent(out),optional::ent
     logical,intent(in),optional::force
+    logical,intent(out),optional::new
+    logical,intent(in),optional::init
     type(t_pn),pointer::pn
     integer k
     logical f
     if(present(node)) nullify(node)
     if(present(ent)) ent=0
+    if(present(new)) new=.false.
     pn => match_node(pl,s,k)
     if(.not.associated(pn)) then
        pn => append_node(pl,s)
        k=pl%n
+       if(present(new)) new=.true.
     else
        if(present(force)) then
           f=force
@@ -669,8 +723,12 @@ contains
           try_add_par=FZCERR_RDONL
           return
        end if
-       call uinit_vbuf(pn%v)
-       pn%v=init_vbuf()
+       if(present(init)) then
+          if(init) then
+             call uinit_vbuf(pn%v)
+             pn%v=init_vbuf()
+          end if
+       end if
     end if
     if(present(node)) node => pn
     if(present(ent)) ent=k
@@ -686,26 +744,31 @@ contains
     type(t_vbuf),pointer::v
     type(t_pn),pointer::pn
     integer istat,k,flg,pk_set
+    logical new
     ent=0
-    istat=try_add_par(pl,s,pn,k)
+    istat=try_add_par(pl,s,pn,k,new=new,init=.false.)
     if(istat/=0) then
        add_par_by_entry=istat
        return
     end if
+    ent=k
     v => pn%v
     if(present(ro).and.ro) then
        flg=PS_RO
     else
        flg=PS_NOP
     end if
-    if(present(pk)) then
-       pk_set=pk
-    else
-       pk_set=PK_COMP
+    if(new) then
+       if(present(pk)) then
+          pk_set=pk
+       else
+          pk_set=PK_COMP
+       end if
+       call alloc_par(v,pk_set)
+    else if(present(pk)) then
+       call change_pkind(v,pk) ! <<<<<<<<<<<<<<<<<<<
     end if
-    call alloc_par(v,pk_set)
     call set_pflg(v%sta,flg)
-    ent=k
     add_par_by_entry=0
   end function add_par_by_entry
 
@@ -721,11 +784,12 @@ contains
     integer istat,k,flg
     integer pk_set
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,pn,k,force=.true.)
+    istat=try_add_par(pl,s,pn,k,force=.true.,init=.true.)
     if(istat/=0) then
        add_par_by_reference=istat
        return
     end if
+    if(present(ent)) ent=k
     if(present(ro).and.ro) then
        flg=ior(PS_REF,PS_RO)
     else
@@ -741,7 +805,6 @@ contains
     v%p=ptr
     call set_pkind(v%sta,pk_set)
     call set_pflg(v%sta,flg)
-    if(present(ent)) ent=k
     add_par_by_reference=0
   end function add_par_by_reference
 
@@ -756,7 +819,7 @@ contains
     type(t_pn),pointer::pn
     integer istat,k,flg
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,pn,k)
+    istat=try_add_par(pl,s,pn,k,init=.true.)
     if(istat/=0) then
        add_par_by_value_x=istat
        return
@@ -785,7 +848,7 @@ contains
     type(t_pn),pointer::pn
     integer istat,k,flg
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,pn,k)
+    istat=try_add_par(pl,s,pn,k,init=.true.)
     if(istat/=0) then
        add_par_by_value_r=istat
        return
@@ -813,7 +876,7 @@ contains
     type(t_pn),pointer::pn
     integer istat,k,flg
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,pn,k)
+    istat=try_add_par(pl,s,pn,k,init=.true.)
     if(istat/=0) then
        add_par_by_value_n=istat
        return
@@ -842,7 +905,7 @@ contains
     type(t_pn),pointer::pn
     integer istat,k,flg
     if(present(ent)) ent=0
-    istat=try_add_par(pl,s,pn,k)
+    istat=try_add_par(pl,s,pn,k,init=.true.)
     if(istat/=0) then
        add_par_by_value_z=istat
        return
