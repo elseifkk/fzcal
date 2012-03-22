@@ -964,7 +964,6 @@ contains
       integer ptr0,len0
       complex(cp) z
       pointer(pz,z)
-
       cid=mac%que(j)%cid
       if(cid<0) cid=-cid
       istat=get_str_ptr(rpnm%pnames,cid,ptr,len)
@@ -1000,17 +999,14 @@ contains
     integer istat
     type(t_rpnc) tmpc
     tmpc=cp_rpnc(rpnc,deep=.false.)
-    call messp("Input pending for: "//trim(p)//"\n"//trim(s(2:))//"? > ")
+    call messp("Input pending for: "//trim(p)//"\n"//s//"? = ")
     call ins(expr)
     istat=set_formula(tmpc,expr)
+    tmpc%rc=rpnc%rc+1 ! <<<
     if(istat==0) then
        istat=rpn_run(tmpc)
        if(istat==0) then
-          tmpc%rc=rpnc%rc+1 ! <<<
-          istat=eval(tmpc) 
-          if(istat==0) then
-             z=tmpc%answer
-          end if
+          z=tmpc%answer
        end if
     end if
     call uinit_rpnc(tmpc,deep=.false.)
@@ -1018,13 +1014,13 @@ contains
 
   recursive function eval(rpnc) result(istat)
     use fpio, only: cp
-    use misc, only: get_lo32,get_up32,is_set,mess
+    use misc, only: get_lo32,get_up32,is_set,mess,cle_opt,set_opt
     use plist, only: remove_dup,sort_par
     use memio, only: itoa,CPSTR
     use com
     type(t_rpnc),intent(inout)::rpnc
     type(t_rpnq),pointer::q
-    integer i,istat,ec,ip1,t
+    integer i,istat,ec,ip1,t,cc,ecc
     complex(cp) v
     pointer(pv,v)
 
@@ -1033,9 +1029,13 @@ contains
        return
     end if
 
+    if(rpnc%rc==0) call cle_opt(rpnc%opt,RPNCOPT_ANS_SET)
+
     rpnc%rc=rpnc%rc+1
     istat=0
     ec=0
+    cc=0
+    ecc=0
 
     ip1=rpnc%ip
     i=rpnc%ip-1
@@ -1046,6 +1046,7 @@ contains
        if(t==TID_NOP) cycle
        q => rpnc%que(i)
        ec=ec+1
+       ecc=ecc+1
        select case(get_lo32(t))
        case(TID_OP,TID_OPN,TID_AOP)
           istat=eval_n(rpnc,i)
@@ -1067,23 +1068,20 @@ contains
           istat=eval_i(rpnc,i)
        case(TID_ISTA)
           i=i+q%cid+1
-       case(TID_COM)
-          call mess(cpstr(q%cid,get_up32(q%tid)))
           ec=ec-1
        case(TID_END)
-          if(rpnc%rc==1.and.q%cid/=0) then
-             ! multiple ";"  will exit the loop
-             ec=ec-1
-             exit
-          else
+!!$          if(rpnc%rc==1.and.q%cid/=0) then
+!!$             ! multiple ";"  will exit the loop
+!!$             ec=ec-1
+!!$             exit
+!!$          else
              ec=0
-          end if
+!!$          end if
        case default
           if(is_command(t)) then
+             cc=cc+1
              istat=exe_com(rpnc,i)
-             if(istat==0) then
-                istat=RPNSTA_COMSET
-             else
+             if(istat/=0) then
                 select case(istat)
                 case(CID_EXIT)
                    istat=RPNSTA_EXIT
@@ -1111,14 +1109,15 @@ contains
 
     if(istat/=0) return
 
-    if(rpnc%rc==0.and.is_set(rpnc%opt,RPNCOPT_DAT)) &
+    if(rpnc%rc==0.and.ecc>cc &
+         .and.is_set(rpnc%opt,RPNCOPT_DAT)) &
          call set_sd(ip1,i,rpnc)
 
     call set_ans
 
     if(i>=size(rpnc%que)) then
        rpnc%ip=0
-       if(rpnc%rc==0) then
+       if(rpnc%rc==0.and.ecc>cc) then
           ! this is the last time
           ! order is important
           call remove_dup(rpnc%pars)
@@ -1166,6 +1165,7 @@ contains
 
     subroutine set_ans
       integer k1,kk
+      if(ecc<=cc) return
       if(ec==0) then ! only fig or par
          if(i>size(rpnc%que)) then
             k1=size(rpnc%que)
@@ -1187,6 +1187,7 @@ contains
       else
          rpnc%answer=rpnc%tmpans
       end if
+      if(rpnc%rc==0) call set_opt(rpnc%opt,RPNCOPT_ANS_SET)
    end subroutine set_ans
     
   end function eval
@@ -1227,8 +1228,9 @@ contains
 
     subroutine print_ans()
       use misc, only: is_not_set,is_set,mess
-      if(is_not_set(rpnc%opt,RPNCOPT_NO_STDOUT) &
-           .and.(p2==0.or.is_set(rpnc%opt,RPNCOPT_PRINT_REQ))) &
+      if(is_set(rpnc%opt,RPNCOPT_ANS_SET) &
+           .and.is_not_set(rpnc%opt,RPNCOPT_NO_STDOUT) &
+           .and.(p2==0.or.is_set(rpnc%opt,RPNCOPT_PRINT_ANS_REQ))) &
            call mess(trim(rpn_sans(rpnc)))
     end subroutine print_ans
 

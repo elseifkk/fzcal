@@ -1,8 +1,3 @@
-
-
-
-
-
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 ! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *

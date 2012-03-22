@@ -162,6 +162,10 @@ module rpnp
   integer,parameter::FFID_SIINT     = 3 +FID_END
   integer,parameter::FFID_ARG3_END  = 3 +FID_END
 
+  integer,parameter::AID_PAR=0
+  integer,parameter::AID_MAC=1
+  integer,parameter::AID_FNC=2
+
   integer ptr_input
 
   interface get_end_of_par
@@ -173,6 +177,16 @@ module rpnp
      module procedure rpn_put_e
      module procedure rpn_put_q
   end interface rpn_put
+
+  interface rpn_push
+     module procedure rpn_push_e
+     module procedure rpn_push_q
+  end interface rpn_push
+
+  interface rpn_try_push
+     module procedure rpn_try_push_e
+     module procedure rpn_try_push_q
+  end interface rpn_try_push
 
 contains
   
@@ -461,7 +475,7 @@ contains
     select case(t)
     case(TID_UOP2U)
        select case(rpnb%old_tid)
-       case(TID_UNDEF,TID_SCL)
+       case(TID_UNDEF,TID_SCL,TID_COM,TID_DQ1)
           t=TID_COM
           call end_com
        case default
@@ -618,7 +632,8 @@ contains
           t=TID_INV
        else
           select case(rpnb%old_tid)
-          case(TID_BLK,TID_UNDEF,TID_COM)
+             ! prev TID_COM eats TID_SCL
+          case(TID_BLK,TID_UNDEF,TID_COM,TID_DQ1,TID_SCL)
              call end_com
           case default
              t=TID_INV
@@ -648,6 +663,11 @@ contains
          case(STID_DQ1)
             dq=.true.
          case(STID_DQ2)
+            if(.not.dq) then
+               ! COM in a macro def
+               p2=ii-1
+               return
+            end if
             dq=.false.
          case(";")
             if(.not.dq.and..not.sq) then
@@ -741,6 +761,12 @@ contains
     integer i
     integer kf,km,ka,ke
     integer ac,tc
+
+
+CALL DUMP_RPNB(RPNB)
+
+
+
 
     ke=find_end()
     do i=k1,ke
@@ -893,7 +919,6 @@ contains
        rpnc%que(i)%tid       = TID_MAC
        rpnc%que(i+1:k+1)%tid = TID_NOP
     end do
-
     set_macro=0
 
   contains
@@ -991,8 +1016,8 @@ contains
     use misc, only: mess
     character*(*),intent(in)::e
     integer,intent(in)::p1,p2
-    call mess("*** Syntacs Error at: ")
-    call mess(trim(e))
+    call mess("*** Syntax Error at: ")
+    call mess(restoreq(trim(e)))
     if(p1<=0.or.p2<=0) return
     call mess(repeat(" ",p1-1)//repeat("^",abs(p2)-p1+1)) ! some return with negative p2
   end subroutine print_error
@@ -1025,8 +1050,6 @@ contains
 
     if(associated(rpnc%que).and.size(rpnc%que)>0) deallocate(rpnc%que)
     allocate(rpnc%que(rpnb%p_que))
-    rpnc%rc=0
-    rpnc%ip=1 ! <<<
     rpnc%que(:)%tid=TID_UNDEF
     rpnc%que(:)%cid=0 ! dump_rpnc might refer unset cid as a pointer 
     rpnc%p_vbuf=0
@@ -1065,8 +1088,13 @@ contains
           q%cid=OID_CND ! <<<<<<<<<<<<<<<<<<<<<,
           call find_delim(qq%p1)
        case(TID_ASN,TID_AOP)
-          q%tid=get_i32(TID_AOP,2)
-          q%cid=get_aid()
+          if(get_up32(qq%TID)==AID_PAR) then
+             q%tid=get_i32(TID_AOP,2)
+             q%cid=get_aid()
+          else
+             q%tid=TID_NOP
+             q%cid=TID_UNDEF
+          end if
        case(TID_IFNC)
           call set_fnc_op
        case(TID_UFNC)
@@ -1128,9 +1156,9 @@ contains
           amac=.true.
           q%tid=TID_AMAC
           q%cid=TID_UNDEF
-       case(TID_MASN)
-          q%tid=TID_NOP
-          q%cid=TID_UNDEF
+!!$       case(TID_MASN,TID_FASN)
+!!$          q%tid=TID_NOP
+!!$          q%cid=TID_UNDEF
        case(TID_QEND)
           q%tid=TID_QEND
           q%cid=0
@@ -1171,7 +1199,7 @@ contains
        case(TID_COM)
           call set_com()          
        case default
-          call mess("que="//trim(itoa(i)//", tid="//trim(itoa(qq%tid))))
+          call mess("que="//trim(itoa(i))//", tid="//trim(itoa(qq%tid)))
           STOP "*** build_rpnc: UNEXPECTED ERROR: unexpected tid in rpnb"
        end select
        if(istat/=0) then
@@ -1306,7 +1334,8 @@ contains
          if(.not.amac.and..not.afnc) inpt=inpt+1
       end if
       istat=find_par(rpnc%pars,subexpr(rpnb,i),ent=kk)
-      if(asis/=0.or.amac.and.istat/=0.and.is_not_set(rpnc%opt,RPNCOPT_NO_AUTO_ADD_PAR)) then
+      if((asis/=0.or.amac.or.afnc) &
+           .and.istat/=0.and.is_not_set(rpnc%opt,RPNCOPT_NO_AUTO_ADD_PAR)) then
          ! par may not already exist
          istat=add_par_by_entry(rpnc%pars,subexpr(rpnb,i),kk)
          if(istat/=0) then
@@ -1703,38 +1732,43 @@ contains
   pure subroutine rpn_put_q(rpnb,q)
     type(t_rpnb),intent(inout)::rpnb
     type(t_rrpnq),intent(in)::q
-    call rpn_put_e(rpnb,q%tid,q%p1,q%p2)
-  end subroutine rpn_put_q
-
-  pure subroutine rpn_put_e(rpnb,tid,p1,p2)
-    type(t_rpnb),intent(inout)::rpnb
-    integer,intent(in)::tid,p1,p2
     rpnb%p_que=rpnb%p_que+1
     if(rpnb%p_que>NUM_RRPNQ_MAX) then
        rpnb%err=FZCERR_MEMOV
        return
     end if
-    rpnb%que(rpnb%p_que)%tid=tid
-    rpnb%que(rpnb%p_que)%p1=p1
-    rpnb%que(rpnb%p_que)%p2=p2
-  end subroutine rpn_put_e
+    rpnb%que(rpnb%p_que)=q
+  end subroutine rpn_put_q
 
-  pure subroutine rpn_push(rpnb,tid,p1,p2)
+  pure subroutine rpn_put_e(rpnb,tid,p1,p2)
     type(t_rpnb),intent(inout)::rpnb
     integer,intent(in)::tid,p1,p2
+    type(t_rrpnq) q
+    q%tid=tid; q%p1=p1; q%p2=p2
+    call rpn_put_q(rpnb,q)
+  end subroutine rpn_put_e
+
+  pure subroutine rpn_push_q(rpnb,q)
+    type(t_rpnb),intent(inout)::rpnb
+    type(t_rrpnq),intent(in)::q
     rpnb%p_buf=rpnb%p_buf+1
     if(rpnb%p_buf>NUM_RRPNQ_MAX) then
        rpnb%err=FZCERR_MEMOV
        return
     end if
-    rpnb%buf(rpnb%p_buf)%tid=tid
-    rpnb%buf(rpnb%p_buf)%p1=p1
-    rpnb%buf(rpnb%p_buf)%p2=p2
-  end subroutine rpn_push
+    rpnb%buf(rpnb%p_buf)=q
+  end subroutine rpn_push_q
+
+  pure subroutine rpn_push_e(rpnb,tid,p1,p2)
+    type(t_rpnb),intent(inout)::rpnb
+    integer,intent(in)::tid,p1,p2
+    type(t_rrpnq) q
+    q%tid=tid; q%p1=p1; q%p2=p2
+    call rpn_push_q(rpnb,q)
+  end subroutine rpn_push_e
 
   pure subroutine rpn_pop(rpnb)
     type(t_rpnb),intent(inout)::rpnb
-    if(rpnb%p_buf<=0) return
     call rpn_put(rpnb,rpnb%buf(rpnb%p_buf))
     rpnb%p_buf=rpnb%p_buf-1
   end subroutine rpn_pop
@@ -1827,28 +1861,32 @@ contains
     end do
   end subroutine rpn_try_pop
 
-  subroutine rpn_try_push(rpnb,tid,p1,p2)
-    use misc, only: get_lo32
+  subroutine rpn_try_push_e(rpnb,tid,p1,p2)
     type(t_rpnb),intent(inout)::rpnb
     integer,intent(in)::tid,p1,p2
-    integer tst
-    if(rpnb%p_buf==0) then
-       call rpn_push(rpnb,tid,p1,p2)
-    else
-       do 
-          if(rpnb%p_buf<=0) exit
-          tst=get_lo32(rpnb%buf(rpnb%p_buf)%tid)
-          if(tst<=TID_PRI_MAX) then
-             if(tst>tid.or.(tst==tid.and.is_left_op(tid))) then 
-                call rpn_pop(rpnb)
-                cycle
-             end if
+    type(t_rrpnq) q
+    q%tid=tid; q%p1=p1; q%p2=p2
+    call rpn_try_push_q(rpnb,q)
+  end subroutine rpn_try_push_e
+
+  subroutine rpn_try_push_q(rpnb,q)
+    use misc, only: get_lo32
+    type(t_rpnb),intent(inout)::rpnb
+    type(t_rrpnq),intent(in)::q
+    integer tst,t
+    do while(rpnb%p_buf>0)
+       tst=get_lo32(rpnb%buf(rpnb%p_buf)%tid)
+       if(tst<=TID_PRI_MAX) then
+          t=get_lo32(q%tid)
+          if(tst>t.or.(tst==t.and.is_left_op(t))) then 
+             call rpn_pop(rpnb)
+             cycle
           end if
-          exit
-       end do
-       call rpn_push(rpnb,tid,p1,p2)
-    end if
-  end subroutine rpn_try_push
+       end if
+       exit
+    end do
+    call rpn_push_q(rpnb,q)
+  end subroutine rpn_try_push_q
 
   integer function set_tid_par(rpnb,tid,p1,p2)
     use misc, only: get_i32
@@ -1884,7 +1922,7 @@ contains
     integer tidold,btidold
     integer,pointer::tid,p1,p2
     integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc,sc,otc
-    logical amac
+    logical amac,com
     integer pfasn
     integer p_q1
     integer pfnc_opened
@@ -1894,10 +1932,15 @@ contains
 
     call init_rpnb()
 
-    call cle_opt(rpnc%opt,RPNCOPT_PRINT_REQ)
+    call cle_opt(rpnc%opt,RPNCOPT_PRINT_ANS_REQ)
+    rpnc%ip=1 ! <<<
 
     nvbuf=0
     call init_stat()
+    amac=.false.
+    pfasn=0
+    com=.false.
+
     istat=0
     pfsta=pnext
     tid => qcur%tid
@@ -1912,19 +1955,18 @@ contains
        case(TID_BLK,TID_IGNORE)
           cycle
        case(TID_COM)
-          if(set_com()) exit
-          istat=FZCERR_PARSER
+          if(.not.set_com()) istat=FZCERR_PARSER
        case(TID_FIN,TID_SCL)
           if(.not.check_end()) exit
           if(.not.check_narg_all()) exit
-          if(amac) then
+          if(amac.or.pfasn/=0) then
              call rpn_pop_to(rpnb,TID_QSTA)
           else
              call rpn_pop_all(rpnb)
           end if
           if(t==TID_FIN) then
              pnext=0
-             if(amac) then
+             if(amac.or.pfasn/=0) then
                 call rpn_try_pop(rpnb,TID_QSTA)
                 call rpn_put(rpnb,TID_QEND,0,0)
                 amac=.false.
@@ -1933,12 +1975,13 @@ contains
                   call echo(p2)
              exit
           else ! TID_SCL
-             if(amac) then
+             if(amac.or.pfasn/=0) then
                 call rpn_put(rpnb,TID_MSCL,p1,p2) ! <<<<<<<<<<<<
+                call init_stat()
              else
                 if(is_set(rpnc%opt,RPNCOPT_ECHO)) &
                      call echo(p1-1)
-                if(p1/=p2) call set_opt(rpnc%opt,RPNCOPT_PRINT_REQ)
+                if(p1/=p2) call set_opt(rpnc%opt,RPNCOPT_PRINT_ANS_REQ)
                 exit
              end if
           end if
@@ -1972,19 +2015,19 @@ contains
              call rpn_try_push(rpnb,t,p1,bc-kc)
              call rpn_put(rpnb,TID_DLM1,p1,bc-kc)
           else
-             call rpn_try_push(rpnb,t,p1,p2)
+             call rpn_try_push(rpnb,qcur)!t,p1,p2)
           end if
        case(TID_UOP2)
           oc=oc+1
           select case(told)
           case(TID_FIG,TID_PAR,TID_KET,TID_UOP2)
-             call rpn_try_push(rpnb,t,p1,p2)
+             call rpn_try_push(rpnb,qcur)!t,p1,p2)
           case default
              istat=FZCERR_PARSER
           end select
        case(TID_UOP1,TID_LOP1)
           oc=oc+1
-          call rpn_try_push(rpnb,t,p1,p2)
+          call rpn_try_push(rpnb,qcur)!t,p1,p2)
        case(TID_UOP3)
           oc=oc+1
           select case(told)
@@ -1994,14 +2037,14 @@ contains
           case default
              istat=FZCERR_PARSER
           end select
-          if(istat==0) call rpn_try_push(rpnb,t,p1,p2)
+          if(istat==0) call rpn_try_push(rpnb,qcur)!t,p1,p2)
        case(TID_BRA)
           bc=bc+1
           select case(told)
           case(TID_FIG,TID_PAR,TID_KET,TID_UOP2,TID_UOP3)
              call push_implicit_mul()
           end select
-          call rpn_push(rpnb,t,p1,p2)
+          call rpn_push(rpnb,qcur)!t,p1,p2)
       case(TID_HKET)
           if(.not.was_operand()) then
              istat=FZCERR_PARSER
@@ -2030,7 +2073,7 @@ contains
        case(TID_AOP)
           if(check_assignable()) then
              istat=set_tid_par(rpnb,TID_APAR)
-             call rpn_try_push(rpnb,t,p1,p2)
+             call rpn_try_push(rpnb,qcur)!t,p1,p2)
           else
              istat=FZCERR_PARSER
           end if
@@ -2045,9 +2088,7 @@ contains
                 istat=FZCERR_PARSER
              end if
           end if
-          if(istat==0) then
-             call rpn_try_push(rpnb,t,p1,p2)
-          end if
+          if(istat==0) call rpn_try_push(rpnb,qcur)!tid,p1,p2)
        case(TID_DQ1)
           qc=qc+1
           ! the first "
@@ -2056,23 +2097,28 @@ contains
           else
              ! m="
              ! q    s      q     s
-             ! APAR =  ->  AMAC  MASN
+             ! APAR =  ->  AMAC  =
              !                   QSTA
-             istat=set_tid_par(rpnb,TID_AMAC,p1+1,find_char(p1+1,STID_DQ2)-1)
-             rpnb%buf(rpnb%p_buf)%tid=TID_MASN ! it must be TID_ASN
+             if(pfasn==0) then
+                istat=set_tid_par(rpnb,TID_AMAC,p1+1,find_char(p1+1,STID_DQ2)-1)
+                rpnb%buf(rpnb%p_buf)%tid=get_i32(TID_ASN,AID_MAC)
+                amac=.true.
+             else
+                rpnb%buf(rpnb%p_buf)%tid=get_i32(TID_ASN,AID_FNC)
+             end if
              call rpn_push(rpnb,TID_QSTA,p1,p2)
-             amac=.true.
           end if
        case(TID_DQ2)
           qc=qc+1
           if(.not.was_operand()) then
-             istat=FZCERR_PARSER
-          else
+             istat=FZCERR_PARSER ! Error for ;"
+          else if(amac.or.pfasn/=0) then
              if(.not.check_narg_all(TID_QSTA)) exit ! check unclosed ket of fnc 
              call rpn_try_pop(rpnb,TID_QSTA)
              call rpn_put(rpnb,TID_QEND,p1,p2)
-             call rpn_pop(rpnb) ! pop MASN
+             call rpn_pop(rpnb) ! pop TID_ASN
              amac=.false.
+             pfasn=0
           end if
        case(TID_COMA)
           cc=cc+1
@@ -2105,7 +2151,7 @@ contains
              if(otc>0) then
                 otc=otc-1 ! open TOP count
                 call rpn_pop_until(rpnb,TID_TOP1)
-                call rpn_push(rpnb,t,p1,p2)
+                call rpn_push(rpnb,qcur)!t,p1,p2)
              else
                 istat=FZCERR_PARSER
              end if
@@ -2125,7 +2171,7 @@ contains
              call push_implicit_mul()
           end select
           call set_narg
-          call rpn_try_push(rpnb,tid,p1,p2)
+          call rpn_try_push(rpnb,qcur)!tid,p1,p2)
           pfnc_opened=rpnb%p_buf
           if(get_up32(tid)==FFID_DEINT) then
              if(sc/=0) then
@@ -2175,6 +2221,7 @@ contains
             exit
          end if
       end do
+
       cid=parse_command(rpnb%expr(p1:pp2),pa1,pa2)
       if(cid>0) then
          call rpn_put(rpnb, &
@@ -2182,6 +2229,7 @@ contains
               get_i32(p1,pa1), &
               get_i32(pp2,pa2))
          set_com=.true.
+         com=.true.
       else
          set_com=.false.
      end if
@@ -2190,8 +2238,9 @@ contains
     subroutine echo(pp2)
       use misc, only: mess,is_not_set
       integer,intent(in)::pp2
+      character*(*),parameter::echo_prompt="===> "
       if(is_not_set(rpnc%opt,RPNCOPT_NO_STDOUT)) &
-           call mess(rpnb%expr(pfsta+1:pp2))
+           call mess(echo_prompt//restoreq(rpnb%expr(pfsta+1:pp2)))
     end subroutine echo
     
     subroutine init_stat()
@@ -2199,9 +2248,7 @@ contains
       told=TID_UNDEF
       tidold=TID_UNDEF
       btidold=TID_UNDEF
-      amac=.false.
       pfnc_opened=0
-      pfasn=0
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
       amc=0; clc=0; tc=0; sc=0; otc=0
       p_q1=rpnb%p_que+1
@@ -2355,7 +2402,7 @@ contains
       nvbuf=nvbuf+fc+oc+fnc+pc ! pc includes macro which needs vbuf 
       if(nvbuf==0) then
          check_end=.true.
-         istat=RPNSTA_EMPTY
+         if(.not.com) istat=RPNSTA_EMPTY
       else
          check_end=(kc-bc<=0).and.was_operand().and.(tc==clc.or.is_set(rpnc%opt,RPNCOPT_DAT))
          if(.not.check_end) then
@@ -2366,49 +2413,59 @@ contains
       end if
     end function check_end
 
+    character*1 function next_char()
+      if(p2>=rpnb%len_expr) then
+         next_char=char(0)
+      else
+         next_char=rpnb%expr(p2+1:p2+1)
+      end if
+    end function next_char
+
     logical function is_fnc_asn()
-      integer ii
+      integer ii2,ii1
       type(t_rrpnq),pointer::q
       logical first
       is_fnc_asn=.false.
       if(amac) return !<<<<<<<<<<<<<<<<<<<<<<
-      if(ac==1.and.bc==1.and.kc==1.and.pc>=0.and.fc==0) then
-         ii=index(rpnb%expr(p1+1:rpnb%len_expr),";")
-         if(ii==0) then
-            ii=rpnb%len_expr
+      if(ac==1.and.bc==1.and.kc==1.and.pc>=0.and.fc==0.and.p2<rpnb%len_expr) then
+         if(next_char()==STID_DQ1) then
+            ii1=p2+2
+            ii2=index(rpnb%expr(p2+1:rpnb%len_expr),STID_DQ2)
          else
-            ii=p1+1+ii
+            ii1=p2+1
+            ii2=index(rpnb%expr(p2+1:rpnb%len_expr),";")
+         end if
+         if(ii2==0) then
+            ii2=rpnb%len_expr ! never come here
+         else
+            ii2=p2+1+ii2-1-1
          end if
          if(get_lo32(rpnb%buf(rpnb%p_buf)%tid)==TID_UFNC) then
             q => rpnb%buf(rpnb%p_buf)
             q%tid=TID_AFNC
-            q%p1=get_i32(get_lo32(q%p1),p1+1)
-            q%p2=get_i32(get_lo32(q%p2),ii)
+            q%p1=get_i32(get_lo32(q%p1),ii1)
+            q%p2=get_i32(get_lo32(q%p2),ii2)
             call rpn_pop(rpnb)
             is_fnc_asn=.true.
             first=.false.
          else if(rpnb%que(p_q1)%tid==TID_PAR) then ! exclude TID_POP
             q => rpnb%que(p_q1)
             q%tid=TID_AFNC
-            q%p1=get_i32(q%p1,p1+1) ! function body in upper
-            q%p2=get_i32(q%p2,ii)
+            q%p1=get_i32(q%p1,ii1) ! function body in upper
+            q%p2=get_i32(q%p2,ii2)
             pc=pc-1
             is_fnc_asn=.true.
             first=.true.
          end if
       end if
       if(.not.is_fnc_asn) return
-      pfasn=rpnb%p_que
+!      qcur%tid=TID_FASN
+      pfasn=rpnb%p_que ! end of dummy arg and func
       if(pc-1/=cc.or.set_dummy_par(first)<0) then
          is_fnc_asn=.false.
          istat=FZCERR_PARSER
       else
-         if(p_q1==1) then
-            ii=1
-         else
-            ii=rpnb%que(p_q1-1)%p1+1 ! TID_SCL + 1
-         end if
-         p1=get_i32(p1,ii) ! function definition in upper
+         p1=get_i32(p1,get_lo32(q%p1)) ! function definition in upper
          p2=get_i32(p2,p2-1)          
       end if
     end function is_fnc_asn
@@ -2420,8 +2477,9 @@ contains
       case(TID_UNDEF,TID_BRA,TID_ASN)
       case(TID_SCL)
          ! it only happens in macro def
-      case(TID_QTN)
-         if(iand(qc,1)==0) return ! second "
+      case(TID_COM)
+         ! prev SCL was eaten by COM
+      case(TID_DQ1)
       case default
          return
       end select
@@ -2536,7 +2594,7 @@ contains
     character*(*),intent(in)::f
     integer i,k
     logical wc,dq,sq,dup,esc
-
+    rpnc%rc=0
     call cle_opt(rpnc%opt,RPNCOPT_READY)
     if(.not.associated(rpnc%expr)) allocate(rpnc%expr)
     if(.not.associated(rpnc%len_expr)) allocate(rpnc%len_expr)

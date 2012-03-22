@@ -600,7 +600,7 @@ contains
     end if
     if(.not.present(mid).and.iand(rpnc%opt,RPNCOPT_READY)==0) then
        call mess("(not set)")
-       return
+!       return
     end if
     call mess("#\tTID\tCID\tValue")
     if(present(mid)) rpnm => kth_rpnm(rpnc%rl,mid)
@@ -712,4 +712,21 @@ contains
     end subroutine dump_q
   end subroutine dump_rpnb
 
+  function restoreq(s)
+    character*(*),intent(in)::s
+    character(len=len(s)) restoreq
+    character*1 c
+    integer i
+    do i=1,len(s)
+       c=s(i:i)
+       select case(c)
+       case(STID_SQ1,STID_SQ2)
+          c="'"
+       case(STID_DQ1,STID_DQ2)
+          c=""""
+       end select
+       restoreq(i:i)=c
+    end do
+  end function restoreq
+    
 end module rpnd
