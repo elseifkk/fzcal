@@ -91,7 +91,7 @@ module rpng
   integer,parameter::TID_QEND  =  71
   integer,parameter::TID_QSTA  =  72   ! PUSHED!
   integer,parameter::TID_COMA  =  73   ! ,
-  integer,parameter::TID_MASN  =  74   ! = for macro PUSHED!
+!  integer,parameter::TID_MASN  =  74   ! = for macro PUSHED!
   integer,parameter::TID_DLM1  =  75   
   integer,parameter::TID_DLM2  =  76   ! ket
   integer,parameter::TID_BLK   =  77   ! space and tab
@@ -104,6 +104,7 @@ module rpng
   integer,parameter::TID_SQ2   =  84 ! last '
   integer,parameter::TID_DQ1   =  85 ! first "
   integer,parameter::TID_DQ2   =  86 ! last "
+!  integer,parameter::TID_FASN  =  87
 
   character*1,parameter::STID_SQ1  = char(1) ! first '
   character*1,parameter::STID_SQ2  = char(4) ! last '
@@ -140,7 +141,8 @@ module rpng
   integer*8,parameter::RPNCOPT_EXECOM          =  Z"00020000"
   integer*8,parameter::RPNCOPT_ECHO            =  Z"00040000"
   integer*8,parameter::RPNCOPT_HIST            =  Z"00080000"
-  integer*8,parameter::RPNCOPT_PRINT_REQ       =  Z"00100000"
+  integer*8,parameter::RPNCOPT_PRINT_ANS_REQ   =  Z"00100000"
+  integer*8,parameter::RPNCOPT_ANS_SET         =  Z"00200000"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0

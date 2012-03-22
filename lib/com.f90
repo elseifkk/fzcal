@@ -304,32 +304,32 @@ contains
     case(CID_VER)
        call print_version
     case(CID_SHELL)
-       call restoreq
-       call system(str(1:lenarg))
+!       call restoreq
+       call system(restoreq(str(1:lenarg)))
     case default
        STOP "exe_com: UNEXPECTED ERROR: invalid cid"
     end select
 
   contains
 
-    subroutine restoreq()
-      use rpng, only: STID_SQ1,STID_SQ2,STID_DQ1,STID_DQ2
-      character*1 c
-      integer ii,jj
-      jj=0
-      do ii=1,lenarg
-         c=str(ii:ii)
-         select case(c)
-         case(STID_SQ1,STID_SQ2)
-            c="'"
-         case(STID_DQ1,STID_DQ2)
-            c=""""
-         end select
-         jj=jj+1
-         str(jj:jj)=c
-      end do
-      lenarg=jj
-    end subroutine restoreq
+!!$    subroutine restoreq()
+!!$      use rpng, only: STID_SQ1,STID_SQ2,STID_DQ1,STID_DQ2
+!!$      character*1 c
+!!$      integer ii,jj
+!!$      jj=0
+!!$      do ii=1,lenarg
+!!$         c=str(ii:ii)
+!!$         select case(c)
+!!$         case(STID_SQ1,STID_SQ2)
+!!$            c="'"
+!!$         case(STID_DQ1,STID_DQ2)
+!!$            c=""""
+!!$         end select
+!!$         jj=jj+1
+!!$         str(jj:jj)=c
+!!$      end do
+!!$      lenarg=jj
+!!$    end subroutine restoreq
 
     subroutine stripq()
       use rpng, only: STID_SQ1,STID_SQ2,STID_DQ1,STID_DQ2
