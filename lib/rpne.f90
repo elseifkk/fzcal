@@ -64,11 +64,12 @@ contains
     use memio, only: cpstr
     use misc, only: messp,ins
     use rpnp, only: set_formula
+    use slist, only: get_str_ptr
     type(t_rpnc),intent(inout)::rpnc
     character(len=LEN_FORMULA_MAX) s
-    integer istat
-    if(associated(rpnc%prompt).and.size(rpnc%prompt)>0) &
-         call messp(cpstr(loc(rpnc%prompt(1)),size(rpnc%prompt)))
+    integer istat,ptr,len
+    istat=get_str_ptr(rpnc%spars,code=SC_PROMPT,ptr=ptr,len=len)
+    if(istat==0) call messp(cpstr(ptr,len))
     call ins(s,i=istat)
     if(istat/=0) then
        get_formula=FZCERR_READ
@@ -874,7 +875,7 @@ contains
 
       cid=fnc%que(j)%cid
       if(cid<0) cid=-cid
-      istat=get_str_ptr(rpnm%pnames,cid,ptr,len)
+      istat=get_str_ptr(rpnm%pnames,ent=cid,ptr=ptr,len=len)
       if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
       istat=find_par(fnc%pars,cpstr(ptr,len),ent=ent)
       if(istat/=0) then
@@ -883,7 +884,7 @@ contains
       if(fnc%que(j)%cid<0) then
          pz=get_par_loc(fnc%pars,ent)
          if(pz/=0) then
-            istat=get_str_ptr(rpnm%pnames,1,ptr0,len0)
+            istat=get_str_ptr(rpnm%pnames,ent=1,ptr=ptr0,len=len0)
             istat=input(rpnc,cpstr(ptr0,len0),cpstr(ptr,len),z)
          else
             stop "*** set_par_ptr: UNEXPETED ERROR: get_par_loc failed"   
@@ -966,7 +967,7 @@ contains
       pointer(pz,z)
       cid=mac%que(j)%cid
       if(cid<0) cid=-cid
-      istat=get_str_ptr(rpnm%pnames,cid,ptr,len)
+      istat=get_str_ptr(rpnm%pnames,ent=cid,ptr=ptr,len=len)
       if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
       istat=find_par(mac%pars,cpstr(ptr,len),ent=ent)
       if(istat/=0) then
@@ -977,7 +978,7 @@ contains
       if(mac%que(j)%cid<0) then
          pz=get_par_loc(mac%pars,ent)
          if(pz/=0) then
-            istat=get_str_ptr(rpnm%pnames,1,ptr0,len0)
+            istat=get_str_ptr(rpnm%pnames,ent=1,ptr=ptr0,len=len0)
             istat=input(rpnc,cpstr(ptr0,len0),cpstr(ptr,len),z)
          else
             stop "*** set_par_ptr: UNEXPETED ERROR: get_par_loc failed"
@@ -1090,6 +1091,10 @@ contains
                 case default
                    istat=FZCERR_INVCOM
                 end select
+             end if
+             if(rpnc%rc/=1) then
+                ! q%cid will not be freeed
+                q%tid=TID_NOP
              end if
           end if
           ec=ec-1

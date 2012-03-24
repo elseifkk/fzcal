@@ -33,11 +33,8 @@ module rpnlist
      type(t_rpnq),allocatable::que(:)
      complex(cp),allocatable::vbuf(:)
      type(t_slist) pnames 
-     type(t_plist),pointer::pars => null() ! => rpnc%pars
-     complex(cp),pointer::answer => null() ! => rpnc%answer
-     complex(cp),pointer::tmpans => null() ! => rpnc%tmpans
-     integer::p_vbuf = 0      
-     integer::na     = 0                   ! num arg
+     integer::p_vbuf = 0
+     integer::na     = 0 ! num arg
   end type t_rpnm
 
   type t_rn
@@ -65,10 +62,6 @@ contains
     use slist, only: init_slist
     type(t_rpnm) init_rpnm
     init_rpnm%pnames=init_slist()
-    nullify(init_rpnm%pars)
-    nullify(init_rpnm%tmpans)
-    nullify(init_rpnm%answer)
-    init_rpnm%na=0
     init_rpnm%p_vbuf=0
     init_rpnm%na=0
   end function init_rpnm
@@ -293,9 +286,6 @@ contains
     end if
     cp_rpnm%na=rpnm%na
     cp_rpnm%p_vbuf=rpnm%p_vbuf
-    cp_rpnm%pars   => rpnm%pars  
-    cp_rpnm%answer => rpnm%answer
-    cp_rpnm%tmpans => rpnm%tmpans
     cp_rpnm%pnames=cp_slist(rpnm%pnames)
   end function cp_rpnm
 
