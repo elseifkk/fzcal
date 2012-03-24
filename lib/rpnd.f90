@@ -41,7 +41,7 @@ module rpnd
      integer,pointer::rc            ! recursion count
      integer,pointer::ip           
      integer*8,pointer::opt        
-     integer*1,pointer::prompt(:)  
+     type(t_slist),pointer::spars  
      character(LEN_FORMULA_MAX),pointer::expr
      integer,pointer::len_expr
   end type t_rpnc
@@ -57,23 +57,25 @@ contains
   
   subroutine set_prompt(rpnc,pr)
     use memio, only: mcp
+    use slist, only: add_str
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(in)::pr
-    if(associated(rpnc%prompt).and.size(rpnc%prompt)>0) &
-         deallocate(rpnc%prompt)
-    if(len(pr)==0) return
-    allocate(rpnc%prompt(len(pr)))
-    call mcp(loc(rpnc%prompt),loc(pr),len(pr))
+    call add_str(rpnc%spars,pr,SC_PROMPT)
   end subroutine set_prompt
 
   function init_rpnc(cp) 
     use zmath, only: zm_f1,zm_f2,zm_f3
     use fpio, only: czero,X2A_DEFAULT
     use rpnlist, only: init_rpnlist
+    use slist, only: init_slist
     type(t_rpnc) init_rpnc
     logical,intent(in),optional::cp
     nullify(init_rpnc%que)
     nullify(init_rpnc%vbuf)
+    nullify(init_rpnc%ifnc)
+    nullify(init_rpnc%ique)
+    nullify(init_rpnc%expr)
+    nullify(init_rpnc%len_expr)
     allocate(init_rpnc%rl)
     allocate(init_rpnc%tmpans)
     allocate(init_rpnc%answer)
@@ -84,17 +86,14 @@ contains
     allocate(init_rpnc%sd)
     allocate(init_rpnc%ip)
     allocate(init_rpnc%pfs(3))
-    nullify(init_rpnc%ifnc)
-    nullify(init_rpnc%ique)
-    nullify(init_rpnc%prompt)
-    nullify(init_rpnc%expr)
-    nullify(init_rpnc%len_expr)
+    allocate(init_rpnc%spars)
     init_rpnc%answer=czero
     init_rpnc%pfs(1)=loc(zm_f1)
     init_rpnc%pfs(2)=loc(zm_f2)
     init_rpnc%pfs(3)=loc(zm_f3)
     init_rpnc%pars=init_par(init_rpnc,cp)
     init_rpnc%rl=init_rpnlist()
+    init_rpnc%spars=init_slist()
     init_rpnc%opt=ior(RPNCOPT_NOP,ishft(X2A_DEFAULT,32))
   end function init_rpnc
 
@@ -133,10 +132,9 @@ contains
        cp_rpnc%pfs    => rpnc_in%pfs
        cp_rpnc%ifnc   => rpnc_in%ifnc
        cp_rpnc%ique   => rpnc_in%ique
-       cp_rpnc%prompt => rpnc_in%prompt
+       cp_rpnc%spars  => rpnc_in%spars
        nullify(cp_rpnc%ifnc)
        nullify(cp_rpnc%ique)
-       nullify(cp_rpnc%prompt)
        nullify(cp_rpnc%expr)
        nullify(cp_rpnc%len_expr)
     end if
@@ -158,6 +156,7 @@ contains
 
   subroutine uinit_rpnc(rpnc,deep)
     use rpnlist, only: uinit_rpnlist
+    use slist, only: uinit_slist
     type(t_rpnc),intent(inout)::rpnc
     logical,intent(in),optional::deep
     logical dcp
@@ -192,8 +191,10 @@ contains
           call uinit_sd(rpnc%sd)
           deallocate(rpnc%sd)
        end if
-       if(associated(rpnc%prompt).and.size(rpnc%prompt)>0) &
-            deallocate(rpnc%prompt)
+       if(associated(rpnc%spars)) then
+          call uinit_slist(rpnc%spars)
+          deallocate(rpnc%spars)
+       end if
     end if
   end subroutine uinit_rpnc
 
@@ -489,7 +490,7 @@ contains
     integer,intent(in),optional::out_unit
     integer ou
     type(t_rpnm),pointer::rpnm
-    type(t_rpnc) tmprpnc
+    type(t_rpnc) tmpc
     integer ptr,len
     integer code
     integer i,i1,i2
@@ -530,7 +531,7 @@ contains
        else
           if(t/=0.and.t/=SC_FNC) cycle
           if(ou==stdout) call mess("FUNCTION entry: "//trim(itoa(i)))
-          if(get_str_ptr(rpnm%pnames,2,ptr,len)/=0) then
+          if(get_str_ptr(rpnm%pnames,ent=2,ptr=ptr,len=len)/=0) then
              if(ou==stdout) call mess("???") !<<<<<<<<<<<<<<<<<<<<
              cycle !<<<<<<<<<
           end if
@@ -542,7 +543,7 @@ contains
           call messp(cpstr(ptr,len)//"=",ou)
        end if
 
-       if(get_str_ptr(rpnm%pnames,1,ptr,len)==0) then
+       if(get_str_ptr(rpnm%pnames,ent=1,ptr=ptr,len=len)==0) then
           if(ou==stdout) then
              call mess("definition: "//cpstr(ptr,len))
           else
@@ -562,17 +563,14 @@ contains
           cycle
        end if
 
-       tmprpnc%que    => rpnm%que
-       tmprpnc%vbuf   => rpnm%vbuf
-       tmprpnc%p_vbuf => rpnm%p_vbuf
-       tmprpnc%pars   => rpnm%pars
-       tmprpnc%answer => rpnm%answer
-       tmprpnc%tmpans => rpnm%tmpans
-       tmprpnc%rl     => rpnc%rl
-       tmprpnc%rc     => rpnc%rc
-       tmprpnc%pfs    => rpnc%pfs
+       tmpc%que    => rpnm%que
+       tmpc%vbuf   => rpnm%vbuf
+       tmpc%p_vbuf => rpnm%p_vbuf
+       tmpc%rl     => rpnc%rl
+       tmpc%rc     => rpnc%rc
+       tmpc%pfs    => rpnc%pfs
        call mess("number of arguments = "//trim(itoa(rpnm%na)))
-       call dump_rpnc(tmprpnc,i)
+       call dump_rpnc(tmpc,i)
        call dump_slist(rpnm%pnames)
 
     end do
@@ -614,7 +612,7 @@ contains
           call messp(trim(itoa(q%cid,DISP_FMT_HEX))//"\t")
           if(present(mid)) then
              if(tlo/=TID_FIG) then
-                istat=get_str_ptr(rpnm%pnames,q%cid,ptr,len)
+                istat=get_str_ptr(rpnm%pnames,ent=q%cid,ptr=ptr,len=len)
                 call mess(cpstr(ptr,len))
                 cycle
              else
@@ -637,7 +635,16 @@ contains
        case(TID_DPAR)
           call mess(trim(itoa(q%cid))//"\t(dummy par)")
        case default
-          call mess(trim(itoa(q%cid,DISP_FMT_HEX)))
+          call messp(trim(itoa(q%cid,DISP_FMT_HEX))//"\t")
+          if(is_command(q%tid)) then
+             len=get_up32(q%tid)
+             ptr=q%cid
+             if(len/=0.and.ptr/=0) then
+                call mess(cpstr(ptr,len))
+                cycle
+             end if
+          end if
+          call mess("")
        end select
     end do
     call mess("vbuf dump:")

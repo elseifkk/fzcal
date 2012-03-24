@@ -91,7 +91,6 @@ module rpng
   integer,parameter::TID_QEND  =  71
   integer,parameter::TID_QSTA  =  72   ! PUSHED!
   integer,parameter::TID_COMA  =  73   ! ,
-!  integer,parameter::TID_MASN  =  74   ! = for macro PUSHED!
   integer,parameter::TID_DLM1  =  75   
   integer,parameter::TID_DLM2  =  76   ! ket
   integer,parameter::TID_BLK   =  77   ! space and tab
@@ -104,7 +103,6 @@ module rpng
   integer,parameter::TID_SQ2   =  84 ! last '
   integer,parameter::TID_DQ1   =  85 ! first "
   integer,parameter::TID_DQ2   =  86 ! last "
-!  integer,parameter::TID_FASN  =  87
 
   character*1,parameter::STID_SQ1  = char(1) ! first '
   character*1,parameter::STID_SQ2  = char(4) ! last '
@@ -169,9 +167,10 @@ module rpng
   integer,parameter::PID_INPUT  = 18
   integer,parameter::PID_EMAC   = 19
 
-  integer,parameter::SC_RO  = 1
-  integer,parameter::SC_MAC = 2
-  integer,parameter::SC_FNC = 4
+  integer,parameter::SC_RO     = 1
+  integer,parameter::SC_MAC    = 2
+  integer,parameter::SC_FNC    = 4
+  integer,parameter::SC_PROMPT = 1
 
 #if defined _VERSION_
       character*(*),parameter::version=_VERSION_

@@ -621,12 +621,6 @@ contains
           call skip_tid(t)
           if(p2==rpnb%len_expr) t=TID_FIN
        end if
-!!$    case(TID_SHRP)
-!!$       if(p1==1.and.p2<rpnb%len_expr.and.next_char(1)=="$") then
-!!$          ! meta command
-!!$       else
-!!$          t=TID_FIN
-!!$       end if
     case(TID_COM)
        if(p1==rpnb%len_expr) then
           t=TID_INV
@@ -761,13 +755,6 @@ contains
     integer i
     integer kf,km,ka,ke
     integer ac,tc
-
-
-CALL DUMP_RPNB(RPNB)
-
-
-
-
     ke=find_end()
     do i=k1,ke
        if(rpnc%que(i)%tid/=TID_AFNC) cycle
@@ -790,9 +777,6 @@ CALL DUMP_RPNB(RPNB)
        tc=(ke-1)-(km+1)+1 ! que must end with =
        rpnm%na=ac
        if(tc==0) stop "Empty function"
-       rpnm%pars   => rpnc%pars
-       rpnm%answer => rpnc%answer
-       rpnm%tmpans => rpnc%tmpans
        allocate(rpnm%que(tc))
        rpnm%que(1:tc)=rpnc%que(km+1:ke-1)
        call alloc_vbuf()
@@ -895,6 +879,9 @@ CALL DUMP_RPNB(RPNB)
     integer i
     integer tc
 
+CALL DUMP_RPNC(rpnc)
+
+
     ke=find_end()
     do i=k1,ke
        if(rpnc%que(i)%tid/=TID_AMAC) cycle
@@ -907,9 +894,6 @@ CALL DUMP_RPNB(RPNB)
        if(allocated(rpnm%vbuf)) deallocate(rpnm%vbuf)
        tc=(k-1)-(i+1)+1
        if(tc==0) stop "Empty macro!"
-       rpnm%pars   => rpnc%pars
-       rpnm%answer => rpnc%answer
-       rpnm%tmpans => rpnc%tmpans
        allocate(rpnm%que(tc))
        call alloc_vbuf()
        call init_pnames()
@@ -920,6 +904,9 @@ CALL DUMP_RPNB(RPNB)
        rpnc%que(i+1:k+1)%tid = TID_NOP
     end do
     set_macro=0
+
+CALL DUMP_rpnm(rpnc)
+
 
   contains
     
@@ -1048,7 +1035,7 @@ CALL DUMP_RPNB(RPNB)
     p1=1
     p2=rpnb%len_expr
 
-    if(associated(rpnc%que).and.size(rpnc%que)>0) deallocate(rpnc%que)
+    if(associated(rpnc%que).and.size(rpnc%que)>0) call uinit_rpncq(rpnc%que)
     allocate(rpnc%que(rpnb%p_que))
     rpnc%que(:)%tid=TID_UNDEF
     rpnc%que(:)%cid=0 ! dump_rpnc might refer unset cid as a pointer 
@@ -1156,9 +1143,6 @@ CALL DUMP_RPNB(RPNB)
           amac=.true.
           q%tid=TID_AMAC
           q%cid=TID_UNDEF
-!!$       case(TID_MASN,TID_FASN)
-!!$          q%tid=TID_NOP
-!!$          q%cid=TID_UNDEF
        case(TID_QEND)
           q%tid=TID_QEND
           q%cid=0
@@ -2015,19 +1999,19 @@ CALL DUMP_RPNB(RPNB)
              call rpn_try_push(rpnb,t,p1,bc-kc)
              call rpn_put(rpnb,TID_DLM1,p1,bc-kc)
           else
-             call rpn_try_push(rpnb,qcur)!t,p1,p2)
+             call rpn_try_push(rpnb,qcur)
           end if
        case(TID_UOP2)
           oc=oc+1
           select case(told)
           case(TID_FIG,TID_PAR,TID_KET,TID_UOP2)
-             call rpn_try_push(rpnb,qcur)!t,p1,p2)
+             call rpn_try_push(rpnb,qcur)
           case default
              istat=FZCERR_PARSER
           end select
        case(TID_UOP1,TID_LOP1)
           oc=oc+1
-          call rpn_try_push(rpnb,qcur)!t,p1,p2)
+          call rpn_try_push(rpnb,qcur)
        case(TID_UOP3)
           oc=oc+1
           select case(told)
@@ -2037,14 +2021,14 @@ CALL DUMP_RPNB(RPNB)
           case default
              istat=FZCERR_PARSER
           end select
-          if(istat==0) call rpn_try_push(rpnb,qcur)!t,p1,p2)
+          if(istat==0) call rpn_try_push(rpnb,qcur)
        case(TID_BRA)
           bc=bc+1
           select case(told)
           case(TID_FIG,TID_PAR,TID_KET,TID_UOP2,TID_UOP3)
              call push_implicit_mul()
           end select
-          call rpn_push(rpnb,qcur)!t,p1,p2)
+          call rpn_push(rpnb,qcur)
       case(TID_HKET)
           if(.not.was_operand()) then
              istat=FZCERR_PARSER
@@ -2073,7 +2057,7 @@ CALL DUMP_RPNB(RPNB)
        case(TID_AOP)
           if(check_assignable()) then
              istat=set_tid_par(rpnb,TID_APAR)
-             call rpn_try_push(rpnb,qcur)!t,p1,p2)
+             call rpn_try_push(rpnb,qcur)
           else
              istat=FZCERR_PARSER
           end if
@@ -2088,7 +2072,7 @@ CALL DUMP_RPNB(RPNB)
                 istat=FZCERR_PARSER
              end if
           end if
-          if(istat==0) call rpn_try_push(rpnb,qcur)!tid,p1,p2)
+          if(istat==0) call rpn_try_push(rpnb,qcur)
        case(TID_DQ1)
           qc=qc+1
           ! the first "
@@ -2151,7 +2135,7 @@ CALL DUMP_RPNB(RPNB)
              if(otc>0) then
                 otc=otc-1 ! open TOP count
                 call rpn_pop_until(rpnb,TID_TOP1)
-                call rpn_push(rpnb,qcur)!t,p1,p2)
+                call rpn_push(rpnb,qcur)
              else
                 istat=FZCERR_PARSER
              end if
@@ -2171,7 +2155,7 @@ CALL DUMP_RPNB(RPNB)
              call push_implicit_mul()
           end select
           call set_narg
-          call rpn_try_push(rpnb,qcur)!tid,p1,p2)
+          call rpn_try_push(rpnb,qcur)
           pfnc_opened=rpnb%p_buf
           if(get_up32(tid)==FFID_DEINT) then
              if(sc/=0) then
@@ -2459,7 +2443,6 @@ CALL DUMP_RPNB(RPNB)
          end if
       end if
       if(.not.is_fnc_asn) return
-!      qcur%tid=TID_FASN
       pfasn=rpnb%p_que ! end of dummy arg and func
       if(pc-1/=cc.or.set_dummy_par(first)<0) then
          is_fnc_asn=.false.
@@ -2754,7 +2737,7 @@ CALL DUMP_RPNB(RPNB)
       pp2=get_end_of_par(len(f),f,pp1)
       jj=find_rpnlist(rpnc%rl,f(pp1:pp2),SC_MAC,rpnm)
       if(jj<=0) return
-      if(get_str_ptr(rpnm%pnames,1,p,l)/=0) return
+      if(get_str_ptr(rpnm%pnames,ent=1,ptr=p,len=l)/=0) return
       if(k+l+1>LEN_FORMULA_MAX) then
          set_formula=FZCERR_TOO_LONG_STR
          exp_mac=-1
