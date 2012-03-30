@@ -322,7 +322,7 @@ contains
 
   subroutine dump_slist(sl)
     use misc, only: mess,messp
-    use memio, only: cpstr,itoa,DISP_FMT_BIN
+    use memio, only: cpstr,itoa
     type(t_slist),intent(in)::sl
     integer i
     type(t_sn),pointer::sn
@@ -342,7 +342,7 @@ contains
        else
           call messp(trim(itoa(i))//":\t" &
                //trim(itoa(size(sn%s)-hdr_size))//"\t" &
-               //trim(itoa(int(sn%s(1)),cfmt="(Z4.4)"))//"\t")
+               //trim(itoa(int(sn%s(1)),fmt="(Z4.4)"))//"\t")
           call mess(cpstr(loc(sn%s)+str_off,size(sn%s)-hdr_size))
        end if
        sn => sn%next

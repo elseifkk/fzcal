@@ -1,5 +1,5 @@
-VERSION   = 0.0.3
-SOVERSION = 3
+VERSION   = 0.0.4
+SOVERSION = 4
 
 #
 BINTARG   = fzcalc
@@ -14,9 +14,9 @@ BINDIR = /usr/local/bin
 INCDIR = /usr/local/include
 
 #
-FC  = /usr/local/bin/gfortran46
-CC  = /usr/local/bin/gcc46
-LD  = /usr/local/bin/gfortran46
+FC  = /usr/local/bin/gfortran
+CC  = /usr/local/bin/gcc
+LD  = /usr/local/bin/gfortran
 ASM = yasm
 AR  = ar
 
@@ -27,14 +27,14 @@ FFLAGS = -c -Wall -cpp -fbounds-check \
  -g -fPIC -D_VERSION_=\"$(VERSION)\"
 AFLAGS  = -g stabs
 ARFLAGS = rv
-LDFLAGS = -L/usr/local/lib -L/usr/local/lib/gcc46
+LDFLAGS = -L/usr/local/lib
 SOFLAGS = -shared -Wl,-soname,$(SONAME)
 
-LD_RUN_PATH     = /usr/local/lib:/usr/local/lib/gcc46
-LD_LIBRARY_PATH = /usr/local/lib:/usr/local/lib/gcc46
+LD_RUN_PATH     = /usr/local/lib
+LD_LIBRARY_PATH = /usr/local/lib
 
 #
-BASEOBJ = fzcerr.o memioF.o fpioF.o misc.o slist.o plist.o integral.o zmath.o rpng.o rpnt.o rpnlist.o rpnd.o rpnp.o rpne.o com.o
+BASEOBJ = fzcerr.o memioF.o misc.o fpioF.o slist.o plist.o integral.o zmath.o rpng.o rpnt.o rpnlist.o rpnd.o com.o rpnp.o rpne.o
 SOLIBOBJ = $(BASEOBJ)
 .ifdef _NETWALKER_
     FFLAGS += -D_NO_REAL10_ -D_NO_REAL16_ -D_NO_ASM_ -D_USE32_
@@ -81,6 +81,10 @@ BINOBJ   = $(OBJ) fzcalc.o
 
 .f90.mod:
 	$(FC) $(FFLAGS) $<
+
+rpnd.o:	rpng.f90 rpnt.f90
+rpnp.o: rpnd.f90
+rpne.o: rpnd.f90
 
 memioA-d.o: memioA.s
 	$(ASM) $(AFLAGS) -D_DYNAMIC_ $(.ALLSRC) -o $@

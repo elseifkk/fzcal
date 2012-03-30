@@ -38,6 +38,7 @@ module rpnd
      type(t_sd),pointer::sd        
      type(t_rpnc),pointer::ifnc     ! integrand
      type(t_rpnq),pointer::ique(:)  ! backup of ifnc%que
+     type(t_rpnf),pointer::flg      
      integer,pointer::rc            ! recursion count
      integer,pointer::ip           
      integer*8,pointer::opt        
@@ -65,7 +66,7 @@ contains
 
   function init_rpnc(cp) 
     use zmath, only: zm_f1,zm_f2,zm_f3
-    use fpio, only: czero,X2A_DEFAULT
+    use fpio, only: czero
     use rpnlist, only: init_rpnlist
     use slist, only: init_slist
     type(t_rpnc) init_rpnc
@@ -82,7 +83,7 @@ contains
     allocate(init_rpnc%pars)
     allocate(init_rpnc%p_vbuf)
     allocate(init_rpnc%rc)
-    allocate(init_rpnc%opt)
+    allocate(init_rpnc%flg)
     allocate(init_rpnc%sd)
     allocate(init_rpnc%ip)
     allocate(init_rpnc%pfs(3))
@@ -94,8 +95,16 @@ contains
     init_rpnc%pars=init_par(init_rpnc,cp)
     init_rpnc%rl=init_rpnlist()
     init_rpnc%spars=init_slist()
-    init_rpnc%opt=ior(RPNCOPT_NOP,ishft(X2A_DEFAULT,32))
+    call init_rpnf(init_rpnc%flg)
   end function init_rpnc
+
+  subroutine init_rpnf(flg)
+    use fpio, only: X2A_DEFAULT
+    type(t_rpnf),intent(inout)::flg
+    flg%mode=0
+    flg%dmode=X2A_DEFAULT
+    flg%sta=0
+  end subroutine init_rpnf
 
   function cp_rpnc(rpnc_in,deep)
     use rpnlist, only: cp_rpnlist
@@ -114,7 +123,7 @@ contains
        cp_rpnc=init_rpnc(cp=.true.)
        cp_rpnc%rl=cp_rpnlist(rpnc_in%rl)
        cp_rpnc%pars=cp_plist(rpnc_in%pars)
-       cp_rpnc%opt=rpnc_in%opt
+       cp_rpnc%flg=rpnc_in%flg
        istat=add_par_by_reference(cp_rpnc%pars,"tmp",loc(cp_rpnc%tmpans),.true.)
        istat=add_par_by_reference(cp_rpnc%pars,"ans",loc(cp_rpnc%answer),.true.)
     else
@@ -127,7 +136,7 @@ contains
        cp_rpnc%tmpans => rpnc_in%tmpans
        cp_rpnc%answer => rpnc_in%answer
        cp_rpnc%pars   => rpnc_in%pars
-       cp_rpnc%opt    => rpnc_in%opt
+       cp_rpnc%flg    => rpnc_in%flg
        cp_rpnc%sd     => rpnc_in%sd
        cp_rpnc%pfs    => rpnc_in%pfs
        cp_rpnc%ifnc   => rpnc_in%ifnc
@@ -326,13 +335,12 @@ contains
     use memio, only: itoa
     use misc, only: mess
     type(t_rpnc),intent(in)::rpnc
-    integer i,f
+    integer i
     if(.not.allocated(rpnc%sd%vs)) return
-    f=ishft(rpnc%opt,-32)
     do i=1,rpnc%sd%p_vs
-       call mess(trim(itoa(i))//": "//trim(ztoa(rpnc%sd%vs(i,1),f)) &
-            //", "//trim(ztoa(rpnc%sd%vs(i,2),f)) &
-            //" ("//trim(rtoa(rpnc%sd%ws(i),f))//")")
+       call mess(trim(itoa(i))//": "//trim(ztoa(rpnc%sd%vs(i,1),rpnc%flg%dmode)) &
+            //", "//trim(ztoa(rpnc%sd%vs(i,2),rpnc%flg%dmode)) &
+            //" ("//trim(rtoa(rpnc%sd%ws(i),rpnc%flg%dmode))//")")
     end do    
   end subroutine dump_sd
 
@@ -374,7 +382,7 @@ contains
     integer,intent(inout)::i
     real(rp),intent(in)::v
     real(rp) im
-    if(iand(rpnc%opt,RPNCOPT_RATIO)==0) then
+    if(iand(rpnc%flg%mode,RCM_RATIO)==0) then
        im=rzero
     else
        im=1.0_rp
@@ -391,7 +399,8 @@ contains
        select case(get_lo32(q(i)%tid))
        case(TID_OP,TID_IOP,TID_OPN, &
             TID_LOP,TID_ROP,TID_COP, &
-            TID_AOP,TID_UFNC,TID_MAC)
+            TID_AOP,TID_UFNC,TID_MAC, &
+            TID_POP,TID_SOP)
           count_op=count_op+1
        end select
     end do
@@ -578,10 +587,10 @@ contains
   
   subroutine dump_rpnc(rpnc,mid)
     use rpnlist, only: t_rpnm,kth_rpnm
-    use fpio, only: DISP_FMT_RAW,ztoa
+    use fpio, only: ztoa,DISP_FMT_RAW
     use misc, only: get_lo32,get_up32,mess,messp
     use slist, only: get_str_ptr
-    use memio, only: cpstr,itoa, DISP_FMT_HEX
+    use memio, only: cpstr,itoa,IBASE_HEX
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in),optional::mid
     type(t_rpnm),pointer::rpnm
@@ -596,9 +605,9 @@ contains
        call mess("(empty)")
        return
     end if
-    if(.not.present(mid).and.iand(rpnc%opt,RPNCOPT_READY)==0) then
+    if(.not.present(mid).and.iand(rpnc%flg%sta,RCS_READY)==0) then
        call mess("(not set)")
-!       return
+       return
     end if
     call mess("#\tTID\tCID\tValue")
     if(present(mid)) rpnm => kth_rpnm(rpnc%rl,mid)
@@ -609,7 +618,7 @@ contains
        call messp(trim(itoa(i))//":\t"//trim(itoa(tup))//":"//trim(itoa(tlo))//"\t")
        select case(tlo)
        case(TID_VAR,TID_PAR,TID_CPAR,TID_FIG,TID_ROVAR,TID_LVAR_T,TID_LVAR_F)
-          call messp(trim(itoa(q%cid,DISP_FMT_HEX))//"\t")
+          call messp(trim(itoa(q%cid,IBASE_HEX))//"\t")
           if(present(mid)) then
              if(tlo/=TID_FIG) then
                 istat=get_str_ptr(rpnm%pnames,ent=q%cid,ptr=ptr,len=len)
@@ -635,7 +644,7 @@ contains
        case(TID_DPAR)
           call mess(trim(itoa(q%cid))//"\t(dummy par)")
        case default
-          call messp(trim(itoa(q%cid,DISP_FMT_HEX))//"\t")
+          call messp(trim(itoa(q%cid,IBASE_HEX))//"\t")
           if(is_command(q%tid)) then
              len=get_up32(q%tid)
              ptr=q%cid
@@ -654,7 +663,7 @@ contains
        call mess("size used/alloc= "//trim(itoa(rpnc%p_vbuf))//"/"//trim(itoa(size(rpnc%vbuf))))
        if(rpnc%p_vbuf>0) then
           do i=1,rpnc%p_vbuf
-             call mess(trim(itoa(i))//":\t"//trim(itoa(loc(rpnc%vbuf(i)),DISP_FMT_HEX))&
+             call mess(trim(itoa(i))//":\t"//trim(itoa(loc(rpnc%vbuf(i)),IBASE_HEX))&
                   //"\t"//trim(ztoa(rpnc%vbuf(i),fmt=DISP_FMT_RAW)))
           end do
        end if

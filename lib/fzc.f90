@@ -99,23 +99,23 @@ contains
     str=trim(rpn_sans(rpnc))//char(0)
   end subroutine fzc_get_str_ans
 
-  subroutine fzc_set_opt(ptr_rpnc,opt)
+  subroutine fzc_set_mode(ptr_rpnc,mode)
     size_t,intent(in),value::ptr_rpnc
-    int_t,intent(in),value::opt
+    int_t,intent(in),value::mode
     type(t_rpnc) rpnc
     pointer(prpnc,rpnc)
     prpnc=ptr_rpnc
-    rpnc%opt=ior(rpnc%opt,opt)
-  end subroutine fzc_set_opt
+    rpnc%flg%mode=ior(rpnc%flg%mode,mode)
+  end subroutine fzc_set_mode
 
-  subroutine fzc_cle_opt(ptr_rpnc,opt)
+  subroutine fzc_cle_mode(ptr_rpnc,mode)
     size_t,intent(in),value::ptr_rpnc
-    int_t,intent(in),value::opt
+    int_t,intent(in),value::mode
     type(t_rpnc) rpnc
     pointer(prpnc,rpnc)
     prpnc=ptr_rpnc
-    rpnc%opt=iand(rpnc%opt,not(opt))
-  end subroutine fzc_cle_opt
+    rpnc%flg%mode=iand(rpnc%flg%mode,not(mode))
+  end subroutine fzc_cle_mode
 
   retint function fzc_regist_parameter(ptr_rpnc,ptr_var,ptr_str,pk)
     use misc, only: c2fstr

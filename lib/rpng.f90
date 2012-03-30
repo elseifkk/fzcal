@@ -1,10 +1,11 @@
 module rpng
   implicit none
   
-  integer,parameter::RPNSTA_LOAD   = -5
-  integer,parameter::RPNSTA_COMSET = -4
-  integer,parameter::RPNSTA_EXIT   = -3
-  integer,parameter::RPNSTA_EMPTY  = -2
+  integer,parameter::RPNSTA_LOAD   = -6
+  integer,parameter::RPNSTA_COMSET = -5
+  integer,parameter::RPNSTA_EXIT   = -4
+  integer,parameter::RPNSTA_EMPTY  = -3
+  integer,parameter::RPNSTA_MACSET = -2
   integer,parameter::RPNSTA_FNCSET = -1
   integer,parameter::RPNSTA_OK     =  0
   
@@ -84,6 +85,7 @@ module rpng
   ! braket and delimiters
   integer,parameter::TID_SCL   =  64   ! ;
   integer,parameter::TID_COL   =  65   ! : PUSHED!
+  integer,parameter::TID_TCOL  =  87   ! : PUSHED!
   integer,parameter::TID_IBRA  =  66   ! implicit (
   integer,parameter::TID_BRA   =  67   ! ( PUSHED!
   integer,parameter::TID_KET   =  69   ! )
@@ -115,32 +117,33 @@ module rpng
   integer,parameter::LOID_EQ  = 4
   integer,parameter::LOID_NEQ = 5
 
-  integer*8,parameter::RPNCOPT_NOP             =  0
-  integer*8,parameter::RPNCOPT_DEBUG           =  Z"08000000"
-  integer*8,parameter::RPNCOPT_READY           =  Z"00000001"
-  integer*8,parameter::RPNCOPT_DEG             =  Z"00000002"
-  integer*8,parameter::RPNCOPT_NEW             =  Z"00000004"
-  integer*8,parameter::RPNCOPT_NO_AUTO_ADD_PAR =  Z"00000008"
-  integer*8,parameter::RPNCOPT_RATIO           =  Z"00000010"
-  integer*8,parameter::RPNCOPT_NO_WARN         =  Z"00000020"
-  integer*8,parameter::RPNCOPT_DAT             =  Z"00000040"
-  integer*8,parameter::RPNCOPT_STA             =  Z"00000080"
-  integer*8,parameter::RPNCOPT_OBIN            =  Z"00000100"
-  integer*8,parameter::RPNCOPT_OOCT            =  Z"00000200"
-  integer*8,parameter::RPNCOPT_OHEX            =  Z"00000400"
-  integer*8,parameter::RPNCOPT_OUTM = ior(RPNCOPT_OHEX,ior(RPNCOPT_OOCT,RPNCOPT_OBIN))     
-  integer*8,parameter::RPNCOPT_IBIN            =  Z"00000800"
-  integer*8,parameter::RPNCOPT_IOCT            =  Z"00001000"
-  integer*8,parameter::RPNCOPT_IHEX            =  Z"00002000"
-  integer*8,parameter::RPNCOPT_INM = ior(RPNCOPT_IHEX,ior(RPNCOPT_IOCT,RPNCOPT_IBIN))     
-  integer*8,parameter::RPNCOPT_BYTE            =  Z"00004000" ! for SI prefix k to be 1024
-  integer*8,parameter::RPNCOPT_NO_STDIN        =  Z"00008000"
-  integer*8,parameter::RPNCOPT_NO_STDOUT       =  Z"00010000"
-  integer*8,parameter::RPNCOPT_EXECOM          =  Z"00020000"
-  integer*8,parameter::RPNCOPT_ECHO            =  Z"00040000"
-  integer*8,parameter::RPNCOPT_HIST            =  Z"00080000"
-  integer*8,parameter::RPNCOPT_PRINT_ANS_REQ   =  Z"00100000"
-  integer*8,parameter::RPNCOPT_ANS_SET         =  Z"00200000"
+  ! RPNFs
+  integer,parameter::RCF_NOP              =  0
+  ! stat
+  integer,parameter::RCS_READY            =  Z"00000001"
+  integer,parameter::RCS_NEW_PAR          =  Z"00000002"
+  integer,parameter::RCS_ANS_SET          =  Z"00000004"
+  integer,parameter::RCS_FNC_SET          =  Z"00000008"
+  integer,parameter::RCS_MAC_SET          =  Z"00000010"
+  integer,parameter::RCS_PRINT_ANS_REQ    =  Z"00000020"
+  ! public mode
+  integer,parameter::RCM_ECHO            =  Z"00000001"
+  integer,parameter::RCM_HIST            =  Z"00000002"
+  integer,parameter::RCM_DEBUG           =  Z"00000004"
+  integer,parameter::RCM_DEG             =  Z"00000008"
+  integer,parameter::RCM_RATIO           =  Z"00000010"
+  integer,parameter::RCM_DAT             =  Z"00000020"
+  integer,parameter::RCM_STA             =  Z"00000040"
+  integer,parameter::RCM_BYTE            =  Z"00000080" ! for SI prefix k to be 1024
+  integer,parameter::RCM_IBIN            =  Z"00000100"
+  integer,parameter::RCM_IOCT            =  Z"00000200"
+  integer,parameter::RCM_IHEX            =  Z"00000400"
+  integer,parameter::RCM_INM = ior(RCM_IHEX,ior(RCM_IOCT,RCM_IBIN))     
+  ! private mode
+  integer,parameter::RCM_NO_AUTO_ADD_PAR =  Z"00000800"
+  integer,parameter::RCM_NO_WARN         =  Z"00001000"
+  integer,parameter::RCM_NO_STDIN        =  Z"00002000"
+  integer,parameter::RCM_NO_STDOUT       =  Z"00004000"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0

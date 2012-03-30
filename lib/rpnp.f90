@@ -215,13 +215,13 @@ contains
        c=0
     end if
     
-    if(is_not_set(rpnb%opt,RPNCOPT_INM)) then
+    if(is_not_set(rpnb%flg%mode,RCM_INM)) then
        pf=loc(is_numeric_i)
-    else if(is_set(rpnb%opt,RPNCOPT_IBIN)) then
+    else if(is_set(rpnb%flg%mode,RCM_IBIN)) then
        pf=loc(is_bin_number)
-    else if(is_set(rpnb%opt,RPNCOPT_IOCT)) then
+    else if(is_set(rpnb%flg%mode,RCM_IOCT)) then
        pf=loc(is_oct_number)
-    else if(is_set(rpnb%opt,RPNCOPT_IHEX)) then
+    else if(is_set(rpnb%flg%mode,RCM_IHEX)) then
        pf=loc(is_hex_number)
     end if
 
@@ -265,7 +265,7 @@ contains
     logical,intent(in),optional::force_alpha
     integer a,k
     logical alpha
-    k=k_
+    k=k_ ! it must be alpha
     alpha=present(force_alpha).and.force_alpha
     do
        if(k>=lens) then
@@ -549,16 +549,14 @@ contains
           end if
        end if
     case(TID_AT)
-       p2=get_end_of_par(rpnb,p1,.true.)
-       if(p1==p2) then
-          if(next_char(1)=="?") then
-             call insert_str
-             t=get_next(rpnb,p1,p2,rl)
-          else
-             t=TID_INV
-          end if
-       else
+       if(is_alpha(next_char(1))) then
+          p2=get_end_of_par(rpnb,p1+1)
           t=get_i32(TID_PAR,PID_INPUT)
+       else if(next_char(1)=="?") then
+          call insert_str
+          t=get_next(rpnb,p1,p2,rl)
+       else
+          t=TID_INV
        end if
     case(TID_PARU)
        if(rpnb%old_tid==TID_FIG.and.cur_char()=="e") then
@@ -577,7 +575,7 @@ contains
           p2=get_end_of_par(rpnb,p1)
           if(p2<rpnb%len_expr) then
              if(.not.is_lop(rpnb%expr(p1:p2),t)&
-                  .and..not.(is_set(rpnb%opt,RPNCOPT_STA).and.is_spar(rpnb%expr(p1:p2)))) then
+                  .and..not.(is_set(rpnb%flg%mode,RCM_STA).and.is_spar(rpnb%expr(p1:p2)))) then
                 k=p2+1
                 if(cur_char()=="(") then
                    if(is_usr_fnc(rl,rpnb%expr(p1:p2),kf)) then
@@ -665,8 +663,7 @@ contains
             dq=.false.
          case(";")
             if(.not.dq.and..not.sq) then
-               p2=ii
-               call skip_tid(TID_SCL)
+               p2=ii-1
                return
             end if
          end select
@@ -748,6 +745,7 @@ contains
       
   integer function set_function(rpnb,rpnc,k1)
     use rpnlist, only: t_rpnm,add_rpnm_entry
+    use misc, only: set_flg
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
@@ -785,8 +783,8 @@ contains
        exit
     end do
     rpnc%que(k1:ke)%tid=TID_NOP
-
     set_function=0
+    call set_flg(rpnc%flg%sta,RCS_FNC_SET)
 
   contains
     
@@ -871,6 +869,7 @@ contains
   integer function set_macro(rpnb,rpnc,k1)
     ! AMAC never be in AMAC
     use rpnlist, only: t_rpnm,add_rpnm_entry
+    use misc, only: set_flg
     type(t_rpnb),intent(in),target::rpnb
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::k1
@@ -878,10 +877,6 @@ contains
     integer k,km,ke
     integer i
     integer tc
-
-CALL DUMP_RPNC(rpnc)
-
-
     ke=find_end()
     do i=k1,ke
        if(rpnc%que(i)%tid/=TID_AMAC) cycle
@@ -904,10 +899,7 @@ CALL DUMP_RPNC(rpnc)
        rpnc%que(i+1:k+1)%tid = TID_NOP
     end do
     set_macro=0
-
-CALL DUMP_rpnm(rpnc)
-
-
+    call set_flg(rpnc%flg%sta,RCS_MAC_SET)
   contains
     
     subroutine check_mscl()
@@ -1010,7 +1002,7 @@ CALL DUMP_rpnm(rpnc)
   end subroutine print_error
   
   integer function build_rpnc(rpnb,rpnc,nvbuf)
-    use misc, only: get_lo32,get_i32,get_up32,is_not_set,mess
+    use misc, only: get_lo32,get_i32,get_up32,is_not_set,mess,cle_flg,is_set,set_flg
     use plist
     use fpio, only: czero
     use memio, only: itoa
@@ -1026,7 +1018,15 @@ CALL DUMP_rpnm(rpnc)
     type(t_rrpnq),pointer::qq
     integer inpt
     integer p1,p2
+    type(t_rpnf) flg_in
+    type(t_rpnf),pointer::flg
 
+    flg => rpnc%flg
+    flg_in=flg
+
+    call cle_flg(flg%sta,RCS_FNC_SET)
+    call cle_flg(flg%sta,RCS_MAC_SET)
+    
     p_q1=1
     amac=.false.
     afnc=.false.
@@ -1166,7 +1166,6 @@ CALL DUMP_rpnm(rpnc)
           p2=qq%p1
           if(amac) istat=set_macro(rpnb,rpnc,p_q1)
           if(afnc) istat=set_function(rpnb,rpnc,p_q1)
-          ! istat=RPNSTA_FNCSET<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
           amac=.false.
           afnc=.false.
           if(inpt>0) istat=proc_input(i)
@@ -1177,17 +1176,21 @@ CALL DUMP_rpnm(rpnc)
        case(TID_MSCL)
           q%tid=TID_MSCL
           q%cid=qq%p2-qq%p1 ! count of ;
-       case(TID_COL) ! only for dat mode
+       case(TID_COL)
           q%tid=TID_COL
           q%cid=0
+       case(TID_TCOL)
+          q%tid=TID_TCOL
+          q%cid=0
        case(TID_COM)
-          call set_com()          
+          call set_com()
+          call exe_mode_com()
        case default
           call mess("que="//trim(itoa(i))//", tid="//trim(itoa(qq%tid)))
           STOP "*** build_rpnc: UNEXPECTED ERROR: unexpected tid in rpnb"
        end select
        if(istat/=0) then
-          if(is_not_set(rpnc%opt,RPNCOPT_NO_WARN)) &
+          if(is_not_set(rpnc%flg%mode,RCM_NO_WARN)) &
                call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(qq%p1),get_lo32(qq%p2)) 
           exit
        end if
@@ -1199,12 +1202,32 @@ CALL DUMP_rpnm(rpnc)
        if(inpt>0) istat=proc_input(size(rpnc%que))
     end if
 
-    if(afnc.and.istat==0) istat=RPNSTA_FNCSET
-    if(istat==0) rpnc%opt=ior(rpnc%opt,RPNCOPT_READY)
+    if(istat==0) then
+       if(is_set(rpnc%flg%sta,RCS_FNC_SET)) then
+          istat=RPNSTA_FNCSET
+       else if(is_set(rpnc%flg%sta,RCS_MAC_SET).and.count_que()==1) then
+          istat=RPNSTA_MACSET
+       end if
+    end if
+    if(istat==0) call set_flg(rpnc%flg%sta,RCS_READY)
     
     build_rpnc=istat
-
+    
   contains
+
+    integer function count_que()
+      integer ii
+      count_que=0
+      do ii=1,size(rpnc%que)
+         if(rpnc%que(ii)%tid/=TID_NOP) count_que=count_que+1
+      end do
+    end function count_que
+
+    subroutine exe_mode_com()
+      use com, only: is_mode_com, exe_com
+      integer ii
+      if((amac.or.afnc).and.is_mode_com(qq%tid)) ii=exe_com(rpnc,i)
+    end subroutine exe_mode_com
 
     subroutine set_com()
       use memio, only: mcp
@@ -1288,7 +1311,7 @@ CALL DUMP_rpnm(rpnc)
       use misc, only: is_set
       integer kk
       check_sop=.false.
-      if(is_set(rpnc%opt,RPNCOPT_STA).and.is_spar(subexpr(rpnb,i),kk)) then
+      if(is_set(rpnc%flg%mode,RCM_STA).and.is_spar(subexpr(rpnb,i),kk)) then
          q%tid=TID_SOP
          q%cid=get_sid(kk)
          check_sop=.true.
@@ -1319,7 +1342,7 @@ CALL DUMP_rpnm(rpnc)
       end if
       istat=find_par(rpnc%pars,subexpr(rpnb,i),ent=kk)
       if((asis/=0.or.amac.or.afnc) &
-           .and.istat/=0.and.is_not_set(rpnc%opt,RPNCOPT_NO_AUTO_ADD_PAR)) then
+           .and.istat/=0.and.is_not_set(rpnc%flg%mode,RCM_NO_AUTO_ADD_PAR)) then
          ! par may not already exist
          istat=add_par_by_entry(rpnc%pars,subexpr(rpnb,i),kk)
          if(istat/=0) then
@@ -1370,21 +1393,19 @@ CALL DUMP_rpnm(rpnc)
     integer function read_fig()
       use memio
       use misc, only: is_set,is_not_set
-      integer f
-      character(len=128) fig ! <<<<<<<<<<<<<<<<<<<<<<<<<<<
-      if(is_not_set(rpnc%opt,RPNCOPT_INM)) then
-         fig=subexpr(rpnb,i)
-         read(fig,*,iostat=read_fig) x
-         !read(subexpr(rpnb,i),*,iostat=read_fig) x ! compile error
-         return
-      else if(is_set(rpnc%opt,RPNCOPT_IBIN)) then
-         f=DISP_FMT_BIN
-      else if(is_set(rpnc%opt,RPNCOPT_IOCT)) then
-         f=DISP_FMT_OCT
-      else if(is_set(rpnc%opt,RPNCOPT_IHEX)) then
-         f=DISP_FMT_HEX
+      integer b
+      if(is_not_set(rpnc%flg%mode,RCM_INM)) then
+         b=IBASE_RAW
+      else if(is_set(rpnc%flg%mode,RCM_IBIN)) then
+         b=IBASE_BIN
+      else if(is_set(rpnc%flg%mode,RCM_IOCT)) then
+         b=IBASE_OCT
+      else if(is_set(rpnc%flg%mode,RCM_IHEX)) then
+         b=IBASE_HEX
+      else
+         STOP "*** read_fig: ERROR: UNEXPECTED mode"
       end if
-      x=real(atoi(subexpr(rpnb,i),0,f,read_fig),kind=rp)
+      x=real(atoi(subexpr(rpnb,i),b,b,read_fig),kind=rp)
     end function read_fig
 
     subroutine find_delim(pos)
@@ -1453,37 +1474,37 @@ CALL DUMP_rpnm(rpnc)
       case(FID_RAN)
          get_fid=loc(zm_ran)
       case(FID_SIN)
-         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
+         if(is_set(rpnc%flg%mode,RCM_DEG)) then
             get_fid=loc(zm_sind)
          else
             get_fid=loc(zm_sin)
          end if
       case(FID_COS)
-         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
+         if(is_set(rpnc%flg%mode,RCM_DEG)) then
             get_fid=loc(zm_cosd)
          else
             get_fid=loc(zm_cos)
          end if
       case(FID_TAN)
-         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
+         if(is_set(rpnc%flg%mode,RCM_DEG)) then
             get_fid=loc(zm_tand)
          else
             get_fid=loc(zm_tan)
          end if
       case(FID_ASIN)
-         if(is_set(rpnc%opt,RPNCOPT_DEG)) then 
+         if(is_set(rpnc%flg%mode,RCM_DEG)) then 
             get_fid=loc(zm_asind)
          else
             get_fid=loc(zm_asin)
          end if
       case(FID_ACOS)
-         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
+         if(is_set(rpnc%flg%mode,RCM_DEG)) then
             get_fid=loc(zm_acosd)
          else
             get_fid=loc(zm_acos)
          end if
       case(FID_ATAN)
-         if(is_set(rpnc%opt,RPNCOPT_DEG)) then
+         if(is_set(rpnc%flg%mode,RCM_DEG)) then
             get_fid=loc(zm_atand)
          else
             get_fid=loc(zm_atan)
@@ -1588,7 +1609,7 @@ CALL DUMP_rpnm(rpnc)
       case("+")
          get_oid1=loc(zm_nop) 
       case("-")
-         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%flg%mode,RCM_RATIO)) then
             get_oid1=loc(zm_neg) 
          else
             get_oid1=loc(zm_neg_f)
@@ -1598,13 +1619,13 @@ CALL DUMP_rpnm(rpnc)
       case("!!")
          get_oid1=loc(zm_dfac)
       case("++")
-         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%flg%mode,RCM_RATIO)) then
             get_oid1=loc(zm_inc)
          else
             get_oid1=loc(zm_inc_f)
          end if
       case("--")
-         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%flg%mode,RCM_RATIO)) then
             get_oid1=loc(zm_dec)
          else
             get_oid1=loc(zm_dec_f)
@@ -1634,25 +1655,25 @@ CALL DUMP_rpnm(rpnc)
       get_oid2=OID_NOP
       select case(subexpr(rpnb,i))
       case("+")
-         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%flg%mode,RCM_RATIO)) then
             get_oid2=loc(zm_add)   
          else
             get_oid2=loc(zm_add_f)
          end if
       case("-")
-         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%flg%mode,RCM_RATIO)) then
             get_oid2=loc(zm_sub)   
          else
             get_oid2=loc(zm_sub_f)   
          end if
       case("*")
-         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%flg%mode,RCM_RATIO)) then
             get_oid2=loc(zm_mul)
          else
             get_oid2=loc(zm_mul_f)
          end if
       case("/")
-         if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
+         if(is_not_set(rpnc%flg%mode,RCM_RATIO)) then
             get_oid2=loc(zm_div)
          else
             get_oid2=loc(zm_div_f)
@@ -1753,6 +1774,7 @@ CALL DUMP_rpnm(rpnc)
 
   pure subroutine rpn_pop(rpnb)
     type(t_rpnb),intent(inout)::rpnb
+    if(rpnb%p_buf<=0) return
     call rpn_put(rpnb,rpnb%buf(rpnb%p_buf))
     rpnb%p_buf=rpnb%p_buf-1
   end subroutine rpn_pop
@@ -1761,7 +1783,7 @@ CALL DUMP_rpnm(rpnc)
     type(t_rpnb),intent(inout)::rpnb
     if(rpnb%p_buf<=0) return
     select case(rpnb%buf(rpnb%p_buf)%tid) ! get_lo32 ?
-    case(TID_BRA,TID_QSTA,TID_IBRA,TID_COL)
+    case(TID_BRA,TID_QSTA,TID_IBRA,TID_COL,TID_TCOL)
        rpnb%p_buf=rpnb%p_buf-1
     case default
        call rpn_pop(rpnb)
@@ -1827,10 +1849,10 @@ CALL DUMP_rpnm(rpnc)
        if(rpnb%p_buf==0) exit
        tid=rpnb%buf(rpnb%p_buf)%tid
        select case(tid)
-       case(TID_BRA,TID_QSTA,TID_COL)
+       case(TID_BRA,TID_QSTA,TID_COL,TID_TCOL)
           rpnb%p_buf=rpnb%p_buf-1
           if(tid==tend) then
-             if(present(dlm2c).and.told==TID_COL)&
+             if(present(dlm2c).and.told==TID_TCOL)&
                   ! (: sequence in the buf 
                   ! <<<  KET marks end of TOP1 <<<<
                   call rpn_put(rpnb,TID_DLM2,p1,dlm2c) 
@@ -1896,7 +1918,7 @@ CALL DUMP_rpnm(rpnc)
     !  0: success and ready to eval
     ! 0>: success and no need eval: RPNSTA_*
     use com
-    use misc, only: get_i32,get_lo32,get_up32,is_set,is_not_set,cle_opt,set_opt
+    use misc, only: get_i32,get_lo32,get_up32,is_set,is_not_set,cle_flg,set_flg
     type(t_rpnc),intent(inout)::rpnc
     integer,intent(inout)::pnext
     type(t_rpnb),target::rpnb
@@ -1905,7 +1927,7 @@ CALL DUMP_rpnm(rpnc)
     integer t,told,btold
     integer tidold,btidold
     integer,pointer::tid,p1,p2
-    integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc,sc,otc
+    integer bc,kc,pc,ac,fc,oc,fnc,qc,cc,amc,clc,tc,sc,otc,tclc
     logical amac,com
     integer pfasn
     integer p_q1
@@ -1916,7 +1938,7 @@ CALL DUMP_rpnm(rpnc)
 
     call init_rpnb()
 
-    call cle_opt(rpnc%opt,RPNCOPT_PRINT_ANS_REQ)
+    call cle_flg(rpnc%flg%sta,RCS_PRINT_ANS_REQ)
     rpnc%ip=1 ! <<<
 
     nvbuf=0
@@ -1955,7 +1977,7 @@ CALL DUMP_rpnm(rpnc)
                 call rpn_put(rpnb,TID_QEND,0,0)
                 amac=.false.
              end if
-             if(is_set(rpnc%opt,RPNCOPT_ECHO)) &
+             if(is_set(rpnc%flg%mode,RCM_ECHO)) &
                   call echo(p2)
              exit
           else ! TID_SCL
@@ -1963,9 +1985,9 @@ CALL DUMP_rpnm(rpnc)
                 call rpn_put(rpnb,TID_MSCL,p1,p2) ! <<<<<<<<<<<<
                 call init_stat()
              else
-                if(is_set(rpnc%opt,RPNCOPT_ECHO)) &
+                if(is_set(rpnc%flg%mode,RCM_ECHO)) &
                      call echo(p1-1)
-                if(p1/=p2) call set_opt(rpnc%opt,RPNCOPT_PRINT_ANS_REQ)
+                if(p1/=p2) call set_flg(rpnc%flg%sta,RCS_PRINT_ANS_REQ)
                 exit
              end if
           end if
@@ -2130,24 +2152,19 @@ CALL DUMP_rpnm(rpnc)
              end if
           end if
        case(TID_COL)
-          clc=clc+1
-          if(is_not_set(rpnc%opt,RPNCOPT_DAT)) then
-             if(otc>0) then
-                otc=otc-1 ! open TOP count
-                call rpn_pop_until(rpnb,TID_TOP1)
-                call rpn_push(rpnb,qcur)
-             else
-                istat=FZCERR_PARSER
-             end if
+          if(otc>0) then
+             tclc=tclc+1
+             otc=otc-1 ! open TOP count
+             call rpn_pop_until(rpnb,TID_TOP1)
+             call rpn_push(rpnb,TID_TCOL,p1,p2)
+!!$          else if(clc<=1) then
+!!$             clc=clc+1
+!!$             call rpn_pop_to(rpnb,TID_QSTA)
+!!$             call rpn_put(rpnb,qcur)
           else
-             if(clc<=1) then
-                call rpn_pop_all(rpnb)
-                call rpn_put(rpnb,qcur)
-             else
-                istat=FZCERR_PARSER
-             end if
+             istat=FZCERR_PARSER
           end if
-       case(TID_IFNC,TID_UFNC)
+        case(TID_IFNC,TID_UFNC)
           fnc=fnc+1
           call set_arg_read()
           select case(told)
@@ -2176,7 +2193,7 @@ CALL DUMP_rpnm(rpnc)
        told=t
     end do
 
-    if(is_set(rpnc%opt,RPNCOPT_DEBUG)) call dump_rpnb(rpnb)
+    if(is_set(rpnc%flg%mode,RCM_DEBUG)) call dump_rpnb(rpnb)
 
     if(istat==0.and.terr/=0) then
        istat=terr
@@ -2186,10 +2203,10 @@ CALL DUMP_rpnm(rpnc)
 
     if(istat==0) then
        istat=build_rpnc(rpnb,rpnc,nvbuf)
-    else if(is_not_set(rpnc%opt,RPNCOPT_NO_WARN).and.istat>0) then
+    else if(is_not_set(rpnc%flg%mode,RCM_NO_WARN).and.istat>0) then
        call print_error(rpnb%expr(1:rpnb%len_expr),get_lo32(p1),get_lo32(p2))
     end if
-    if(is_set(rpnc%opt,RPNCOPT_DEBUG)) call dump_rpnc(rpnc)
+    if(is_set(rpnc%flg%mode,RCM_DEBUG)) call dump_rpnc(rpnc)
 
     parse_formula=istat
     
@@ -2223,7 +2240,7 @@ CALL DUMP_rpnm(rpnc)
       use misc, only: mess,is_not_set
       integer,intent(in)::pp2
       character*(*),parameter::echo_prompt="===> "
-      if(is_not_set(rpnc%opt,RPNCOPT_NO_STDOUT)) &
+      if(is_not_set(rpnc%flg%mode,RCM_NO_STDOUT)) &
            call mess(echo_prompt//restoreq(rpnb%expr(pfsta+1:pp2)))
     end subroutine echo
     
@@ -2234,7 +2251,7 @@ CALL DUMP_rpnm(rpnc)
       btidold=TID_UNDEF
       pfnc_opened=0
       bc=0; kc=0; pc=0; ac=0; fc=0; oc=0; fnc=0; qc=0; cc=0
-      amc=0; clc=0; tc=0; sc=0; otc=0
+      amc=0; clc=0; tc=0; sc=0; otc=0; tclc=0
       p_q1=rpnb%p_que+1
       terr=0
       p1err=0
@@ -2388,7 +2405,7 @@ CALL DUMP_rpnm(rpnc)
          check_end=.true.
          if(.not.com) istat=RPNSTA_EMPTY
       else
-         check_end=(kc-bc<=0).and.was_operand().and.(tc==clc.or.is_set(rpnc%opt,RPNCOPT_DAT))
+         check_end=(kc-bc<=0).and.was_operand().and.(tc==tclc)
          if(.not.check_end) then
             istat=FZCERR_PARSER
          else if(pfasn/=0) then
@@ -2565,20 +2582,20 @@ CALL DUMP_rpnm(rpnc)
       rpnb%old_tid=TID_UNDEF
       rpnb%p_buf=0
       rpnb%p_que=0
-      rpnb%opt=rpnc%opt
+      rpnb%flg=rpnc%flg
       rpnb%err=0
     end subroutine init_rpnb
             
   end function parse_formula
 
   integer function set_formula(rpnc,f)
-    use misc, only: cle_opt
+    use misc, only: cle_flg
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(in)::f
     integer i,k
     logical wc,dq,sq,dup,esc
     rpnc%rc=0
-    call cle_opt(rpnc%opt,RPNCOPT_READY)
+    call cle_flg(rpnc%flg%sta,RCS_READY)
     if(.not.associated(rpnc%expr)) allocate(rpnc%expr)
     if(.not.associated(rpnc%len_expr)) allocate(rpnc%len_expr)
     dup=.false.

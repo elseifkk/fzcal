@@ -499,9 +499,9 @@ contains
   end function cp_plist
 
   subroutine dump_plist(pl,ent,name,out_unit)
-    use fpio, only: dp,rp,cp,ztoa,rtoa
+    use fpio, only: dp,rp,cp,ztoa,rtoa,DISP_FMT_RAW
     use misc, only: mess,messp,stdout
-    use memio, only: cpstr,itoa,DISP_FMT_RAW,DISP_FMT_HEX
+    use memio, only: cpstr,itoa,IBASE_HEX
     type(t_plist),intent(in),target::pl
     integer,intent(in),optional::ent
     character*(*),intent(in),optional::name
@@ -547,9 +547,9 @@ contains
        if(ou/=stdout) then
           call messp(cpstr(ptr,len)//"=",ou)
        else
-          call messp(trim(itoa(i))//":\t["//trim(itoa(v%sta,cfmt="(Z6.6)"))//"]")
+          call messp(trim(itoa(i))//":\t["//trim(itoa(v%sta,fmt="(Z6.6)"))//"]")
           if(is_reference(v%sta)) then
-             call messp(":("//trim(itoa(v%p,DISP_FMT_HEX))//")\t",ou)
+             call messp(":("//trim(itoa(v%p,IBASE_HEX))//")\t",ou)
           else
              call messp("\t\t")
           end if
