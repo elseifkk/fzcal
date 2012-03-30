@@ -22,6 +22,7 @@ module com
 
   private
 
+  public is_mode_com
   public parse_command
   public exe_com
   
@@ -88,6 +89,7 @@ module com
   integer,parameter::CID_FRAC        =   62                
   integer,parameter::CID_RATIO       =   63      
   integer,parameter::CID_SHELL       =   64      
+  integer,parameter::CID_BASE        =   65
 
   integer,parameter::CID_INV         =   99
   integer,parameter::CID_LAST        =  100
@@ -103,15 +105,30 @@ module com
   integer,parameter::AK_ON     =   6
   integer,parameter::AK_OFF    =   7
 
-  integer*8,parameter::digit_mask=not(ishft(Z"FF",32))
-
 contains
 
+  logical function is_mode_com(tid)
+    use rpng, only: TID_LAST
+    integer,intent(in)::tid
+    integer t
+    t=tid-TID_LAST
+    is_mode_com=.false.
+    if(t>=TID_LAST.or.t<=0) return
+    select case(t)
+    case(CID_BYTE,CID_NOBYTE,CID_DMS,CID_NODMS, &
+         CID_DEG,CID_RAD,CID_DBG,CID_NODBG, &
+         CID_RATIO,CID_FRAC,CID_ECHO_ON,CID_ECHO_OFF, &
+         CID_HIST_ON,CID_HIST_OFF, &
+         CID_NORM,CID_DAT,CID_STA)
+       is_mode_com=.true.
+    end select
+  end function is_mode_com
+  
   integer function exe_com(rpnc,i)
     use fpio
     use rpnd
     use memio, only: atoi
-    use misc, only: mess,log2str,i2str,is_set,cle_opt,set_opt,get_lo32,get_up32
+    use misc, only: mess,log2str,i2str,is_set,cle_flg,set_flg,get_lo32,get_up32
     ! return value:
     ! 0< : command to be processed outside
     ! 0  : command proccessed
@@ -161,87 +178,89 @@ contains
     end if
     
     select case(cid)
-    case(CID_EXIT)
-       exe_com=CID_EXIT
-    case(CID_BYTE)
-       call set_opt(rpnc%opt,RPNCOPT_BYTE)
-    case(CID_NOBYTE)
-       call cle_opt(rpnc%opt,RPNCOPT_BYTE)
-    case(CID_OPT)
-       call mess("Opt-word: "//trim(itoa(rpnc%opt,cfmt="(Z16.16)")))
+       ! display modes
     case(CID_NODMS)
-       call cle_opt(rpnc%opt,RPNCOPT_OUTM)
        call cle_disp_opt(X2A_DMS)            
     case(CID_DMS)
-       call cle_opt(rpnc%opt,RPNCOPT_OUTM)
        call set_disp_opt(X2A_DMS)
        call cle_disp_opt(X2A_ENG)            
        call put_disp_digit(n)
     case(CID_NOENG)
-       call cle_opt(rpnc%opt,RPNCOPT_OUTM)
        call cle_disp_opt(X2A_ENG)
     case(CID_ENG)
-       call cle_opt(rpnc%opt,RPNCOPT_OUTM)
        call set_disp_opt(X2A_ENG)
        call cle_disp_opt(ior(X2A_DMS,X2A_ALLOW_ORDINARY)) ! <<<<<<<<<<<<<<<
        call put_disp_digit(n)
     case(CID_FIX)
-       call cle_opt(rpnc%opt,RPNCOPT_OUTM)
        call set_disp_opt(X2A_FIX)
        call cle_disp_opt(X2A_SHOW_E0)
        call put_disp_digit(n)
     case(CID_EXP)
-       call cle_opt(rpnc%opt,RPNCOPT_OUTM)
        call cle_disp_opt(ior(X2A_FIX,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO)))
        call put_disp_digit(n)
     case(CID_FIG)
-       call cle_opt(rpnc%opt,RPNCOPT_OUTM)
        call set_disp_opt(ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))
        call cle_disp_opt(ior(X2A_FIX,X2A_SHOW_E0))
        call put_disp_digit(0)
-    case(CID_DEC_IO)
-       call cle_opt(rpnc%opt,ior(RPNCOPT_INM,RPNCOPT_OUTM))
-    case(CID_HEX_IO)
-       call set_opt(rpnc%opt,ior(RPNCOPT_IHEX,RPNCOPT_OHEX))
-    case(CID_OCT_IO)
-       call set_opt(rpnc%opt,ior(RPNCOPT_IOCT,RPNCOPT_OOCT))
-    case(CID_BIN_IO)
-       call set_opt(rpnc%opt,ior(RPNCOPT_IBIN,RPNCOPT_OBIN))
-    case(CID_DEC_I)
-       call cle_opt(rpnc%opt,RPNCOPT_INM)
-    case(CID_HEX_I)
-       call set_opt(rpnc%opt,RPNCOPT_IHEX)
-    case(CID_OCT_I)
-       call set_opt(rpnc%opt,RPNCOPT_IOCT)
-    case(CID_BIN_I)
-       call set_opt(rpnc%opt,RPNCOPT_IBIN)
+    case(CID_BASE)
+       call set_base(rpnc%flg%dmode,n)
     case(CID_DEC_O)
-       call cle_opt(rpnc%opt,(RPNCOPT_OUTM))
+       call set_base(rpnc%flg%dmode,10)
     case(CID_HEX_O)
-       call set_opt(rpnc%opt,RPNCOPT_OHEX)
+       call set_base(rpnc%flg%dmode,16)
     case(CID_OCT_O)
-       call set_opt(rpnc%opt,RPNCOPT_OOCT)
+       call set_base(rpnc%flg%dmode,8)
     case(CID_BIN_O)
-       call set_opt(rpnc%opt,RPNCOPT_OBIN)
-    case(CID_DEG)
-       call set_opt(rpnc%opt,RPNCOPT_DEG)
-    case(CID_RAD)
-       call cle_opt(rpnc%opt,RPNCOPT_DEG)
-    case(CID_STA)
-       call set_opt(rpnc%opt,RPNCOPT_STA)
-       call cle_opt(rpnc%opt,RPNCOPT_DAT) ! <<<
-    case(CID_DAT)
-       call set_opt(rpnc%opt,RPNCOPT_DAT)
-    case(CID_NORM)
-       call cle_opt(rpnc%opt,ior(RPNCOPT_DAT,RPNCOPT_STA))
-    case(CID_DBG)
-       call set_opt(rpnc%opt,RPNCOPT_DEBUG)
-    case(CID_NODBG)
-       call cle_opt(rpnc%opt,RPNCOPT_DEBUG)
-    case(CID_RATIO)
-       call set_opt(rpnc%opt,RPNCOPT_RATIO)
-    case(CID_FRAC)
-       call cle_opt(rpnc%opt,RPNCOPT_RATIO)
+       call set_base(rpnc%flg%dmode,2)
+    case(CID_DEC_IO)
+       call set_base(rpnc%flg%dmode,10)
+       call cle_flg(rpnc%flg%mode,RCM_INM)
+    case(CID_HEX_IO)
+       call set_base(rpnc%flg%dmode,16)
+       call set_flg(rpnc%flg%mode,RCM_IHEX)
+    case(CID_OCT_IO)
+       call set_base(rpnc%flg%dmode,8)
+       call set_flg(rpnc%flg%mode,RCM_IOCT)
+    case(CID_BIN_IO)
+       call set_base(rpnc%flg%dmode,2)
+       call set_flg(rpnc%flg%mode,RCM_IBIN)
+    case(CID_DEC_I)
+       call cle_flg(rpnc%flg%mode,RCM_INM)
+    case(CID_HEX_I)
+       call set_flg(rpnc%flg%mode,RCM_IHEX)
+    case(CID_OCT_I)
+       call set_flg(rpnc%flg%mode,RCM_IOCT)
+    case(CID_BIN_I)
+       call set_flg(rpnc%flg%mode,RCM_IBIN)
+
+       ! meta
+    case(CID_EXIT)
+       exe_com=CID_EXIT
+    case(CID_LOAD)
+       exe_com=CID_LOAD
+
+       ! internal
+    case(CID_OPT)
+       call mess("mode: "//trim(itoa(rpnc%flg%mode,fmt="(Z16.16)")))
+       call mess("dmode:"//trim(itoa(rpnc%flg%dmode,fmt="(Z16.16)")))
+       call mess("stat: "//trim(itoa(rpnc%flg%sta,fmt="(Z16.16)")))
+    case(-CID_BASE)
+       call mess("base: "//trim(itoa(get_base(rpnc%flg%dmode))))
+    case(-CID_ECHO)
+       call mess("echo is "//trim(log2str(is_set(rpnc%flg%mode,RCM_ECHO))))
+    case(-CID_HIST)
+       call mess("hist is "//trim(log2str(is_set(rpnc%flg%mode,RCM_HIST))))
+    case(-CID_WRITE)
+       call mess("")
+    case(CID_WRITE)
+       call stripq
+       call mess(str(:lenarg))
+    case(CID_VER)
+       call print_version
+    case(CID_SHELL)
+       call system(restoreq(str(1:lenarg)))
+
+       ! external
     case(CID_SCLE)
        call reset_sd(rpnc%sd)
     case(-CID_SAVE,-CID_SAVE_PAR,-CID_SAVE_FNC,-CID_SAVE_MAC)
@@ -278,58 +297,49 @@ contains
        call delete_rpnm(rpnc,n,str,type=SC_MAC)
     case(CID_DEL_FNC)
        call delete_rpnm(rpnc,n,str,type=SC_FNC)
-    case(CID_LOAD)
-       exe_com=CID_LOAD
-    case(-CID_ECHO)
-       call mess("echo is "//trim(log2str(is_set(rpnc%opt,RPNCOPT_ECHO))))
-    case(CID_ECHO_OFF)
-       call cle_opt(rpnc%opt,RPNCOPT_ECHO)
-    case(CID_ECHO_ON)
-       call set_opt(rpnc%opt,RPNCOPT_ECHO)
-    case(-CID_HIST)
-       call mess("hist is "//trim(log2str(is_set(rpnc%opt,RPNCOPT_HIST))))
-    case(CID_HIST_OFF)
-       call cle_opt(rpnc%opt,RPNCOPT_HIST)
-    case(CID_HIST_ON)
-       call set_opt(rpnc%opt,RPNCOPT_HIST)
     case(-CID_SET_PROMPT)
     case(CID_SET_PROMPT)
        call stripq
        call set_prompt(rpnc,str(1:lenarg))
-    case(-CID_WRITE)
-       call mess("")
-    case(CID_WRITE)
-       call stripq
-       call mess(str(:lenarg))
-    case(CID_VER)
-       call print_version
-    case(CID_SHELL)
-!       call restoreq
-       call system(restoreq(str(1:lenarg)))
+
+       ! modes
+    case(CID_BYTE)
+       call set_flg(rpnc%flg%mode,RCM_BYTE)
+    case(CID_NOBYTE)
+       call cle_flg(rpnc%flg%mode,RCM_BYTE)
+    case(CID_DEG)
+       call set_flg(rpnc%flg%mode,RCM_DEG)
+    case(CID_RAD)
+       call cle_flg(rpnc%flg%mode,RCM_DEG)
+    case(CID_STA)
+       call set_flg(rpnc%flg%mode,RCM_STA)
+       call cle_flg(rpnc%flg%mode,RCM_DAT) ! <<<
+    case(CID_DAT)
+       call set_flg(rpnc%flg%mode,RCM_DAT)
+    case(CID_NORM)
+       call cle_flg(rpnc%flg%mode,ior(RCM_DAT,RCM_STA))
+    case(CID_DBG)
+       call set_flg(rpnc%flg%mode,RCM_DEBUG)
+    case(CID_NODBG)
+       call cle_flg(rpnc%flg%mode,RCM_DEBUG)
+    case(CID_RATIO)
+       call set_flg(rpnc%flg%mode,RCM_RATIO)
+    case(CID_FRAC)
+       call cle_flg(rpnc%flg%mode,RCM_RATIO)
+    case(CID_ECHO_OFF)
+       call cle_flg(rpnc%flg%mode,RCM_ECHO)
+    case(CID_ECHO_ON)
+       call set_flg(rpnc%flg%mode,RCM_ECHO)
+    case(CID_HIST_OFF)
+       call cle_flg(rpnc%flg%mode,RCM_HIST)
+    case(CID_HIST_ON)
+       call set_flg(rpnc%flg%mode,RCM_HIST)
+
     case default
        STOP "exe_com: UNEXPECTED ERROR: invalid cid"
     end select
 
   contains
-
-!!$    subroutine restoreq()
-!!$      use rpng, only: STID_SQ1,STID_SQ2,STID_DQ1,STID_DQ2
-!!$      character*1 c
-!!$      integer ii,jj
-!!$      jj=0
-!!$      do ii=1,lenarg
-!!$         c=str(ii:ii)
-!!$         select case(c)
-!!$         case(STID_SQ1,STID_SQ2)
-!!$            c="'"
-!!$         case(STID_DQ1,STID_DQ2)
-!!$            c=""""
-!!$         end select
-!!$         jj=jj+1
-!!$         str(jj:jj)=c
-!!$      end do
-!!$      lenarg=jj
-!!$    end subroutine restoreq
 
     subroutine stripq()
       use rpng, only: STID_SQ1,STID_SQ2,STID_DQ1,STID_DQ2
@@ -353,20 +363,18 @@ contains
     end subroutine print_version
 
     subroutine cle_disp_opt(x)
-      integer*8,intent(in)::x
-      rpnc%opt=iand(rpnc%opt,not(ishft(x,32)))
+      integer,intent(in)::x
+      call cle_flg(rpnc%flg%dmode,x)
     end subroutine cle_disp_opt
 
     subroutine put_disp_digit(x)
       integer,intent(in)::x
-      integer*8 xx
-      xx=x
-      rpnc%opt=ior(iand(rpnc%opt,digit_mask),ishft(xx,32))
+      call set_digit(rpnc%flg%dmode,x)
     end subroutine put_disp_digit
 
     subroutine set_disp_opt(x)
-      integer*8,intent(in)::x
-      rpnc%opt=ior(rpnc%opt,ishft((x),32))
+      integer,intent(in)::x
+      call set_flg(rpnc%flg%dmode,x)
     end subroutine set_disp_opt
 
     subroutine print_com_list()
@@ -497,7 +505,7 @@ contains
     !  0  : not a command
     ! -1  : invalid command
     use memio, only: itoa
-    use misc, only: set_opt,cle_opt,mess,messp,is_alpha
+    use misc, only: set_flg,cle_flg,mess,messp,is_alpha
     character*(*),intent(in)::a
     integer,intent(out)::p1arg,p2arg
     integer p1,p2
@@ -577,13 +585,15 @@ contains
           case("Bin")
              cid=CID_BIN_I
           case("dec")
-             cid=CID_BIN_O
+             cid=CID_DEC_O
           case("hex")
-             cid=CID_BIN_O
+             cid=CID_HEX_O
           case("oct")
-             cid=CID_BIN_O
+             cid=CID_OCT_O
           case("bin")
              cid=CID_BIN_O
+          case("base")
+             cid=-CID_BASE
           case("deg")
              cid=CID_DEG
           case("rad")
@@ -697,7 +707,7 @@ contains
           p2arg=lencom
           cid=CID_WRITE
        case(-CID_PRI_PAR,-CID_PRI_FNC,-CID_PRI_MAC,-CID_LOAD,-CID_SET_PROMPT,&
-            -CID_SAVE_PAR,-CID_SAVE_FNC,-CID_SAVE_MAC)
+            -CID_SAVE_PAR,-CID_SAVE_FNC,-CID_SAVE_MAC,-CID_BASE)
           p1arg=p1
           p2arg=p2
           cid=-cid

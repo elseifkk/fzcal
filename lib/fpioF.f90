@@ -57,15 +57,20 @@ module fpio
   integer,parameter::si_prefix_max=24
   character*(*),parameter::si_prefix="yzafpnum kMGTPEZY"
 
+  integer,parameter::DISP_FMT_RAW=0
   integer,parameter::LEN_STR_ANS_MAX=128
-  
-  integer*8,parameter:: X2A_ALLOW_ORDINARY = Z"00000100"
-  integer*8,parameter:: X2A_TRIM_ZERO      = Z"00000200"
-  integer*8,parameter:: X2A_SHOW_E0        = Z"00000400"
-  integer*8,parameter:: X2A_FIX            = Z"00000800"
-  integer*8,parameter:: X2A_ENG            = Z"00001000"
-  integer*8,parameter:: X2A_DMS            = Z"00002000"
-  integer*8,parameter:: X2A_DEFAULT        = max_digit
+  ! |  flag | base | digit|
+  ! | FFFFF | B    | DD   |
+  integer,parameter:: digit_mask=not(Z"FF")
+  integer,parameter:: base_mask=not(Z"F00")
+  integer,parameter:: X2A_ALLOW_ORDINARY = Z"00001000"
+  integer,parameter:: X2A_TRIM_ZERO      = Z"00002000"
+  integer,parameter:: X2A_SHOW_E0        = Z"00004000"
+  integer,parameter:: X2A_FIX            = Z"00008000"
+  integer,parameter:: X2A_ENG            = Z"00010000"
+  integer,parameter:: X2A_DMS            = Z"00020000"
+  integer,parameter:: X2A_RAW            = Z"00040000"
+  integer,parameter:: X2A_DEFAULT        = ior(max_digit,ishft(IBASE_DEC,8))
 
   character*(*),parameter,private::NAN_STR="NaN"
 
@@ -83,6 +88,36 @@ contains
     b=rzero
     nan=a/b
   end function nan
+
+  integer function get_digit(flg)
+    integer,intent(in)::flg
+    get_digit=iand(flg,not(digit_mask))
+  end function get_digit
+
+  integer function get_base(flg)
+    integer,intent(in)::flg
+    get_base=ishft(iand(flg,not(base_mask)),-8)
+  end function get_base
+
+  subroutine set_digit(flg,n)
+    integer,intent(inout)::flg
+    integer,intent(in)::n
+    flg=ior(iand(digit_mask,flg),n)
+  end subroutine set_digit
+
+  subroutine set_base(flg,n)
+    integer,intent(inout)::flg
+    integer,intent(in)::n
+    integer m
+    if(n==16) then
+       m=IBASE_HEX
+    else if(n>1.and.n<16) then
+       m=n
+    else
+       return
+    end if
+    flg=ior(iand(base_mask,flg),ishft(m,8))
+  end subroutine set_base
 
   logical function is_integer_z(z,n)
     complex(cp),intent(in)::z
@@ -147,13 +182,15 @@ contains
     integer,intent(in),optional::fmt
     integer istat,f
     integer*8 n
-    f=X2A_DEFAULT
-    n=0
     if(present(fmt)) then
-       if(fmt>=0.or.is_integer(x,n)) f=fmt
-       if(f==DISP_FMT_NORM) f=X2A_DEFAULT 
+       f=fmt
+    else
+       f=X2A_DEFAULT
     end if
-    if(f==DISP_FMT_RAW) then
+    if(is_integer(x,n)) then
+       rtoa=itoa(n,get_base(f))
+       return
+    else if(f==DISP_FMT_RAW) then
        if(x/=rzero) then
           write(rtoa,*,iostat=istat) x
           if(istat==0) rtoa=adjustl(rtoa)
@@ -163,15 +200,11 @@ contains
        end if
        return
     end if
-    rtoa=""
-    if(f>0) then
-       rtoa=xtoa(x,f)
-    else
-       rtoa=itoa(n,f)
-    end if
+    rtoa=xtoa(x,f)
   end function rtoa
   
   character(LEN_STR_ANS_MAX) function ztoa(z,fmt)
+    use misc, only: is_set
     complex(cp),intent(in)::z
     integer,intent(in),optional::fmt
     if(present(fmt)) then
@@ -179,7 +212,7 @@ contains
           ztoa="( "//trim(rtoa(realpart(z),fmt))//", "&
                //trim(rtoa(imagpart(z),fmt))//" )"
           return
-       else if(fmt>0.and.iand(fmt,X2A_DMS)/=0) then
+       else if(is_set(fmt,X2A_DMS)) then
           call todms
           return
        end if

@@ -79,26 +79,17 @@ contains
   end function get_formula
 
   character(LEN_STR_ANS_MAX) function rpn_sans(rpnc)
-    use memio, only: DISP_FMT_BIN,DISP_FMT_OCT,DISP_FMT_HEX,itoa
+    use memio, only: itoa
     use fpio, only: ztoa,LEN_STR_ANS_MAX
     use misc, only: is_set, is_not_set
     type(t_rpnc),intent(in)::rpnc
-    integer f
-    if(is_not_set(rpnc%opt,RPNCOPT_OUTM)) then
-       f=ishft(rpnc%opt,-32) !DISP_FMT_NORM
-    else if(is_set(rpnc%opt,RPNCOPT_OBIN)) then
-       f=DISP_FMT_BIN
-    else if(is_set(rpnc%opt,RPNCOPT_OOCT)) then
-       f=DISP_FMT_OCT
-    else if(is_set(rpnc%opt,RPNCOPT_OHEX)) then
-       f=DISP_FMT_HEX
-    end if
-    if(is_not_set(rpnc%opt,RPNCOPT_RATIO)) then
-          rpn_sans=trim(ztoa(rpnc%answer,fmt=f))
+    if(is_not_set(rpnc%flg%mode,RCM_RATIO)) then
+          rpn_sans=trim(ztoa(rpnc%answer,fmt=rpnc%flg%dmode))
     else
-       rpn_sans=trim(itoa(int(realpart(rpnc%answer),kind=8),f))
+       rpn_sans=trim(itoa(int(realpart(rpnc%answer),kind=8),rpnc%flg%dmode))
        if(int(imagpart(rpnc%answer),kind=8)>1) then
-          rpn_sans=trim(rpn_sans)//"/"//trim(itoa(int(imagpart(rpnc%answer),kind=8),f))
+          rpn_sans=trim(rpn_sans)//"/" &
+               //trim(itoa(int(imagpart(rpnc%answer),kind=8),rpnc%flg%dmode))
        end if
     end if
   end function rpn_sans
@@ -410,49 +401,49 @@ contains
     case(PID_mi)
        p=1.0e-3_rp
     case(PID_k)
-       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%flg%mode,RCM_BYTE)) then
           p=1.0e+3_rp
        else
           p=kB
        end if
     case(PID_M)
-       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%flg%mode,RCM_BYTE)) then
           p=1.0e+6_rp
        else
           p=kB**2.0_rp
        end if
     case(PID_G)
-       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%flg%mode,RCM_BYTE)) then
           p=1.0e+9_rp
        else
           p=kB**3.0_rp
        end if
     case(PID_T)
-       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%flg%mode,RCM_BYTE)) then
           p=1.0e+12_rp
        else
           p=kB**4.0_rp
        end if
     case(PID_P)
-       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%flg%mode,RCM_BYTE)) then
           p=1.0e+15_rp
        else
           p=kB**5.0_rp
        end if
     case(PID_E)
-       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%flg%mode,RCM_BYTE)) then
           p=1.0e+18_rp
        else
           p=kB**6.0_rp
        end if
     case(PID_Z)
-       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%flg%mode,RCM_BYTE)) then
           p=1.0e+21_rp
        else
           p=kB**7.0_rp
        end if
     case(PID_Y)
-       if(is_not_set(rpnc%opt,RPNCOPT_BYTE)) then
+       if(is_not_set(rpnc%flg%mode,RCM_BYTE)) then
           p=1.0e+24_rp
        else
           p=kB**8.0_rp
@@ -610,13 +601,13 @@ contains
   contains
     
     subroutine set_assign()
-      use misc, only: set_opt
+      use misc, only: set_flg
       complex(cp) z
       pointer(pz,z)
       pz=pvs(1)
       z=v
       rpnc%que(ods(1))%tid=TID_NPAR
-      call set_opt(rpnc%opt,RPNCOPT_NEW)
+      call set_flg(rpnc%flg%sta,RCS_NEW_PAR)
     end subroutine set_assign
 
   end function eval_n
@@ -1015,7 +1006,7 @@ contains
 
   recursive function eval(rpnc) result(istat)
     use fpio, only: cp
-    use misc, only: get_lo32,get_up32,is_set,mess,cle_opt,set_opt
+    use misc, only: get_lo32,get_up32,is_set,mess,cle_flg,set_flg
     use plist, only: remove_dup,sort_par
     use memio, only: itoa,CPSTR
     use com
@@ -1030,7 +1021,7 @@ contains
        return
     end if
 
-    if(rpnc%rc==0) call cle_opt(rpnc%opt,RPNCOPT_ANS_SET)
+    if(rpnc%rc==0) call cle_flg(rpnc%flg%sta,RCS_ANS_SET)
 
     rpnc%rc=rpnc%rc+1
     istat=0
@@ -1115,7 +1106,7 @@ contains
     if(istat/=0) return
 
     if(rpnc%rc==0.and.ecc>cc &
-         .and.is_set(rpnc%opt,RPNCOPT_DAT)) &
+         .and.is_set(rpnc%flg%mode,RCM_DAT)) &
          call set_sd(ip1,i,rpnc)
 
     call set_ans
@@ -1126,7 +1117,7 @@ contains
           ! this is the last time
           ! order is important
           call remove_dup(rpnc%pars)
-          if(is_set(rpnc%opt,RPNCOPT_NEW)) call set_newpar
+          if(is_set(rpnc%flg%sta,RCS_NEW_PAR)) call set_newpar
        end if
     else
        rpnc%ip=i+1 ! the next code
@@ -1160,12 +1151,12 @@ contains
     end function load
 
     subroutine set_newpar
-      use misc, only: cle_opt
+      use misc, only: cle_flg
       integer ii
       do ii=1,size(rpnc%que)
          if(rpnc%que(ii)%tid==TID_NPAR) call sort_par(rpnc%pars,rpnc%que(ii)%cid)
       end do
-      call cle_opt(rpnc%opt,RPNCOPT_NEW)
+      call cle_flg(rpnc%flg%sta,RCS_NEW_PAR)
     end subroutine set_newpar
 
     subroutine set_ans
@@ -1192,7 +1183,7 @@ contains
       else
          rpnc%answer=rpnc%tmpans
       end if
-      if(rpnc%rc==0) call set_opt(rpnc%opt,RPNCOPT_ANS_SET)
+      if(rpnc%rc==0) call set_flg(rpnc%flg%sta,RCS_ANS_SET)
    end subroutine set_ans
     
   end function eval
@@ -1233,15 +1224,15 @@ contains
 
     subroutine print_ans()
       use misc, only: is_not_set,is_set,mess
-      if(is_set(rpnc%opt,RPNCOPT_ANS_SET) &
-           .and.is_not_set(rpnc%opt,RPNCOPT_NO_STDOUT) &
-           .and.(p2==0.or.is_set(rpnc%opt,RPNCOPT_PRINT_ANS_REQ))) &
+      if(is_set(rpnc%flg%sta,RCS_ANS_SET) &
+           .and.is_not_set(rpnc%flg%mode,RCM_NO_STDOUT) &
+           .and.(p2==0.or.is_set(rpnc%flg%sta,RCS_PRINT_ANS_REQ))) &
            call mess(trim(rpn_sans(rpnc)))
     end subroutine print_ans
 
     subroutine write_hist()
       use misc, only: mess,is_not_set
-      if(hist_unit==0.or.is_not_set(rpnc%opt,RPNCOPT_HIST)) return
+      if(hist_unit==0.or.is_not_set(rpnc%flg%mode,RCM_HIST)) return
       call mess(rpnc%expr(1:rpnc%len_expr),hist_unit)
       flush(hist_unit)
     end subroutine write_hist

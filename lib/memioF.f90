@@ -21,13 +21,11 @@ module memio
   implicit none
   public
 
-  integer,parameter::DISP_FMT_RAW   =  0
-  integer,parameter::DISP_FMT_NORM  =  1
-
-  integer,parameter::DISP_FMT_BIN   = -1
-  integer,parameter::DISP_FMT_OCT   = -2
-  integer,parameter::DISP_FMT_DEC   = -3
-  integer,parameter::DISP_FMT_HEX   = -4
+  integer,parameter::IBASE_HEX  =  0
+  integer,parameter::IBASE_RAW  =  1
+  integer,parameter::IBASE_BIN  =  2
+  integer,parameter::IBASE_OCT  =  8
+  integer,parameter::IBASE_DEC  = 10
 
 #ifndef _USE32_
   integer,parameter::ptrsz=selected_int_kind(20)
@@ -68,83 +66,87 @@ contains
     call mcp(loc(cpstr),ptr,len)
   end function cpstr
       
-  integer*4 function atoi_4(a,n_dummy,fmt,ist)
+  integer*4 function atoi_4(a,n_dummy,base,ist)
     character*(*),intent(in)::a
     integer*4,intent(in)::n_dummy
-    integer,intent(in),optional::fmt
+    integer,intent(in),optional::base
     integer,intent(out),optional::ist
-    atoi_4=int(atoi_8(a,0_8,fmt,ist),kind=4)
+    atoi_4=int(atoi_8(a,0_8,base,ist),kind=4)
   end function atoi_4
 
-  integer*8 function atoi_8(a,n_dummy,fmt,ist)
+  integer*8 function atoi_8(a,n_dummy,base,ist)
     character*(*),intent(in)::a
     integer*8,intent(in)::n_dummy
-    integer,intent(in),optional::fmt
+    integer,intent(in),optional::base
     integer,intent(out),optional::ist
-    integer istat,f
-    character*32 sfmt
-    if(present(fmt)) then
-       f=fmt
+    integer istat,b
+    character*32 f
+    if(present(base)) then
+       b=base
     else
-       f=DISP_FMT_DEC
+       b=IBASE_DEC
     end if
-    select case(f)
-    case(DISP_FMT_DEC,DISP_FMT_NORM,DISP_FMT_RAW)
+    select case(b)
+    case(10,IBASE_RAW)
        read(a,*,iostat=istat) atoi_8
        if(present(ist)) ist=istat
        return
-    case(DISP_FMT_BIN)
-       sfmt="(B"
-    case(DISP_FMT_OCT)
-       sfmt="(O"
-    case(DISP_FMT_HEX)
-       sfmt="(Z"
+    case(IBASE_BIN)
+       f="(B"
+    case(IBASE_OCT)
+       f="(O"
+    case(IBASE_HEX)
+       f="(Z"
+    case default
+       STOP "*** atoi_8: ERROR: NOIMPL"
     end select
-    sfmt=trim(sfmt)//trim(itoa(len_trim(a)))//")"
-    read(a,sfmt,iostat=istat) atoi_8
+    f=trim(f)//trim(itoa(len_trim(a)))//")"
+    read(a,f,iostat=istat) atoi_8
     if(present(ist)) ist=istat
   end function atoi_8
 
-  character*32 function itoa_4(i,fmt,cfmt,len) 
+  character*32 function itoa_4(i,base,fmt,len) 
     integer*4,intent(in)::i
-    integer,intent(in),optional::fmt
-    character*(*),intent(in),optional::cfmt
+    integer,intent(in),optional::base
+    character*(*),intent(in),optional::fmt
     integer,intent(in),optional::len
-    itoa_4=itoa_8(int(i,kind=8),fmt,cfmt,len)
+    itoa_4=itoa_8(int(i,kind=8),base,fmt,len)
   end function itoa_4
 
-  character*32 function itoa_8(i,fmt,cfmt,len) 
+  character*32 function itoa_8(i,base,fmt,len) 
     integer*8,intent(in)::i
-    integer,intent(in),optional::fmt
-    character*(*),intent(in),optional::cfmt
+    integer,intent(in),optional::base
+    character*(*),intent(in),optional::fmt
     integer,intent(in),optional::len
-    integer f,istat
-    character*32 sfmt
+    integer b,istat
+    character*32 f
     itoa_8=""
+    if(present(base)) then
+       b=base
+    else
+       b=IBASE_DEC
+    end if
     if(present(fmt)) then
        f=fmt
     else
-       f=DISP_FMT_DEC
-    end if
-    if(present(cfmt)) then
-       sfmt=cfmt
-    else
-       select case(f)
-       case(DISP_FMT_RAW)
+       select case(b)
+       case(IBASE_RAW)
           write(itoa_8,*,iostat=istat) i
           if(istat==0) call adj
           return
-       case(DISP_FMT_DEC,DISP_FMT_NORM)
-          sfmt="(I0)"
-       case(DISP_FMT_HEX)
-          sfmt="(Z0)"
-       case(DISP_FMT_BIN)
-          sfmt="(B0)"
-       case(DISP_FMT_OCT)
-          sfmt="(O0)"
+       case(IBASE_DEC)
+          f="(I0)"
+       case(IBASE_HEX)
+          f="(Z0)"
+       case(IBASE_BIN)
+          f="(B0)"
+       case(IBASE_OCT)
+          f="(O0)"
+       case default
+          itoa_8=int_to_str(i,b)
        end select
     end if
-    write(itoa_8,sfmt,iostat=istat) i
+    write(itoa_8,f,iostat=istat) i
     if(istat==0) call adj
   contains 
     subroutine adj
@@ -205,5 +207,34 @@ contains
        end select
     end do
   end function str_len_trim
+
+  character*32 function int_to_str(n,b)
+    integer*8,intent(in)::n
+    integer,intent(in)::b ! b must be <= 16 and > 1
+    character*(*),parameter::f="0123456789ABCDEF"
+    integer r,i,m,k,p1
+    if(n==0) then
+       int_to_str="0"
+       return
+    end if
+    if(n>0) then
+       p1=1
+       m=n
+       int_to_str=""
+    else
+       p1=2
+       m=-n
+       int_to_str="-"
+    end if
+    k=len(int_to_str)+1
+    do while(m>0)
+       i=m/b
+       r=m-i*b+1
+       k=k-1
+       int_to_str(k:k)=f(r:r)
+       m=i
+    end do
+    if(k>1) int_to_str(p1:)=int_to_str(k:)
+  end function int_to_str
   
 end module memio

@@ -65,26 +65,26 @@ contains
   end subroutine mess
 
   pure logical function is_set(a,x)
-    integer*8,intent(in)::a,x
+    integer,intent(in)::a,x
     is_set=(iand(a,x)/=0)
   end function is_set
 
   pure logical function is_not_set(a,x)
-    integer*8,intent(in)::a,x
+    integer,intent(in)::a,x
     is_not_set=(iand(a,x)==0)
   end function is_not_set
 
-  pure subroutine set_opt(a,x)
-    integer*8,intent(inout)::a
-    integer*8,intent(in)::x
+  pure subroutine set_flg(a,x)
+    integer,intent(inout)::a
+    integer,intent(in)::x
     a=ior(a,x)
-  end subroutine set_opt
+  end subroutine set_flg
 
-  pure subroutine cle_opt(a,x)
-    integer*8,intent(inout)::a
-    integer*8,intent(in)::x
+  pure subroutine cle_flg(a,x)
+    integer,intent(inout)::a
+    integer,intent(in)::x
     a=iand(a,not(x))
-  end subroutine cle_opt
+  end subroutine cle_flg
 
   pure integer function get_lo32(cid)
     integer,intent(in)::cid
