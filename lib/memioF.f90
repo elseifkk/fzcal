@@ -65,7 +65,7 @@ contains
     if(len==0.or.ptr==0) return
     call mcp(loc(cpstr),ptr,len)
   end function cpstr
-      
+
   integer*4 function atoi_4(a,n_dummy,base,ist)
     character*(*),intent(in)::a
     integer*4,intent(in)::n_dummy
@@ -105,7 +105,7 @@ contains
     if(present(ist)) ist=istat
   end function atoi_8
 
-  character*32 function itoa_4(i,base,fmt,len) 
+  character*32 function itoa_4(i,base,fmt,len)
     integer*4,intent(in)::i
     integer,intent(in),optional::base
     character*(*),intent(in),optional::fmt
@@ -113,7 +113,7 @@ contains
     itoa_4=itoa_8(int(i,kind=8),base,fmt,len)
   end function itoa_4
 
-  character*32 function itoa_8(i,base,fmt,len) 
+  character*32 function itoa_8(i,base,fmt,len)
     integer*8,intent(in)::i
     integer,intent(in),optional::base
     character*(*),intent(in),optional::fmt
@@ -148,7 +148,7 @@ contains
     end if
     write(itoa_8,f,iostat=istat) i
     if(istat==0) call adj
-  contains 
+  contains
     subroutine adj
       integer lp
       itoa_8=adjustl(itoa_8)
@@ -236,5 +236,5 @@ contains
     end do
     if(k>1) int_to_str(p1:)=int_to_str(k:)
   end function int_to_str
-  
+
 end module memio

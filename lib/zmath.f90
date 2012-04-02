@@ -142,7 +142,7 @@ contains
     deallocate(seed)
     random_seed_init=.true.
   end subroutine init_random_seed
-     
+
   integer function get_gcd(a,b)
     integer,intent(in)::a,b
     integer i1,i2,r ! i1>i2
@@ -291,7 +291,7 @@ contains
        zmr_le=zfalse
     end if
   end function zmr_le
-  
+
   complex(cp) function zm_mov(z1_unused,z2)
     complex(cp),intent(in)::z1_unused,z2
     zm_mov=z2
@@ -302,18 +302,18 @@ contains
     zm_add_f=reduce_f(complex(realpart(z1)*imagpart(z2)+imagpart(z1)*realpart(z2),&
          imagpart(z1)*imagpart(z2)))
   end function zm_add_f
-  
+
   complex(cp) function zm_sub_f(z1,z2)
     complex(cp),intent(in)::z1,z2
     zm_sub_f=reduce_f(complex(realpart(z1)*imagpart(z2)-imagpart(z1)*realpart(z2),&
          imagpart(z1)*imagpart(z2)))
   end function zm_sub_f
-  
+
   complex(cp) function zm_mul_f(z1,z2)
     complex(cp),intent(in)::z1,z2
     zm_mul_f=reduce_f(complex(realpart(z1)*realpart(z2),imagpart(z1)*imagpart(z2)))
   end function zm_mul_f
-  
+
   complex(cp) function zm_div_f(z1,z2)
     complex(cp),intent(in)::z1,z2
     zm_div_f=reduce_f(complex(realpart(z1)*imagpart(z2),imagpart(z1)*realpart(z2)))
@@ -323,22 +323,22 @@ contains
     complex(cp),intent(in)::z1,z2
     zm_add=z1+z2
   end function zm_add
-  
+
   complex(cp) function zm_sub(z1,z2)
     complex(cp),intent(in)::z1,z2
     zm_sub=z1-z2
   end function zm_sub
-  
+
   complex(cp) function zm_mul(z1,z2)
     complex(cp),intent(in)::z1,z2
     zm_mul=z1*z2
   end function zm_mul
-  
+
   complex(cp) function zm_div(z1,z2)
     complex(cp),intent(in)::z1,z2
     zm_div=z1/z2
   end function zm_div
-  
+
   complex(cp) function zm_pow(z1,z2)
     complex(cp),intent(in)::z1,z2
     integer*8 n1,n2
@@ -381,7 +381,7 @@ contains
        end if
     else
        zm_exp10=z1*10.0_rp**z2
-    end if  
+    end if
   end function zm_exp10
 
   complex(cp) function zm_nop(z1)
@@ -409,7 +409,7 @@ contains
        zm_fac=czero
        return
     end if
-    zm_fac=real(n,kind=rp)       
+    zm_fac=real(n,kind=rp)
     do i=2,n-1
        zm_fac=zm_fac*real(i,kind=rp)
     end do
@@ -574,7 +574,7 @@ contains
     complex(cp),intent(in)::z
     zm_abs=abs(z)
   end function zm_abs
-  
+
   complex(cp) function zm_int(z)
     complex(cp),intent(in)::z
     if(abs(realpart(z))>int_max) then
@@ -620,7 +620,7 @@ contains
     complex(cp),intent(in)::z
     zm_mag=sqrt(realpart(z)**2.0_rp+imagpart(z)**2.0_rp)
   end function zm_mag
-  
+
   complex(cp) function zm_arg(z)
     complex(cp),intent(in)::z
     zm_arg=atan(imagpart(z),realpart(z))
@@ -737,7 +737,7 @@ contains
     integer,intent(in)::pzs(0:n)
     zm_ave=zm_sum(n,pzs)/real(n,kind=rp)
   end function zm_ave
-    
+
   complex(cp) function zm_var(n,pzs)
     integer,intent(in)::n
     integer,intent(in)::pzs(0:n)
@@ -794,7 +794,7 @@ contains
     wn=sum(ws)
     zms_uvar_x=zms_var_x(n,vs,ws)*sqrt(wn/(wn-1.0_rp))
   end function zms_uvar_x
-  
+
   complex(cp) function zms_sum_x(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
@@ -835,7 +835,7 @@ contains
     wn=sum(ws)
     zms_uvar_y=zms_var_y(n,vs,ws)*sqrt(wn/(wn-1.0_rp))
   end function zms_uvar_y
-  
+
   complex(cp) function zms_sum_y(n,vs,ws)
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
@@ -884,7 +884,7 @@ contains
 !!!!!!---------------------------------------------------------------------!!!!!!
   ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX
 !!!---------------------------------------------------------------------------!!!
-  
+
 !!!---------------------------------------------------------------------------!!!
   complex(cp) function zm_psy(z)
     complex(cp),intent(in)::z
@@ -967,21 +967,21 @@ contains
        write(*,*) "*** zm_gami: Number of iteration exceeded:",NUM_ITERATION_MAX
     end if
   end function zm_gami
-  
+
   complex(cp) function zm_lgamma(z1)
       ! Computes logarithm of complex gamma function
       ! Algorithm:
-      ! For all cases where argument is mathmatically valid, ln(gamma(z)) is computed 
-      ! utilising continued fraction representation; HMF(6.1.48)258, defined for 
-      ! Real(z)>0. When this condition is not satisfied, ln(gamma(1-z)) is computed 
-      ! first and then get ln(gamma(z)) using reflection formula; HMF(6.1.17)256. Since 
-      ! the continued fraction must be terminated somewhere, absolute value of argument 
-      ! should be large enough to ensure requested tolerance. If abs(z) is smaller than 
+      ! For all cases where argument is mathmatically valid, ln(gamma(z)) is computed
+      ! utilising continued fraction representation; HMF(6.1.48)258, defined for
+      ! Real(z)>0. When this condition is not satisfied, ln(gamma(1-z)) is computed
+      ! first and then get ln(gamma(z)) using reflection formula; HMF(6.1.17)256. Since
+      ! the continued fraction must be terminated somewhere, absolute value of argument
+      ! should be large enough to ensure requested tolerance. If abs(z) is smaller than
       ! some value of criterion we compute the ln(gamma(z+n)) and use recurrence formula
-      ! to get down to ln(gamma(z)).  
+      ! to get down to ln(gamma(z)).
       ! Reference
-      ! 1) Handbook of Mathematical Functions, Milton Abramowitz et al. Dover publications, 
-      ! INC., New York, 1970(?) 
+      ! 1) Handbook of Mathematical Functions, Milton Abramowitz et al. Dover publications,
+      ! INC., New York, 1970(?)
     complex(cp),intent(in)::z1
 !!$  Numerators and denominators for continued fraction
 !!$  http://oeis.org/A005146
@@ -1069,7 +1069,7 @@ contains
     end function redfac
 
   end function zm_lgamma
-  
+
   complex(cp) function zm_gamma(z)
     complex(cp),intent(in)::z
     zm_gamma=exp(zm_lgamma(z))

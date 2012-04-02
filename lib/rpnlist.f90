@@ -32,7 +32,7 @@ module rpnlist
   type,public::t_rpnm
      type(t_rpnq),allocatable::que(:)
      complex(cp),allocatable::vbuf(:)
-     type(t_slist) pnames 
+     type(t_slist) pnames
      integer::p_vbuf = 0
      integer::na     = 0 ! num arg
   end type t_rpnm
@@ -44,9 +44,9 @@ module rpnlist
      type(t_rn),pointer::next => null()
      type(t_rn),pointer::prev => null()
   end type t_rn
-  
+
 contains
-  
+
   integer function rpnlist_count(rl)
     type(t_rpnlist),intent(in)::rl
     rpnlist_count=rl%n
@@ -73,7 +73,7 @@ contains
     if(allocated(rpnm%vbuf))deallocate(rpnm%vbuf)
     call uinit_slist(rpnm%pnames)
   end subroutine uinit_rpnm
-  
+
   subroutine uinit_rn(rn)
     type(t_rn),intent(inout)::rn
     if(associated(rn%rpnm)) then
@@ -82,7 +82,7 @@ contains
     end if
     if(allocated(rn%s)) deallocate(rn%s)
   end subroutine uinit_rn
-  
+
   subroutine uinit_rpnlist(rl)
     type(t_rpnlist),intent(inout)::rl
     integer i
@@ -99,7 +99,7 @@ contains
     rl%n=0
     nullify(rl%rn)
   end subroutine uinit_rpnlist
-  
+
   function kth_node(rl,k)
     type(t_rpnlist),intent(in)::rl
     integer,intent(in)::k
@@ -116,7 +116,7 @@ contains
     end do
     kth_node => rn
   end function kth_node
-  
+
   function match_node(rl,s,c,k)
     type(t_rpnlist),intent(in)::rl
     character*(*),intent(in)::s
@@ -186,7 +186,7 @@ contains
     character*(*),intent(in)::s
     integer,intent(in)::c
     allocate(rn%s(len_trim(s)))
-    call mcp(loc(rn%s),loc(s),len_trim(s))    
+    call mcp(loc(rn%s),loc(s),len_trim(s))
     rn%c=c
     allocate(rn%rpnm)
     rn%rpnm=init_rpnm()

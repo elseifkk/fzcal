@@ -21,7 +21,7 @@ module rpne
   use rpnd
   implicit none
 
-  private 
+  private
 
   public init_rpne
   public eval
@@ -59,7 +59,7 @@ contains
        close(hist_unit)
     end if
   end subroutine open_hist
-  
+
   integer function get_formula(rpnc)
     use memio, only: cpstr
     use misc, only: messp,ins
@@ -111,7 +111,7 @@ contains
     type(t_rpnc),intent(in)::rpnc
     rpn_dans=real(realpart(rpnc%answer),kind=dp)
   end function rpn_dans
-  
+
   integer function get_operand(rpnc,i)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i
@@ -181,11 +181,11 @@ contains
        end select
     end if
     rpnc%que(od1)%tid=TID_NOP
-     
+
     eval_c=0
 
   contains
- 
+
     integer function trim_end(kend)
       integer,intent(in)::kend
       integer ii
@@ -216,7 +216,7 @@ contains
          end select
       end do
     end function find_end
-    
+
   end function eval_c
 
   subroutine set_result(rpnc,i,v,n,ks,logical)
@@ -285,16 +285,16 @@ contains
           call put_vbuf(rpnc,i,v,tid)
        else
           ! change the last operands to z with TID_LVAR
-          call put_vbuf(rpnc,ks(n),z,tid)          
+          call put_vbuf(rpnc,ks(n),z,tid)
        end if
     end if
     rpnc%tmpans=v
   end subroutine set_result
-  
+
   integer function get_operands(rpnc,i,n,ps,ks)
     type(t_rpnc),intent(in)::rpnc
     integer,intent(in)::i,n
-    integer,intent(out),optional::ps(n) 
+    integer,intent(out),optional::ps(n)
     integer,intent(out),optional::ks(n)
     integer k,j
     k=i-1
@@ -349,7 +349,7 @@ contains
     pointer(pz1,z1)
     pointer(pz2,z2)
     logical ok
-    
+
     istat=get_operands(rpnc,i,2,ks=ods,ps=pvs(1:narg_max))
     if(istat/=0) return
 
@@ -475,7 +475,7 @@ contains
        istat=FZCERR_NOOP
        return
     end if
-    
+
     istat=get_operands(rpnc,i,na,ks=ks)
     if(istat/=0) return
 
@@ -582,24 +582,24 @@ contains
        istat=FZCERR_NOOP
        return
     end if
-    
+
     istat=get_operands(rpnc,i,na,ks=ods,ps=pvs(1:narg_max))
     if(istat/=0) return
 
     pvs(0)=rpnc%que(i)%cid
     if(tid/=TID_OPN) then
-       pfn=rpnc%pfs(na) 
+       pfn=rpnc%pfs(na)
     else
        pfn=rpnc%que(i)%cid
     end if
     v=fn(na,pvs)
 
     call set_result(rpnc,i,v,na,ods)
-    
+
     if(tid==TID_AOP) call set_assign()
 
   contains
-    
+
     subroutine set_assign()
       use misc, only: set_flg
       complex(cp) z
@@ -658,7 +658,7 @@ contains
       pointer(pz,z)
       pz=ifnc%que(i)%cid
       z=complex(x(j),rzero)
-      ifnc%que(i)%tid=TID_VAR      
+      ifnc%que(i)%tid=TID_VAR
     end subroutine put_dmy_par
 
   end function integrand1
@@ -726,7 +726,7 @@ contains
     istat=0
 
   contains
-    
+
     subroutine alloc_vbuf()
       integer oc,vc
       oc=count_op(ifnc%que)
@@ -786,16 +786,18 @@ contains
     use plist, only: get_par_loc
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
-    integer istat
+    integer istat,j,kp
+    integer mode_save,dmode_save
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) fnc
-    Integer j
-    integer kp
     integer ods(narg_max)
     complex(cp) v
     pointer(pv,v)
     logical dup
     type(t_rpnq),pointer::q
+
+    mode_save=rpnc%flg%mode
+    dmode_save=rpnc%flg%dmode
 
     rpnm => kth_rpnm(rpnc%rl,rpnc%que(i)%cid)
 
@@ -824,7 +826,7 @@ contains
           q%tid=TID_ROVAR
        case(TID_PAR,TID_APAR)
           call set_par_ptr(kp)
-          if(istat/=0) exit 
+          if(istat/=0) exit
           q%cid=get_par_loc(fnc%pars,kp,dup)
           if(.not.dup) then
              q%tid=TID_PAR
@@ -838,14 +840,17 @@ contains
     end do
 
     if(istat==0) istat=eval(fnc)
-    
+
     if(istat==0)&
        call set_result(rpnc,i,fnc%answer,rpnm%na,ods)
 
     call uinit_rpnc(fnc,deep=.false.)
 
+    rpnc%flg%mode=mode_save
+    rpnc%flg%dmode=dmode_save
+
   contains
-    
+
     subroutine alloc_vbuf()
       integer oc,vc
       oc=count_op(fnc%que)
@@ -853,7 +858,7 @@ contains
       if(oc+vc>0) allocate(fnc%vbuf(oc+vc))
     end subroutine alloc_vbuf
 
-    subroutine set_par_ptr(ent) 
+    subroutine set_par_ptr(ent)
       use slist, only: get_str_ptr
       use plist, only: find_par
       use memio, only: cpstr
@@ -878,29 +883,31 @@ contains
             istat=get_str_ptr(rpnm%pnames,ent=1,ptr=ptr0,len=len0)
             istat=input(rpnc,cpstr(ptr0,len0),cpstr(ptr,len),z)
          else
-            stop "*** set_par_ptr: UNEXPETED ERROR: get_par_loc failed"   
+            stop "*** set_par_ptr: UNEXPETED ERROR: get_par_loc failed"
          end if
       end if
     end subroutine set_par_ptr
 
   end function eval_uf
-  
+
   recursive function eval_m(rpnc,i) result(istat)
     use rpnlist, only: kth_rpnm, t_rpnm
     use plist, only: get_par_loc
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
-    integer istat
+    integer istat,j,kp
+    integer mode_save,dmode_save
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) mac
-    integer j
-    integer kp
     logical dup
     type(t_rpnq),pointer::q
 
+    mode_save=rpnc%flg%mode
+    dmode_save=rpnc%flg%dmode
+
     rpnm => kth_rpnm(rpnc%rl,rpnc%que(i)%cid)
 
-    mac=cp_rpnc(rpnc,deep=.false.)    
+    mac=cp_rpnc(rpnc,deep=.false.)
     allocate(mac%que(size(rpnm%que)))
     mac%ip     = 1
     mac%rc     = rpnc%rc
@@ -911,7 +918,7 @@ contains
     istat=0
     do j=1,size(mac%que)
        q => mac%que(j)
-       select case(q%tid) 
+       select case(q%tid)
        case(TID_PAR,TID_APAR)
           call set_par_ptr(kp)
           if(istat/=0) exit
@@ -936,6 +943,9 @@ contains
     end if
 
     call uinit_rpnc(mac,deep=.false.)
+
+    rpnc%flg%mode=mode_save
+    rpnc%flg%dmode=dmode_save
 
   contains
 
@@ -1031,7 +1041,7 @@ contains
 
     ip1=rpnc%ip
     i=rpnc%ip-1
-    do 
+    do
        i=i+1
        if(i>size(rpnc%que)) exit
        t=rpnc%que(i)%tid
@@ -1043,7 +1053,7 @@ contains
        case(TID_OP,TID_OPN,TID_AOP)
           istat=eval_n(rpnc,i)
        case(TID_LOP)
-          istat=eval_l(rpnc,i)          
+          istat=eval_l(rpnc,i)
        case(TID_ROP)
           istat=eval_r(rpnc,i)
        case(TID_COP)
@@ -1124,7 +1134,7 @@ contains
     end if
 
   contains
-    
+
     integer function load()
       use misc, only: open_file,ins
       use rpnp, only: set_formula
@@ -1171,21 +1181,21 @@ contains
          do kk=k1,ip1,-1
             select case(rpnc%que(kk)%tid)
             case(TID_VAR,TID_PAR,TID_CPAR,TID_ROVAR)
-               pv=rpnc%que(kk)%cid             
-               rpnc%answer=v                   
+               pv=rpnc%que(kk)%cid
+               rpnc%answer=v
                rpnc%que(kk)%tid=TID_NOP
-               exit                            
+               exit
                !case(TID_END)
-               !  should never come here 
+               !  should never come here
                !exit
             end select
-         end do                                
+         end do
       else
          rpnc%answer=rpnc%tmpans
       end if
       if(rpnc%rc==0) call set_flg(rpnc%flg%sta,RCS_ANS_SET)
    end subroutine set_ans
-    
+
   end function eval
 
   recursive function rpn_run(rpnc) result(istat)
@@ -1225,7 +1235,7 @@ contains
     subroutine print_ans()
       use misc, only: is_not_set,is_set,mess
       if(is_set(rpnc%flg%sta,RCS_ANS_SET) &
-           .and.is_not_set(rpnc%flg%mode,RCM_NO_STDOUT) &
+           .and.is_not_set(rpnc%flg%mode,RCPM_NO_STDOUT) &
            .and.(p2==0.or.is_set(rpnc%flg%sta,RCS_PRINT_ANS_REQ))) &
            call mess(trim(rpn_sans(rpnc)))
     end subroutine print_ans
@@ -1236,7 +1246,7 @@ contains
       call mess(rpnc%expr(1:rpnc%len_expr),hist_unit)
       flush(hist_unit)
     end subroutine write_hist
-    
+
   end function rpn_run
-  
+
 end module rpne

@@ -20,7 +20,7 @@
 module plist
   use fzcerr
   implicit none
-  
+
   private
 
   interface add_par_by_value
@@ -55,7 +55,7 @@ module plist
      integer::n = 0
      type(t_pn),pointer::pn => null()
   end type t_plist
-  
+
   integer,parameter,public::PK_UNDEF = 0
   integer,parameter,public::PK_COMP  = 1
   integer,parameter,public::PK_REAL  = 2
@@ -80,7 +80,7 @@ module plist
      type(t_pn),pointer::next => null()
      type(t_pn),pointer::prev => null()
   end type t_pn
-  
+
   integer,parameter::PS_NOP   = 0
   integer,parameter::PS_REF   = Z"0001"
   integer,parameter::PS_RO    = Z"0004"
@@ -153,7 +153,7 @@ contains
       integer j
       is_matched=.false.
       do j=1,len
-         if(pn%s(j)/=ichar(s(j:j))) return 
+         if(pn%s(j)/=ichar(s(j:j))) return
       end do
       is_matched=.true.
     end function is_matched
@@ -561,7 +561,8 @@ contains
           if(ou==stdout) then
              call mess(trim(ztoa(z,fmt=DISP_FMT_RAW)),ou)
           else
-             call mess(trim(rtoa(realpart(z),fmt=DISP_FMT_RAW))//"+"//trim(rtoa(imagpart(z),fmt=DISP_FMT_RAW))//" i",ou)
+             call mess(trim(rtoa(realpart(z),fmt=DISP_FMT_RAW)) &
+                  //"+"//trim(rtoa(imagpart(z),fmt=DISP_FMT_RAW))//" i",ou)
           end if
        case(PK_REAL)
           px=v%p
@@ -575,13 +576,13 @@ contains
        end select
        call next
     end do
-    
+
   contains
-    
+
     subroutine next()
       pn => pn%next
     end subroutine next
-    
+
   end subroutine dump_plist
 
   integer function find_par(pl,s,zout,ent)
@@ -1033,12 +1034,12 @@ contains
     pointer(pm,m)
     if(pl%n==0) return
     pn => pl%pn
-    ! move value from pz to p 
+    ! move value from pz to p
     do i=1,pl%n
        v => pn%v
        if(is_duplicated(v%sta)) then
           pz=v%pz
-          select case(get_pkind(v%sta)) 
+          select case(get_pkind(v%sta))
           case(PK_REAL)
              px=v%p
              x=realpart(z)

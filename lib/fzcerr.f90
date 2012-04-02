@@ -1,5 +1,8 @@
 module fzcerr
   implicit none
+
+  public
+
   integer,parameter::FZCERR_NOENT        =  1
   integer,parameter::FZCERR_NOOP         =  2
   integer,parameter::FZCERR_NOPAR        =  3
@@ -21,10 +24,75 @@ module fzcerr
   integer,parameter::FZCERR_INVFIG       = 19
   integer,parameter::FZCERR_READ         = 20
   integer,parameter::FZCERR_NOMEM        = 21
-  integer,parameter::FZCERR_RDONL        = 22 
-  integer,parameter::FZCERR_TOO_LONG_STR = 23 
+  integer,parameter::FZCERR_RDONL        = 22
+  integer,parameter::FZCERR_TOO_LONG_STR = 23
   integer,parameter::FZCERR_INVCOM       = 24
   integer,parameter::FZCERR_NOFILE       = 25
   integer,parameter::FZCERR_EMPTY_INPUT  = 26
+
+  integer,private,parameter::LEN_ERR_STR=64
+
+contains
+
+  character(len=LEN_ERR_STR) function error_str(ec)
+    integer,intent(in)::ec
+    select case(ec)
+    case(FZCERR_NOENT)
+       error_str="No suchh entry"
+    case(FZCERR_NOOP)
+       error_str="Some operands missing"
+    case(FZCERR_NOPAR)
+       error_str="No such parameter"
+    case(FZCERR_NOFNC)
+       error_str="No such function"
+    case(FZCERR_ADDPAR)
+       error_str="Error during add_par"
+    case(FZCERR_INVASN) ! not used yet
+       error_str="Invalid assignment"
+    case(FZCERR_INVOP)  ! not used yet
+       error_str="Invalid operator"
+    case(FZCERR_INVFNC) ! not used yet
+       error_str="Invalid function"
+    case(FZCERR_PARSER)
+       error_str="Error in parser"
+    case(FZCERR_ADDSTR) ! not used yet
+       error_str="Error during add_str"
+    case(FZCERR_MEMOV)
+       error_str="Memory overflow"
+    case(FZCERR_RECOV)
+       error_str="Too much recursion"
+    case(FZCERR_NARG)
+       error_str="Inconsistent number of arguments"
+    case(FZCERR_GETPAR)
+       error_str="Error during get_par"
+    case(FZCERR_TOO_MANY_ARG)
+       error_str="Too many arguments"
+    case(FZCERR_TOO_FEW_ARG)
+       error_str="Too few arguments"
+    case(FZCERR_NOARG)
+       error_str="No arguments passed"
+    case(FZCERR_INVARG)
+       error_str="Invalid arguments"
+    case(FZCERR_INVFIG)
+       error_str="Invalid figure"
+    case(FZCERR_READ)
+       error_str="Error during read"
+    case(FZCERR_NOMEM) ! not used yet
+       error_str="No memory"
+    case(FZCERR_RDONL)
+       error_str="Read only"
+    case(FZCERR_TOO_LONG_STR)
+       error_str="Too long strings"
+    case(FZCERR_INVCOM)
+       error_str="Invalid command"
+    case(FZCERR_NOFILE)
+       error_str="No such file"
+    case(FZCERR_EMPTY_INPUT)
+       error_str="Empty input"
+    case default
+       error_str="Unknown error code"
+    end select
+  end function error_str
+
 end module fzcerr
 

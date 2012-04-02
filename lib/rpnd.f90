@@ -27,22 +27,22 @@ module rpnd
   implicit none
 
   type t_rpnc
-     type(t_rpnq),pointer::que(:)  
-     complex(cp),pointer::vbuf(:)  
-     integer,pointer::p_vbuf       
-     type(t_plist),pointer::pars   
-     type(t_rpnlist),pointer::rl   
-     complex(cp),pointer::answer   
-     complex(cp),pointer::tmpans   
-     integer,pointer::pfs(:)       
-     type(t_sd),pointer::sd        
+     type(t_rpnq),pointer::que(:)
+     complex(cp),pointer::vbuf(:)
+     integer,pointer::p_vbuf
+     type(t_plist),pointer::pars
+     type(t_rpnlist),pointer::rl
+     complex(cp),pointer::answer
+     complex(cp),pointer::tmpans
+     integer,pointer::pfs(:)
+     type(t_sd),pointer::sd
      type(t_rpnc),pointer::ifnc     ! integrand
      type(t_rpnq),pointer::ique(:)  ! backup of ifnc%que
-     type(t_rpnf),pointer::flg      
+     type(t_rpnf),pointer::flg
      integer,pointer::rc            ! recursion count
-     integer,pointer::ip           
-     integer*8,pointer::opt        
-     type(t_slist),pointer::spars  
+     integer,pointer::ip
+     integer*8,pointer::opt
+     type(t_slist),pointer::spars
      character(LEN_FORMULA_MAX),pointer::expr
      integer,pointer::len_expr
   end type t_rpnc
@@ -55,7 +55,7 @@ module rpnd
   end interface put_vbuf
 
 contains
-  
+
   subroutine set_prompt(rpnc,pr)
     use memio, only: mcp
     use slist, only: add_str
@@ -64,7 +64,7 @@ contains
     call add_str(rpnc%spars,pr,SC_PROMPT)
   end subroutine set_prompt
 
-  function init_rpnc(cp) 
+  function init_rpnc(cp)
     use zmath, only: zm_f1,zm_f2,zm_f3
     use fpio, only: czero
     use rpnlist, only: init_rpnlist
@@ -216,15 +216,15 @@ contains
     integer istat
     if(present(cp)) then
        noset=cp
-    else 
+    else
        noset=.false.
     end if
     init_par=init_plist()
     if(noset) return
     istat=add_par_by_reference(init_par,"tmp",loc(rpnc%tmpans),.true.)
     istat=add_par_by_reference(init_par,"ans",loc(rpnc%answer),.true.)
-    istat=add_par_by_value(init_par,"eps",epsilon(0.0_rp),.true.)    
-    istat=add_par_by_value(init_par,"huge",huge(0.0_rp),.true.)    
+    istat=add_par_by_value(init_par,"eps",epsilon(0.0_rp),.true.)
+    istat=add_par_by_value(init_par,"huge",huge(0.0_rp),.true.)
     istat=add_par_by_value(init_par,"i",complex(0.0_rp,1.0_rp),.true.)
     istat=add_par_by_value(init_par,"pi",atan(1.0_rp)*4.0_rp,.true.)
     istat=add_par_by_value(init_par,"c",2.99792458e8_rp,.true.)
@@ -320,7 +320,7 @@ contains
     end do
 
   contains
-    
+
     subroutine next
       if(rpnc%sd%p_vs==size(rpnc%sd%vs,1)) call inc_sd(rpnc%sd,8) ! <<<
       rpnc%sd%p_vs=rpnc%sd%p_vs+1
@@ -341,7 +341,7 @@ contains
        call mess(trim(itoa(i))//": "//trim(ztoa(rpnc%sd%vs(i,1),rpnc%flg%dmode)) &
             //", "//trim(ztoa(rpnc%sd%vs(i,2),rpnc%flg%dmode)) &
             //" ("//trim(rtoa(rpnc%sd%ws(i),rpnc%flg%dmode))//")")
-    end do    
+    end do
   end subroutine dump_sd
 
   subroutine inc_sd(sd,n)
@@ -584,7 +584,7 @@ contains
 
     end do
   end subroutine dump_rpnm
-  
+
   subroutine dump_rpnc(rpnc,mid)
     use rpnlist, only: t_rpnm,kth_rpnm
     use fpio, only: ztoa,DISP_FMT_RAW
@@ -744,5 +744,5 @@ contains
        restoreq(i:i)=c
     end do
   end function restoreq
-    
+
 end module rpnd

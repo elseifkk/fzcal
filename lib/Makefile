@@ -3,7 +3,7 @@ SOVERSION = 4
 
 #
 BINTARG   = fzcalc
-ALIBTARG  = libfzcal.a 
+ALIBTARG  = libfzcal.a
 SOLIBTARG = libfzcal.so.$(SOVERSION)
 SONAME    = libfzcal.so.$(SOVERSION)
 SOFILE    = libfzcal.so
@@ -100,8 +100,8 @@ $(BINTARG): $(BINOBJ)
 
 install: install-lib install-bin
 
-install-lib: $(ALIBTARG) $(SOLIBTARG) 
-	cp -pRf $(.ALLSRC) $(LIBDIR) 
+install-lib: $(ALIBTARG) $(SOLIBTARG)
+	cp -pRf $(.ALLSRC) $(LIBDIR)
 	cp -pRf fzc.h $(INCDIR)
 	ln -sf $(SOLIBTARG) $(SOFILE)
 	cp -pRf $(SOFILE) $(LIBDIR)
