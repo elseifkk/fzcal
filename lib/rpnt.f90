@@ -4,13 +4,13 @@ module rpnt
   use fpio, only: rp,cp
   use rpng, only: LEN_FORMULA_MAX
   implicit none
-  
+
   type t_rrpnq
-     integer::tid = 0 
+     integer::tid = 0
      integer::p1  = 0
      integer::p2  = 0
   end type t_rrpnq
-  
+
   type t_rpnq
      integer::tid = 0
      integer::cid = 0
@@ -21,7 +21,7 @@ module rpnt
      integer::dmode = 0
      integer::sta   = 0
   end type t_rpnf
-  
+
   integer,parameter::NUM_RRPNQ_MAX=1024
   type t_rpnb
      character(LEN_FORMULA_MAX),pointer::expr => null()
@@ -36,11 +36,11 @@ module rpnt
      type(t_rpnf) flg
      integer::err = 0
   end type t_rpnb
-      
+
   type t_sd
      real(rp),allocatable::ws(:)
      complex(cp),allocatable::vs(:,:) ! n:2
      integer p_vs
-  end type t_sd  
+  end type t_sd
 
 end module rpnt

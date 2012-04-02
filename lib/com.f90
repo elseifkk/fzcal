@@ -25,76 +25,93 @@ module com
   public is_mode_com
   public parse_command
   public exe_com
-  
-  integer,parameter::CID_NOP         =    0
-  integer,parameter::CID_DEL         =    1
-  integer,parameter::CID_DEL_PAR     =    2 
-  integer,parameter::CID_DEL_FNC     =    3 
-  integer,parameter::CID_DEL_MAC     =    4 
-  integer,parameter::CID_DEL_PAR_ALL =    5 
-  integer,parameter::CID_DEL_FNC_ALL =    6 
-  integer,parameter::CID_DEL_MAC_ALL =    7 
-  integer,parameter::CID_PRI         =    8 
-  integer,parameter::CID_PRI_PAR     =    9
-  integer,parameter::CID_PRI_FNC     =   10 
-  integer,parameter::CID_PRI_MAC     =   11 
-  integer,parameter::CID_PRI_DAT     =   12 
-  integer,parameter::CID_INI         =   13 
-  integer,parameter,public::CID_EXIT        =   14
-  integer,parameter::CID_SCLE        =   15
-  integer,parameter,public::CID_LOAD        =   16
-  integer,parameter::CID_ECHO        =   17
-  integer,parameter::CID_ECHO_ON     =   18
-  integer,parameter::CID_ECHO_OFF    =   19
-  integer,parameter::CID_SET_PROMPT  =   20
-  integer,parameter::CID_WRITE       =   21
-  integer,parameter::CID_HIST        =   23
-  integer,parameter::CID_HIST_ON     =   24
-  integer,parameter::CID_HIST_OFF    =   25
-  integer,parameter::CID_SAVE        =   26
-  integer,parameter::CID_SAVE_PAR    =   27
-  integer,parameter::CID_SAVE_FNC    =   28
-  integer,parameter::CID_SAVE_MAC    =   29
-  integer,parameter::CID_VER         =   30
-  integer,parameter::CID_HELP        =   31
-  integer,parameter::CID_BYTE        =   32      
-  integer,parameter::CID_NOBYTE      =   33       
-  integer,parameter::CID_OPT         =   35               
-  integer,parameter::CID_DMS         =   36   
-  integer,parameter::CID_NODMS       =   37    
-  integer,parameter::CID_ENG         =   38
-  integer,parameter::CID_NOENG       =   39     
-  integer,parameter::CID_FIX         =   40                  
-  integer,parameter::CID_EXP         =   41             
-  integer,parameter::CID_FIG         =   42              
-  integer,parameter::CID_BIN_IO      =   43                      
-  integer,parameter::CID_OCT_IO      =   44
-  integer,parameter::CID_DEC_IO      =   45
-  integer,parameter::CID_HEX_IO      =   46
-  integer,parameter::CID_BIN_I       =   47                    
-  integer,parameter::CID_OCT_I       =   48
-  integer,parameter::CID_DEC_I       =   49
-  integer,parameter::CID_HEX_I       =   50
-  integer,parameter::CID_BIN_O       =   51                      
-  integer,parameter::CID_OCT_O       =   52
-  integer,parameter::CID_DEC_O       =   53
-  integer,parameter::CID_HEX_O       =   54
-  integer,parameter::CID_DEG         =   55           
-  integer,parameter::CID_RAD         =   56         
-  integer,parameter::CID_DBG         =   57                
-  integer,parameter::CID_NODBG       =   58               
-  integer,parameter::CID_DAT         =   59                 
-  integer,parameter::CID_NORM        =   60           
-  integer,parameter::CID_STA         =   61              
-  integer,parameter::CID_FRAC        =   62                
-  integer,parameter::CID_RATIO       =   63      
-  integer,parameter::CID_SHELL       =   64      
-  integer,parameter::CID_BASE        =   65
+  public exe_mode_com
 
+  ! operation modes
+  integer,parameter::CID_BIN_I       =  1
+  integer,parameter::CID_OCT_I       =  2
+  integer,parameter::CID_DEC_I       =  3
+  integer,parameter::CID_HEX_I       =  4
+  integer,parameter::CID_BYTE        =  5
+  integer,parameter::CID_NOBYTE      =  6
+  integer,parameter::CID_DEG         =  7
+  integer,parameter::CID_RAD         =  8
+  integer,parameter::CID_DBG         =  9
+  integer,parameter::CID_NODBG       = 10
+  integer,parameter::CID_DAT         = 11
+  integer,parameter::CID_NORM        = 12
+  integer,parameter::CID_STA         = 13
+  integer,parameter::CID_FRAC        = 14
+  integer,parameter::CID_RATIO       = 15
+  integer,parameter::CID_ECHO_ON     = 16
+  integer,parameter::CID_ECHO_OFF    = 17
+  integer,parameter::CID_HIST_ON     = 18
+  integer,parameter::CID_HIST_OFF    = 19
+
+  ! display and operation modes
+  integer,parameter::CID_BIN_IO      = 20
+  integer,parameter::CID_OCT_IO      = 21
+  integer,parameter::CID_DEC_IO      = 22
+  integer,parameter::CID_HEX_IO      = 23
+
+  !
+  integer,parameter::CID_MODE_LAST   = 23
+
+  ! external commands
+  integer,parameter::CID_DEL         = 24
+  integer,parameter::CID_DEL_PAR     = 25
+  integer,parameter::CID_DEL_FNC     = 26
+  integer,parameter::CID_DEL_MAC     = 27
+  integer,parameter::CID_DEL_PAR_ALL = 28
+  integer,parameter::CID_DEL_FNC_ALL = 29
+  integer,parameter::CID_DEL_MAC_ALL = 30
+  integer,parameter::CID_PRI         = 31
+  integer,parameter::CID_PRI_PAR     = 32
+  integer,parameter::CID_PRI_FNC     = 33
+  integer,parameter::CID_PRI_MAC     = 34
+  integer,parameter::CID_PRI_DAT     = 35
+  integer,parameter::CID_INI         = 36
+  integer,parameter::CID_SCLE        = 37
+  integer,parameter::CID_SET_PROMPT  = 38
+  integer,parameter::CID_SAVE        = 39
+  integer,parameter::CID_SAVE_PAR    = 40
+  integer,parameter::CID_SAVE_FNC    = 41
+  integer,parameter::CID_SAVE_MAC    = 42
+
+  ! outside commands
+  integer,parameter,public::CID_EXIT = 43
+  integer,parameter,public::CID_LOAD = 44
+
+  ! internal commands
+  integer,parameter::CID_OPT         = 45
+  integer,parameter::CID_ECHO        = 46
+  integer,parameter::CID_SHELL       = 47
+  integer,parameter::CID_WRITE       = 48
+  integer,parameter::CID_HIST        = 49
+  integer,parameter::CID_VER         = 50
+  integer,parameter::CID_HELP        = 51
+
+  ! display modes
+  integer,parameter::CID_DMS         = 52
+  integer,parameter::CID_NODMS       = 53
+  integer,parameter::CID_ENG         = 54
+  integer,parameter::CID_NOENG       = 55
+  integer,parameter::CID_FIX         = 56
+  integer,parameter::CID_EXP         = 57
+  integer,parameter::CID_FIG         = 58
+  integer,parameter::CID_BASE        = 59
+  integer,parameter::CID_BIN_O       = 60
+  integer,parameter::CID_OCT_O       = 61
+  integer,parameter::CID_DEC_O       = 62
+  integer,parameter::CID_HEX_O       = 63
+
+  ! meta
+  integer,parameter::CID_NOP         =    0
   integer,parameter::CID_INV         =   99
-  integer,parameter::CID_LAST        =  100
+  integer,parameter::CID_LAST        =   99
   integer,parameter::CID_HELP_OFF    = 1000
 
+  ! argument kind
   integer,parameter::AK_INV    =  -1
   integer,parameter::AK_ALL    =   0
   integer,parameter::AK_PAR    =   1
@@ -107,23 +124,125 @@ module com
 
 contains
 
-  logical function is_mode_com(tid)
+  logical function is_mode_com(tid,cid,help)
     use rpng, only: TID_LAST
     integer,intent(in)::tid
-    integer t
-    t=tid-TID_LAST
+    integer,intent(out),optional::cid
+    logical,intent(out),optional::help
+    integer c
+    logical h
+    c=dec_cid(tid,h)
+    if(present(cid)) cid=c
+    if(present(help)) help=h
     is_mode_com=.false.
-    if(t>=TID_LAST.or.t<=0) return
-    select case(t)
-    case(CID_BYTE,CID_NOBYTE,CID_DMS,CID_NODMS, &
-         CID_DEG,CID_RAD,CID_DBG,CID_NODBG, &
-         CID_RATIO,CID_FRAC,CID_ECHO_ON,CID_ECHO_OFF, &
-         CID_HIST_ON,CID_HIST_OFF, &
-         CID_NORM,CID_DAT,CID_STA)
-       is_mode_com=.true.
-    end select
+    if(h) return
+    is_mode_com=(c>0.and.c<=CID_MODE_LAST)
   end function is_mode_com
-  
+
+  integer function enc_cid(cid_in,help)
+    use rpng, only: TID_LAST
+    integer,intent(in)::cid_in
+    logical,intent(in)::help
+    integer cid
+    cid=cid_in
+    if(cid<0) cid=-cid+CID_LAST
+    if(help) cid=cid+CID_HELP_OFF
+    enc_cid=cid+TID_LAST
+  end function enc_cid
+
+  integer function  dec_cid(cid_in,help)
+    use rpng, only: TID_LAST
+    integer,intent(in)::cid_in
+    logical,intent(out)::help
+    integer cid
+    help=.false.
+    cid=cid_in-TID_LAST
+    if(cid>=CID_HELP_OFF) then
+       help=.true.
+       cid=cid-CID_HELP_OFF
+    end if
+    if(cid>CID_LAST) then
+       cid=cid-CID_LAST
+       cid=-cid
+    end if
+    dec_cid=cid
+  end function dec_cid
+
+  subroutine exe_mode_com(cid,flg,dec)
+    use rpng
+    use rpnt, only: t_rpnf
+    use misc, only: set_flg,cle_flg
+    use fpio, only: set_base
+    integer,intent(in)::cid
+    type(t_rpnf),intent(inout)::flg
+    logical,intent(in),optional::dec
+    integer c
+    logical help
+    if(present(dec).and.dec) then
+       c=dec_cid(cid,help)
+       if(help) return
+    else
+       c=cid
+    end if
+    select case(c)
+!!$ display and opeeration modes mixed!
+    case(CID_DEC_IO)
+       call set_base(flg%dmode,10)
+       call cle_flg(flg%mode,RCM_INM)
+    case(CID_HEX_IO)
+       call set_base(flg%dmode,16)
+       call set_flg(flg%mode,RCM_IHEX)
+    case(CID_OCT_IO)
+       call set_base(flg%dmode,8)
+       call set_flg(flg%mode,RCM_IOCT)
+    case(CID_BIN_IO)
+       call set_base(flg%dmode,2)
+       call set_flg(flg%mode,RCM_IBIN)
+!!$ modes
+    case(CID_DEC_I)
+       call cle_flg(flg%mode,RCM_INM)
+    case(CID_HEX_I)
+       call set_flg(flg%mode,RCM_IHEX)
+    case(CID_OCT_I)
+       call set_flg(flg%mode,RCM_IOCT)
+    case(CID_BIN_I)
+       call set_flg(flg%mode,RCM_IBIN)
+    case(CID_BYTE)
+       call set_flg(flg%mode,RCM_BYTE)
+    case(CID_NOBYTE)
+       call cle_flg(flg%mode,RCM_BYTE)
+    case(CID_DEG)
+       call set_flg(flg%mode,RCM_DEG)
+    case(CID_RAD)
+       call cle_flg(flg%mode,RCM_DEG)
+    case(CID_STA)
+       call set_flg(flg%mode,RCM_STA)
+       call cle_flg(flg%mode,RCM_DAT) ! <<<
+    case(CID_DAT)
+       call set_flg(flg%mode,RCM_DAT)
+    case(CID_NORM)
+       call cle_flg(flg%mode,ior(RCM_DAT,RCM_STA))
+    case(CID_DBG)
+       call set_flg(flg%mode,RCM_DEBUG)
+    case(CID_NODBG)
+       call cle_flg(flg%mode,RCM_DEBUG)
+    case(CID_RATIO)
+       call set_flg(flg%mode,RCM_RATIO)
+    case(CID_FRAC)
+       call cle_flg(flg%mode,RCM_RATIO)
+    case(CID_ECHO_OFF)
+       call cle_flg(flg%mode,RCM_ECHO)
+    case(CID_ECHO_ON)
+       call set_flg(flg%mode,RCM_ECHO)
+    case(CID_HIST_OFF)
+       call cle_flg(flg%mode,RCM_HIST)
+    case(CID_HIST_ON)
+       call set_flg(flg%mode,RCM_HIST)
+    case default
+       STOP "*** exe_mode_com: UNEXPECTED ERROR: invalid cid"
+    end select
+  end subroutine exe_mode_com
+
   integer function exe_com(rpnc,i)
     use fpio
     use rpnd
@@ -135,6 +254,7 @@ contains
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     type(t_rpnq),pointer::q
+    type(t_rpnf),pointer::flg
     integer istat
     integer n
     character(len=LEN_STR_MAX) str
@@ -142,18 +262,15 @@ contains
     logical help
 
     exe_com=0
-    help=.false.
-    q => rpnc%que(i)
-    cid=get_lo32(q%tid)-TID_LAST
 
-    if(cid>=CID_HELP_OFF) then
-       help=.true.
-       cid=cid-CID_HELP_OFF
+    q => rpnc%que(i)
+    flg => rpnc%flg
+
+    if(is_mode_com(get_lo32(q%tid),cid,help)) then
+       call exe_mode_com(cid,flg)
+       return
     end if
-    if(cid>CID_LAST) then
-       cid=cid-CID_LAST
-       cid=-cid
-    end if
+
     if(help) then
        if(cid==CID_NOP) then
           call print_com_list
@@ -176,14 +293,15 @@ contains
           str=""
        end if
     end if
-    
+
     select case(cid)
-       ! display modes
+
+!!$ display modes
     case(CID_NODMS)
-       call cle_disp_opt(X2A_DMS)            
+       call cle_disp_opt(X2A_DMS)
     case(CID_DMS)
        call set_disp_opt(X2A_DMS)
-       call cle_disp_opt(X2A_ENG)            
+       call cle_disp_opt(X2A_ENG)
        call put_disp_digit(n)
     case(CID_NOENG)
        call cle_disp_opt(X2A_ENG)
@@ -212,34 +330,14 @@ contains
        call set_base(rpnc%flg%dmode,8)
     case(CID_BIN_O)
        call set_base(rpnc%flg%dmode,2)
-    case(CID_DEC_IO)
-       call set_base(rpnc%flg%dmode,10)
-       call cle_flg(rpnc%flg%mode,RCM_INM)
-    case(CID_HEX_IO)
-       call set_base(rpnc%flg%dmode,16)
-       call set_flg(rpnc%flg%mode,RCM_IHEX)
-    case(CID_OCT_IO)
-       call set_base(rpnc%flg%dmode,8)
-       call set_flg(rpnc%flg%mode,RCM_IOCT)
-    case(CID_BIN_IO)
-       call set_base(rpnc%flg%dmode,2)
-       call set_flg(rpnc%flg%mode,RCM_IBIN)
-    case(CID_DEC_I)
-       call cle_flg(rpnc%flg%mode,RCM_INM)
-    case(CID_HEX_I)
-       call set_flg(rpnc%flg%mode,RCM_IHEX)
-    case(CID_OCT_I)
-       call set_flg(rpnc%flg%mode,RCM_IOCT)
-    case(CID_BIN_I)
-       call set_flg(rpnc%flg%mode,RCM_IBIN)
 
-       ! meta
+!!$ outside
     case(CID_EXIT)
        exe_com=CID_EXIT
     case(CID_LOAD)
        exe_com=CID_LOAD
 
-       ! internal
+!!$ internal
     case(CID_OPT)
        call mess("mode: "//trim(itoa(rpnc%flg%mode,fmt="(Z16.16)")))
        call mess("dmode:"//trim(itoa(rpnc%flg%dmode,fmt="(Z16.16)")))
@@ -260,7 +358,7 @@ contains
     case(CID_SHELL)
        call system(restoreq(str(1:lenarg)))
 
-       ! external
+!!$ external
     case(CID_SCLE)
        call reset_sd(rpnc%sd)
     case(-CID_SAVE,-CID_SAVE_PAR,-CID_SAVE_FNC,-CID_SAVE_MAC)
@@ -302,39 +400,6 @@ contains
        call stripq
        call set_prompt(rpnc,str(1:lenarg))
 
-       ! modes
-    case(CID_BYTE)
-       call set_flg(rpnc%flg%mode,RCM_BYTE)
-    case(CID_NOBYTE)
-       call cle_flg(rpnc%flg%mode,RCM_BYTE)
-    case(CID_DEG)
-       call set_flg(rpnc%flg%mode,RCM_DEG)
-    case(CID_RAD)
-       call cle_flg(rpnc%flg%mode,RCM_DEG)
-    case(CID_STA)
-       call set_flg(rpnc%flg%mode,RCM_STA)
-       call cle_flg(rpnc%flg%mode,RCM_DAT) ! <<<
-    case(CID_DAT)
-       call set_flg(rpnc%flg%mode,RCM_DAT)
-    case(CID_NORM)
-       call cle_flg(rpnc%flg%mode,ior(RCM_DAT,RCM_STA))
-    case(CID_DBG)
-       call set_flg(rpnc%flg%mode,RCM_DEBUG)
-    case(CID_NODBG)
-       call cle_flg(rpnc%flg%mode,RCM_DEBUG)
-    case(CID_RATIO)
-       call set_flg(rpnc%flg%mode,RCM_RATIO)
-    case(CID_FRAC)
-       call cle_flg(rpnc%flg%mode,RCM_RATIO)
-    case(CID_ECHO_OFF)
-       call cle_flg(rpnc%flg%mode,RCM_ECHO)
-    case(CID_ECHO_ON)
-       call set_flg(rpnc%flg%mode,RCM_ECHO)
-    case(CID_HIST_OFF)
-       call cle_flg(rpnc%flg%mode,RCM_HIST)
-    case(CID_HIST_ON)
-       call set_flg(rpnc%flg%mode,RCM_HIST)
-
     case default
        STOP "exe_com: UNEXPECTED ERROR: invalid cid"
     end select
@@ -356,7 +421,7 @@ contains
       end do
       lenarg=jj
     end subroutine stripq
-     
+
     subroutine print_version()
       call mess(bname)
       call mess(cname)
@@ -381,50 +446,50 @@ contains
       use misc, only: messp
       integer i,j
       character*(*),parameter::coms(12*4)=[&
-           "help     ",&    
-           "version  ",&      
-           "[no]debug",&      
-           "opt      ",&        
-           "quit     ",&            
-           "init     ",&            
-           "         ",&                       
-           "read     ",&                 
-           "write    ",&                    
-           "save     ",&                 
-           "load     ",&                 
-           "prompt   ",&                  
+           "help     ",&
+           "version  ",&
+           "[no]debug",&
+           "opt      ",&
+           "quit     ",&
+           "init     ",&
+           "         ",&
+           "read     ",&
+           "write    ",&
+           "save     ",&
+           "load     ",&
+           "prompt   ",&
            !
-           "echo     ",&                 
-           "print    ",&                 
-           "[no]dms  ",&                   
-           "[no]eng  ",&                         
-           "fix      ",&                   
-           "exp      ",&                    
-           "fig      ",&                    
-           "[no]byte ",&                    
-           "         ",&               
-           "bin      ",&                     
-           "oct      ",&                  
-           "dec      ",&               
+           "echo     ",&
+           "print    ",&
+           "[no]dms  ",&
+           "[no]eng  ",&
+           "fix      ",&
+           "exp      ",&
+           "fig      ",&
+           "[no]byte ",&
+           "         ",&
+           "bin      ",&
+           "oct      ",&
+           "dec      ",&
            !
-           "hex      ",&                  
+           "hex      ",&
            "Bin      ",&
-           "Oct      ",&                  
-           "Dec      ",&                  
-           "Hex      ",&                  
-           "BIN      ",&                  
-           "OCT      ",&                
-           "DEC      ",&                  
-           "HEX      ",&                  
-           "deg      ",&                  
-           "rad      ",&                  
-           "ratio    ",&                      
-           !        
-           "frac     ",&                
-           "stat     ",&                
-           "data     ",&                     
-           "clear    ",&                    
-           "norm     ",&                
+           "Oct      ",&
+           "Dec      ",&
+           "Hex      ",&
+           "BIN      ",&
+           "OCT      ",&
+           "DEC      ",&
+           "HEX      ",&
+           "deg      ",&
+           "rad      ",&
+           "ratio    ",&
+           !
+           "frac     ",&
+           "stat     ",&
+           "data     ",&
+           "clear    ",&
+           "norm     ",&
            "         ",&
            "         ",&
            "         ",&
@@ -441,7 +506,7 @@ contains
          end do
          call mess("")
       end do
-      
+
     end subroutine print_com_list
 
     subroutine print_help
@@ -497,8 +562,9 @@ contains
    end subroutine print_help
 
   end function exe_com
-  
+
   integer function parse_command(a,p1arg,p2arg)
+    use rpng, only: TID_LAST
     ! a must not include dup white and must be left adjusted
     ! return value:
     !  0< : cammnd id
@@ -518,10 +584,11 @@ contains
     p1arg=0
     p2arg=0
     lencom=len_trim(a)
+    help=.false.
 
     if(lencom<=1) return
     if(a(1:1)=="!") then
-       parse_command=CID_SHELL
+       parse_command=enc_cid(CID_SHELL,help)
        p1arg=2
        p2arg=lencom
        return
@@ -530,7 +597,6 @@ contains
 
     p2=1
     p1=get_arg(p2)
-    help=.false.
     cid=CID_NOP
 
     do
@@ -603,7 +669,7 @@ contains
           case("cle","clear")
              cid=CID_SCLE
           case("s","sta","stat")
-             cid=CID_STA 
+             cid=CID_STA
           case("d","dat","data")
              cid=CID_DAT
           case("n","norm")
@@ -618,14 +684,14 @@ contains
              cid=-CID_WRITE
           case("prompt")
              cid=-CID_SET_PROMPT
-          case("hist") 
+          case("hist")
              cid=-CID_HIST
           case("echo")
              cid=-CID_ECHO
           case("load")
              cid=-CID_LOAD
           case("save")
-             cid=-CID_SAVE             
+             cid=-CID_SAVE
           case("del","delete")
              cid=-CID_DEL
           case("dm")
@@ -641,9 +707,9 @@ contains
           case("pf")
              cid=-CID_PRI_FNC
           case("pp")
-             cid=-CID_PRI_PAR   
+             cid=-CID_PRI_PAR
           case("pd")
-             cid=CID_PRI_DAT   
+             cid=CID_PRI_DAT
           case("init")
              cid=CID_INI
           case default
@@ -734,13 +800,11 @@ contains
     if(cid==CID_INV) then
        parse_command=-1
     else
-       if(cid<0) cid=-cid+CID_LAST
-       if(help) cid=cid+CID_HELP_OFF
-       parse_command=cid
+       parse_command=enc_cid(cid,help)
     end if
 
   contains
-    
+
     subroutine set_disp_arg()
       integer pp1,pp2
       pp1=get_arg(pp2)

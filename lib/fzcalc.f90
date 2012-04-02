@@ -20,6 +20,7 @@
 program fzcalc
   use rpnd
   use rpne
+  use fzcerr
   use memio, only: itoa
   use misc, only: mess
   implicit none
@@ -40,22 +41,22 @@ program fzcalc
         case(FZCERR_READ)
            exit
         case default
-           call mess("*** set_formula failed: code = "//trim(itoa(istat)))
+           call mess("*** set_formula failed: "//trim(error_str(istat)))
         end select
         cycle
      end if
-     
+
      istat=rpn_run(rpnc)
      if(istat==0) then
      else if(istat>0) then
-        call mess("*** rpn_run failed: code = "//trim(itoa(istat)))
+        call mess("*** rpn_run failed: "//trim(error_str(istat)))
         cycle
      else if(istat==RPNSTA_EXIT) then
         exit
      end if
 
   end do main
-  
+
   call open_hist(.false.)
 
 end program fzcalc

@@ -57,7 +57,7 @@ module fpio
   integer,parameter::si_prefix_max=24
   character*(*),parameter::si_prefix="yzafpnum kMGTPEZY"
 
-  integer,parameter::DISP_FMT_RAW=0
+  integer,parameter::DISP_FMT_RAW=-1
   integer,parameter::LEN_STR_ANS_MAX=128
   ! |  flag | base | digit|
   ! | FFFFF | B    | DD   |
@@ -136,7 +136,7 @@ contains
     if(abs(x)>int_max) return
     m=int(x,kind=8)
     d=x-real(m,kind=8)
-    if(d==rzero) then 
+    if(d==rzero) then
        is_integer_x=.true.
        if(present(n)) n=m
     end if
@@ -187,10 +187,7 @@ contains
     else
        f=X2A_DEFAULT
     end if
-    if(is_integer(x,n)) then
-       rtoa=itoa(n,get_base(f))
-       return
-    else if(f==DISP_FMT_RAW) then
+    if(f==DISP_FMT_RAW) then
        if(x/=rzero) then
           write(rtoa,*,iostat=istat) x
           if(istat==0) rtoa=adjustl(rtoa)
@@ -199,10 +196,13 @@ contains
           rtoa="0"
        end if
        return
+    else if(is_integer(x,n)) then
+       rtoa=itoa(n,get_base(f))
+       return
     end if
     rtoa=xtoa(x,f)
   end function rtoa
-  
+
   character(LEN_STR_ANS_MAX) function ztoa(z,fmt)
     use misc, only: is_set
     complex(cp),intent(in)::z
@@ -227,7 +227,7 @@ contains
           else
              ztoa=" - "//trim(ztoa)
           end if
-       else 
+       else
           return
        end if
     else
@@ -236,7 +236,7 @@ contains
     ztoa=trim(rtoa(realpart(z),fmt))//trim(ztoa)
 
     contains
-      
+
       subroutine todms
         integer d,m
         real(rp) x,s
@@ -266,7 +266,7 @@ contains
        select case(s(i:i))
        case("0")
           s(i:i)=" "
-       case(".") 
+       case(".")
           s(i+1:i+1)="0"
           j=i+1
           exit
@@ -398,13 +398,13 @@ contains
     end if
     p2=len_trim(ns)
 ! x.xxxx...xE+xxxx
-    len=len_trim(ns)  
+    len=len_trim(ns)
     len0=len_trim0(ns)
     if(is_set(X2A_ALLOW_ORDINARY).and.e>=0.and.e<max_digit) then
        if(e>=len0-1) then
           ! integer
           xtoa(p1:)=ns(1:1+e)
-          return 
+          return
        end if
     end if
 
@@ -424,7 +424,7 @@ contains
           end if
           return
        end if
-   end if        
+   end if
 
     if(d<len) then
        pc=loc(ns)+d
@@ -551,7 +551,7 @@ contains
 !!$    s=xtos(x,e,.false.)
 !!$    d=len_trim0(s)-1 ! excluding sign
 !!$    ! 123.456789
-!!$    ! +1234567890... 
+!!$    ! +1234567890...
 !!$    ! e=2
 !!$    ! d=9
 !!$    if(present(i)) then

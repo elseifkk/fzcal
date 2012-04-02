@@ -39,7 +39,7 @@ module slist
 
   type,public::t_slist
      integer::n = 0  ! allocated sn, sn%s may not be allocated
-     type(t_sn),pointer::sn => null() 
+     type(t_sn),pointer::sn => null()
   end type t_slist
 
   integer,parameter::hdr_size=1
@@ -49,9 +49,9 @@ module slist
      type(t_sn),pointer::next => null()
      type(t_sn),pointer::prev => null() ! head%prev => tail
   end type t_sn
-  
+
 contains
-  
+
   pure integer function slist_count(sl)
     type(t_slist),intent(in)::sl
     slist_count=sl%n
@@ -94,7 +94,7 @@ contains
     init_slist%n=0
     nullify(init_slist%sn)
   end function init_slist
- 
+
   subroutine uinit_sn(sn)
     type(t_sn),intent(inout)::sn
     if(allocated(sn%s)) deallocate(sn%s)
@@ -209,7 +209,7 @@ contains
     px=loc(sn%s)
     x=c
     call mcp(loc(sn%s)+str_off,loc(s),len(s))
-  end subroutine set_sn 
+  end subroutine set_sn
 
   integer function get_str_ptr(sl,ent,code,ptr,len)
     ! ptr maybe 0 even if returns 0
@@ -240,7 +240,7 @@ contains
     else
        get_str_ptr=FZCERR_NOENT
        return
-    end if       
+    end if
     if(.not.associated(sn)) then
        get_str_ptr=FZCERR_NOENT
        return

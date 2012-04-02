@@ -1,14 +1,14 @@
 module integral
   implicit none
   private
-  
+
   integer,parameter::MAXNMAX  = 1000000
   integer,parameter::KMAX     = 18
 
   public deSdx
-  
+
 contains
-  
+
 ! one dimensional integration by double exponential formula.
   integer function deSdx(ptr_c,ptr_f,a,b,eps,ans)
     use fpio, only: rp,cp,czero,pi,pi_2
@@ -17,13 +17,13 @@ contains
     integer,intent(in)::ptr_f
     real(rp),intent(in)::a,b,eps
     complex(cp),intent(out)::ans
-    interface 
+    interface
        complex(cp) function f(c,n,x)
          use fpio, only: rp,cp
          integer,intent(in)::c     ! = ptr_c
          ! if f has singularity at bound, use b-X or X-a
          ! instead of X
-         ! Ex., for 1/sqrt(1-X**2) over (-1,1) 
+         ! Ex., for 1/sqrt(1-X**2) over (-1,1)
          ! use 1/sqrt((1-X)*(1+x)) = 1/sqrt(X_lo*X_up)
          integer,intent(in)::n     ! = 3
          real(rp),intent(in)::x(n) ! = [X, b-X, X-a]
@@ -43,7 +43,7 @@ contains
     real(rp) sqrteps
     complex(cp) buf(MAXNMAX,2)
     real(rp) phi
-    
+
     deSdx=0
     ans=czero
 
@@ -106,7 +106,7 @@ contains
            .and.abs(imagpart(Ih))<eps &
            .or.abs(imagpart(Ih2-Ih))<sqrteps*abs(imagpart(Ih2)))
     end function is_converged
-    
+
     logical function do_sum(x)
       real(rp),intent(in)::x
       real(rp) az12
@@ -158,5 +158,5 @@ contains
     end subroutine get_xi
 
   end function deSdx
-  
+
 end module integral

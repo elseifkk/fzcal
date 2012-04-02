@@ -1,6 +1,6 @@
 module rpng
   implicit none
-  
+
   integer,parameter::RPNSTA_LOAD   = -6
   integer,parameter::RPNSTA_COMSET = -5
   integer,parameter::RPNSTA_EXIT   = -4
@@ -8,7 +8,7 @@ module rpng
   integer,parameter::RPNSTA_MACSET = -2
   integer,parameter::RPNSTA_FNCSET = -1
   integer,parameter::RPNSTA_OK     =  0
-  
+
   integer,parameter::RPN_REC_MAX     =  256
   integer,parameter::NUM_VS_MIN      =   32
   integer,parameter::LEN_STR_MAX     = 1024
@@ -27,73 +27,73 @@ module rpng
   integer,parameter::TID_ASNU   =  -1
   integer,parameter::TID_AOP    =   2  !R
   integer,parameter::TID_TOP1   =   3  !R ?
-  ! logical                     
+  ! logical
   integer,parameter::TID_LOP4    =  4  !L eq,neq
   integer,parameter::TID_LOP3    =  5  !L or
   integer,parameter::TID_LOP2    =  6  !L and
   integer,parameter::TID_LOP1    =  7  !R not, ~
   integer,parameter::TID_LOP1U   = -7  ! ~
   integer,parameter::TID_ROP     =  8  !L ==, ~=, <=, >=,...
-  ! unary, binary and functions  
+  ! unary, binary and functions
   integer,parameter::TID_BOP1    =   9  !L +,-
   integer,parameter::TID_BOP1U   =  -9  !
   integer,parameter::TID_BOP2    =  10  !L *,/,&P,&C
   integer,parameter::TID_BOP2U   = -10  !
   integer,parameter::TID_UOP1    =  11  !R +a,-a,++a
-  integer,parameter::TID_BOP4    =  12  !L implicit * <<<<<<<<<<< 
+  integer,parameter::TID_BOP4    =  12  !L implicit * <<<<<<<<<<<
   integer,parameter::TID_BOP3    =  13  !R ^,**,e
   integer,parameter::TID_BOP3U   = -13  !
-  integer,parameter::TID_UOP2    =  14  !L !,!!  
-  integer,parameter::TID_UOP3    =  15  !L a++  
-  integer,parameter::TID_UOP2U   = -15  ! 
+  integer,parameter::TID_UOP2    =  14  !L !,!!
+  integer,parameter::TID_UOP3    =  15  !L a++
+  integer,parameter::TID_UOP2U   = -15  !
   integer,parameter::TID_IFNC    =  16  !L sin, cos,...
   integer,parameter::TID_UFNC    =  17  !L
-  integer,parameter::TID_PRI_MAX =  18  ! 
+  integer,parameter::TID_PRI_MAX =  18  !
   !! priority tabel end
 
   integer,parameter::TID_PAR   =  32   ! a,b,c,...
   integer,parameter::TID_PARU  = -32   ! a,b,c,...
   integer,parameter::TID_FIG   =  33   ! 1,2,3,...
   integer,parameter::TID_VAR   =  34   ! fig in rbuf
-  integer,parameter::TID_MAC   =  36   
-  integer,parameter::TID_OP    =  37   ! operators
-  integer,parameter::TID_COP   =  38   
-  integer,parameter::TID_OPN   =  39   
-  integer,parameter::TID_APAR  =  40   ! par assign
-  integer,parameter::TID_AMAC  =  41   
-  integer,parameter::TID_AFNC  =  42   
-  integer,parameter::TID_DPAR  =  43   ! dummy par
-  integer,parameter::TID_END   =  44
-  integer,parameter::TID_ROVAR =  45 
-  integer,parameter::TID_LVAR_T = 46
-  integer,parameter::TID_LVAR_F = 47
-  integer,parameter::TID_LOP    = 48
-  integer,parameter::TID_SOP    = 49
-  integer,parameter::TID_POP    = 50
-  integer,parameter::TID_CPAR   = 51 ! copied par
-  integer,parameter::TID_NPAR   = 52 ! just assigned par
-  integer,parameter::TID_IOP    = 53 ! integral
-  integer,parameter::TID_IVAR1  = 54 ! dummy par in integrand x
-  integer,parameter::TID_IVAR1L = 55 ! dummy par in integrand b-x
-  integer,parameter::TID_IVAR1U = 56 ! dummy par in integrand x-a
-  integer,parameter::TID_AT     = 57 ! @
-  integer,parameter::TID_MSCL   = 58 ! ; in macro definition
-  integer,parameter::TID_SHRP   = 59 ! #
-  integer,parameter::TID_IGNORE = 60 
-  integer,parameter::TID_EMAC   = 61 ! $mac to be expanded
+  integer,parameter::TID_MAC   =  35
+  integer,parameter::TID_OP    =  36   ! operators
+  integer,parameter::TID_COP   =  37
+  integer,parameter::TID_OPN   =  38
+  integer,parameter::TID_APAR  =  39   ! par assign
+  integer,parameter::TID_AMAC  =  40
+  integer,parameter::TID_AFNC  =  41
+  integer,parameter::TID_DPAR  =  42   ! dummy par
+  integer,parameter::TID_END   =  43
+  integer,parameter::TID_ROVAR =  44
+  integer,parameter::TID_LVAR_T = 45
+  integer,parameter::TID_LVAR_F = 46
+  integer,parameter::TID_LOP    = 47
+  integer,parameter::TID_SOP    = 48
+  integer,parameter::TID_POP    = 49
+  integer,parameter::TID_CPAR   = 50 ! copied par
+  integer,parameter::TID_NPAR   = 51 ! just assigned par
+  integer,parameter::TID_IOP    = 52 ! integral
+  integer,parameter::TID_IVAR1  = 53 ! dummy par in integrand x
+  integer,parameter::TID_IVAR1L = 54 ! dummy par in integrand b-x
+  integer,parameter::TID_IVAR1U = 55 ! dummy par in integrand x-a
+  integer,parameter::TID_AT     = 56 ! @
+  integer,parameter::TID_MSCL   = 57 ! ; in macro definition
+  integer,parameter::TID_SHRP   = 58 ! #
+  integer,parameter::TID_IGNORE = 59
+  integer,parameter::TID_EMAC   = 60 ! $mac to be expanded
 
   ! braket and delimiters
   integer,parameter::TID_SCL   =  64   ! ;
   integer,parameter::TID_COL   =  65   ! : PUSHED!
-  integer,parameter::TID_TCOL  =  87   ! : PUSHED!
-  integer,parameter::TID_IBRA  =  66   ! implicit (
-  integer,parameter::TID_BRA   =  67   ! ( PUSHED!
+  integer,parameter::TID_TCOL  =  66   ! : PUSHED!
+  integer,parameter::TID_IBRA  =  67   ! implicit (
+  integer,parameter::TID_BRA   =  68   ! ( PUSHED!
   integer,parameter::TID_KET   =  69   ! )
   integer,parameter::TID_QTN   =  70   ! "
   integer,parameter::TID_QEND  =  71
   integer,parameter::TID_QSTA  =  72   ! PUSHED!
   integer,parameter::TID_COMA  =  73   ! ,
-  integer,parameter::TID_DLM1  =  75   
+  integer,parameter::TID_DLM1  =  75
   integer,parameter::TID_DLM2  =  76   ! ket
   integer,parameter::TID_BLK   =  77   ! space and tab
   integer,parameter::TID_HKET  =  78   ! }
@@ -101,14 +101,15 @@ module rpng
   integer,parameter::TID_ISTA  =  80
   integer,parameter::TID_IEND  =  81
   integer,parameter::TID_COM   =  82
-  integer,parameter::TID_SQ1   =  83 ! first '
-  integer,parameter::TID_SQ2   =  84 ! last '
-  integer,parameter::TID_DQ1   =  85 ! first "
-  integer,parameter::TID_DQ2   =  86 ! last "
+  integer,parameter::TID_MCOM  =  83
+  integer,parameter::TID_SQ1   =  84 ! first '
+  integer,parameter::TID_SQ2   =  85 ! last '
+  integer,parameter::TID_DQ1   =  86 ! first "
+  integer,parameter::TID_DQ2   =  87 ! last "
 
   character*1,parameter::STID_SQ1  = char(1) ! first '
   character*1,parameter::STID_SQ2  = char(4) ! last '
-  character*1,parameter::STID_DQ1  = char(2) ! first " 
+  character*1,parameter::STID_DQ1  = char(2) ! first "
   character*1,parameter::STID_DQ2  = char(3) ! last "
 
   integer,parameter::LOID_NOT = 1
@@ -138,12 +139,12 @@ module rpng
   integer,parameter::RCM_IBIN            =  Z"00000100"
   integer,parameter::RCM_IOCT            =  Z"00000200"
   integer,parameter::RCM_IHEX            =  Z"00000400"
-  integer,parameter::RCM_INM = ior(RCM_IHEX,ior(RCM_IOCT,RCM_IBIN))     
+  integer,parameter::RCM_INM = ior(RCM_IHEX,ior(RCM_IOCT,RCM_IBIN))
   ! private mode
-  integer,parameter::RCM_NO_AUTO_ADD_PAR =  Z"00000800"
-  integer,parameter::RCM_NO_WARN         =  Z"00001000"
-  integer,parameter::RCM_NO_STDIN        =  Z"00002000"
-  integer,parameter::RCM_NO_STDOUT       =  Z"00004000"
+  integer,parameter::RCPM_NO_AUTO_ADD_PAR =  Z"00000800"
+  integer,parameter::RCPM_NO_WARN         =  Z"00001000"
+  integer,parameter::RCPM_NO_STDIN        =  Z"00002000"
+  integer,parameter::RCPM_NO_STDOUT       =  Z"00004000"
 
   integer,parameter::AID_NOP = 0
   integer,parameter::OID_NOP = 0

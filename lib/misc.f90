@@ -1,6 +1,6 @@
 module misc
   implicit none
-  
+
   interface is_alpha
      module procedure is_alpha_c
      module procedure is_alpha_i
@@ -15,13 +15,13 @@ module misc
      module procedure is_numeric_c
      module procedure is_numeric_i
   end interface
-  
+
   integer,parameter::stdin=5
   integer,parameter::stdout=6
   integer,parameter::stderr=0
-  
+
 contains
-  
+
   subroutine ins(s,u,i)
     character*(*),intent(out)::s
     integer,intent(in),optional::u
@@ -29,7 +29,7 @@ contains
     integer unit,istat
     if(present(u)) then
        unit=u
-    else 
+    else
        unit=stdin
     end if
     read(unit,10,iostat=istat) s
@@ -121,7 +121,7 @@ contains
     j=ior(i,32)
     is_alpha_i=(j>=97.and.j<=122)
   end function is_alpha_i
-  
+
   pure logical function is_hex_number(a)
     integer,intent(in)::a
     is_hex_number=(a>=65.and.a<=70).or.(a>=97.and.a<=102).or.is_number(a)
@@ -145,7 +145,7 @@ contains
     integer,intent(in)::i
     is_number_i=(i>=48.and.i<=57)
   end function is_number_i
-  
+
   pure logical function is_numeric_c(c)
     character*1,intent(in)::c
     is_numeric_c=is_numeric_i(ichar(c))
@@ -230,7 +230,7 @@ contains
     if(wc/=0) k=k-1 ! remove the last blank
     strip=k
   end function strip
-  
+
   integer function get_open_unit()
     integer unit
     logical opened
