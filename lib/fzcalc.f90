@@ -23,6 +23,7 @@ program fzcalc
   use fzcerr
   use memio, only: itoa
   use misc, only: mess
+
   implicit none
   type(t_rpnc) rpnc
   integer istat

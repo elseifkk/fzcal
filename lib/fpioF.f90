@@ -43,9 +43,11 @@ module fpio
   character*(*),parameter::cfmt="(ES25.16e4)"
 #endif
   real(rp),parameter::rzero=0.0_rp
+  real(rp),parameter::runit=1.0_rp
   integer,parameter::min_digit=3
   integer,parameter::max_digit=precision(rzero)
   real(rp),parameter::eps=epsilon(rzero)
+  complex(cp),parameter::cunit=complex(rzero,runit)
   complex(cp),parameter::czero=complex(rzero,rzero)
   real(rp),public,parameter::pi =4.0_rp*atan(1.0_rp)
   real(rp),public,parameter::pi2=2.0_rp*pi
@@ -88,6 +90,14 @@ contains
     b=rzero
     nan=a/b
   end function nan
+
+  real(rp) function atox(a,stat)
+    character*(*),intent(in)::a
+    integer,intent(out),optional::stat
+    integer s
+    read(a,*,iostat=s) atox
+    if(present(stat)) stat=s
+  end function atox
 
   integer function get_digit(flg)
     integer,intent(in)::flg
