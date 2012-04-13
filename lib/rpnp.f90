@@ -103,6 +103,12 @@ module rpnp
        char(3)//"psy"//&
        char(3)//"mod"//&
        char(4)//"gami"//&
+       char(2)//"Fl"//&
+       char(2)//"Gl"//&
+       char(2)//"Hl"//&
+       char(3)//"dFl"//&
+       char(3)//"dGl"//&
+       char(3)//"dHl"//&
        char(3)//"min"//&
        char(3)//"max"//&
        char(3)//"sum"//&
@@ -146,17 +152,23 @@ module rpnp
   integer,parameter::FID_MOD        = 31
   integer,parameter::FID_GAMI       = 32
   integer,parameter::FID_ARG2_END   = 32 !<<<<<<<<
-  integer,parameter::FID_ARG3_END   = 32 !<<<<<<<<
-  integer,parameter::FID_MIN        = 33
-  integer,parameter::FID_MAX        = 34
-  integer,parameter::FID_SUM        = 35
-  integer,parameter::FID_AVE        = 36
-  integer,parameter::FID_VAR        = 37
-  integer,parameter::FID_UVAR       = 38
-  integer,parameter::FID_SUM2       = 39
-  integer,parameter::FID_END        = 39
-  integer,parameter::FFID_ARG1_END  = 39
-  integer,parameter::FFID_ARG2_END  = 39
+  integer,parameter::FID_FL         = 33
+  integer,parameter::FID_GL         = 34
+  integer,parameter::FID_HL         = 35
+  integer,parameter::FID_DFL        = 36
+  integer,parameter::FID_DGL        = 37
+  integer,parameter::FID_DHL        = 38
+  integer,parameter::FID_ARG3_END   = 38 !<<<<<<<<
+  integer,parameter::FID_MIN        = 39
+  integer,parameter::FID_MAX        = 40
+  integer,parameter::FID_SUM        = 41
+  integer,parameter::FID_AVE        = 42
+  integer,parameter::FID_VAR        = 43
+  integer,parameter::FID_UVAR       = 44
+  integer,parameter::FID_SUM2       = 45
+  integer,parameter::FID_END        = 45 !<<<<<<<<
+  integer,parameter::FFID_ARG1_END  = 45 !<<<<<<<<
+  integer,parameter::FFID_ARG2_END  = 45 !<<<<<<<<
   integer,parameter::FFID_DEINT     = 1 +FID_END
   integer,parameter::FFID_REINT     = 2 +FID_END
   integer,parameter::FFID_SIINT     = 3 +FID_END
@@ -1403,10 +1415,12 @@ contains
 
     integer function read_fig()
       use memio
+      use fpio, only: atox
       use misc, only: is_set,is_not_set
       integer b
       if(is_not_set(rpnc%flg%mode,RCM_INM)) then
-         b=IBASE_RAW
+         x=atox(subexpr(rpnb,i),read_fig)
+         return
       else if(is_set(rpnc%flg%mode,RCM_IBIN)) then
          b=IBASE_BIN
       else if(is_set(rpnc%flg%mode,RCM_IOCT)) then
@@ -1574,6 +1588,18 @@ contains
          get_fid=loc(zm_gami)
       case(FID_PSY)
          get_fid=loc(zm_psy)
+      case(FID_FL)
+         get_fid=loc(zm_Fl)
+      case(FID_GL)
+         get_fid=loc(zm_Gl)
+      case(FID_HL)
+         get_fid=loc(zm_Hl)
+      case(FID_DFL)
+         get_fid=loc(zm_dFl)
+      case(FID_DGL)
+         get_fid=loc(zm_dGl)
+      case(FID_DHL)
+         get_fid=loc(zm_dHl)
       case(FID_SUM)
          get_fid=loc(zm_sum)
       case(FID_AVE)
@@ -1829,7 +1855,7 @@ contains
   subroutine rpn_pop_all_bra(rpnb)
     type(t_rpnb),intent(inout)::rpnb
     integer i,k
-    k=0
+    k=1
     do i=rpnb%p_buf,1,-1
        select case(rpnb%buf(i)%tid)
        case(TID_BRA,TID_IBRA)

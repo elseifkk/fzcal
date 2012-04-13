@@ -127,6 +127,13 @@ module zmath
 
   public zm_deint
 
+  public zm_Fl
+  public zm_Gl
+  public zm_dFl
+  public zm_dGl
+  public zm_Hl
+  public zm_dHl
+
   logical::random_seed_init=.false.
 
 contains
@@ -1088,5 +1095,172 @@ contains
     if(istat/=0) call mess("*** zm_deint: deSdx failed: code = "//trim(itoa(istat)))
     zm_deint=ans
   end function zm_deint
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  complex(cp) function zm_Fl(el,eta,rho)
+    complex(cp),intent(in)::el,eta,rho
+    real(rp) x    
+    call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),F=x)
+    zm_Fl=complex(x,rzero)
+  end function zm_Fl
+ 
+ complex(cp) function zm_Gl(el,eta,rho)
+    complex(cp),intent(in)::el,eta,rho
+    real(rp) x    
+    call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),G=x)
+    zm_Gl=complex(x,rzero)
+  end function zm_Gl
+
+  complex(cp) function zm_dFl(el,eta,rho)
+    complex(cp),intent(in)::el,eta,rho
+    real(rp) x    
+    call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),dF=x)
+    zm_dFl=complex(x,rzero)
+  end function zm_dFl
+
+  complex(cp) function zm_dGl(el,eta,rho)
+    complex(cp),intent(in)::el,eta,rho
+    real(rp) x    
+    call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),dG=x)
+    zm_dGl=complex(x,rzero)
+  end function zm_dGl
+
+  complex(cp) function zm_Hl(el,eta,rho)
+    complex(cp),intent(in)::el,eta,rho
+    real(rp) x,y
+    call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),F=x,G=y)
+    zm_Hl=complex(y,x)
+  end function zm_Hl
+
+  complex(cp) function zm_dHl(el,eta,rho)
+    complex(cp),intent(in)::el,eta,rho
+    real(rp) x,y
+    call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),dF=x,dG=y)
+    zm_dHl=complex(y,x)
+  end function zm_dHl
+
+  subroutine coulomb_wave_func(el,eta,rho,F,dF,G,dG)
+    real(rp),intent(in)::el  ! non-negative integers
+    real(rp),intent(in)::eta ! real
+    real(rp),intent(in)::rho ! non-negative real
+    real(rp),intent(out),optional::F,dF,G,dG
+    real(rp) F_,G_,dF_,dG_
+    real(rp) u,p,q,r
+    complex(cp) z
+    logical sgn
+    integer,parameter::NUM_ITERATION_MAX=100000 ! <<<<<
+
+    u=wF(sgn)    
+    z=wH()
+    p=realpart(z)
+    q=imagpart(z)
+    r=(u-p)/q
+    
+    if(abs(r)<=1.0_rp) then
+       F_=1.0_rp/(sqrt(q)*sqrt(1.0_rp+r**2.0_rp))
+    else
+       F_=1.0_rp/(sqrt(q)*sqrt(1.0_rp+1.0_rp/r**2.0_rp)*r)
+    end if
+    dF_=F_*u
+    G_ =F_*(u-p)/q
+    dG_=F_*(u*p-p**2.0_rp-q**2.0_rp)/q
+    if(.not.sgn) dF_=-dF_
+    if(.not.sgn) G_ =-G_
+
+    if(present(F))  F = F_
+    if(present(G))  G = G_
+    if(present(dF)) dF=dF_
+    if(present(dG)) dG=dG_
+
+  contains
+    
+    complex(cp) function wH()
+      complex(cp) An,Bn,A,B,A_,B_
+      complex(cp) bb,aa
+      complex(cp) Cn,C
+      integer i
+      ! H'_el/H_el = c i/rho * (       F_0/D_1 + F_1/D_2 ...
+      !            = c i/rho * ( bb0 + aa1/bb1 + aa2/bb2 ...
+      !          c = sgn i * (1-eta/rho)
+      A_ = 1.0_rp
+      A  = czero
+      B_ = czero
+      B  = 1.0_rp
+      C  = huge(rzero)
+      do i=1,NUM_ITERATION_MAX
+         aa = F_j(i-1)
+         bb = D_j(i)
+         An = A*bb + A_*aa
+         Bn = B*bb + B_*aa
+         Cn = An/Bn
+         A_ = A
+         B_ = B
+         A  = An
+         B  = Bn
+         if(abs(Cn-C)<eps) exit
+         C  = Cn
+      end do
+      wH=cunit*(1.0_rp-eta/rho)+An/Bn*cunit/rho
+    end function wH
+
+    real(rp) function wF(sgn)
+      logical,intent(out)::sgn
+      real(rp) An,Bn,A,B,A_,B_
+      real(rp) bb,aa
+      integer i
+      real(rp) Cn,C
+      ! F'_el/F_el = S_{el+1} - R^2_{el+1}/T_{el+1}- R^2_{el+2}/T_{el+2}- ...
+      !            =      bb0 + aa1/bb1+             aa2/bb2+ ...
+      A_ = 1.0_rp
+      A  = S_el(el+1.0_rp)
+      B_ = rzero
+      B  = 1.0_rp
+      C  = huge(rzero)
+      do i=1,NUM_ITERATION_MAX
+         aa = -R_el(el+real(i,kind=rp))**2.0_rp
+         bb = T_el(el+real(i,kind=rp))
+         An = A*bb + A_*aa
+         Bn = B*bb + B_*aa
+         Cn = An/Bn
+         A_ = A
+         B_ = B
+         A  = An
+         B  = Bn
+         if(abs(Cn-C)<eps) exit
+         C  = Cn
+      end do
+      wF=An/Bn
+      sgn=(B/B_>rzero)
+    end function wF
+
+    real(rp) function R_el(el)
+      real(rp),intent(in)::el
+      R_el=sqrt(1.0_rp+(eta/el)**2.0_rp)
+    end function R_el
+
+    real(rp) function S_el(el)
+      real(rp),intent(in)::el
+      S_el=el/rho+eta/el
+    end function S_el
+
+    real(rp) function T_el(el)
+      real(rp),intent(in)::el
+      T_el=S_el(el)+S_el(el+1)
+    end function T_el
+
+    complex(cp) function F_j(j)
+      integer,intent(in)::j
+      ! (1 + el + i eta + j)(-el + i eta + j)
+      F_j=(1.0_rp+el+cunit*eta+j)*(-el+cunit*eta+j)
+    end function F_j
+    
+    complex(cp) function D_j(j)
+      integer,intent(in)::j
+      ! 2(rho - eta + j i )
+      D_j=2.0_rp*(rho-eta+j*cunit)
+    end function D_j
+
+  end subroutine coulomb_wave_func
 
 end module zmath
