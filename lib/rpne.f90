@@ -1001,13 +1001,14 @@ contains
     integer istat
     type(t_rpnc) tmpc
     tmpc=cp_rpnc(rpnc,deep=.false.)
-    call messp("Input pending for: "//trim(p)//"\n"//s//"? = ")
+    call messp("Input pending for: "//trim(p)//"\n"//s(2:)//" ? = ")
     call ins(expr)
     istat=set_formula(tmpc,expr)
     tmpc%rc=rpnc%rc+1 ! <<<
     if(istat==0) then
        istat=rpn_run(tmpc)
        if(istat==0) then
+          call mess(s(2:)//" = "//trim(rpn_sans(tmpc)))
           z=tmpc%answer
        end if
     end if
@@ -1031,7 +1032,7 @@ contains
        return
     end if
 
-    if(rpnc%rc==0) call cle_flg(rpnc%flg%sta,RCS_ANS_SET)
+    call cle_flg(rpnc%flg%sta,RCS_ANS_SET)
 
     rpnc%rc=rpnc%rc+1
     istat=0
@@ -1193,7 +1194,7 @@ contains
       else
          rpnc%answer=rpnc%tmpans
       end if
-      if(rpnc%rc==0) call set_flg(rpnc%flg%sta,RCS_ANS_SET)
+      call set_flg(rpnc%flg%sta,RCS_ANS_SET)
    end subroutine set_ans
 
   end function eval
@@ -1202,9 +1203,11 @@ contains
     use rpnp, only: parse_formula
     type(t_rpnc),intent(inout)::rpnc
     integer istat
-    integer p2
+    integer p2,k
     p2=0
+    k=0
     do
+       k=k+1
        istat=parse_formula(rpnc,p2)
        if(istat==0) then
           istat=eval(rpnc)
@@ -1234,10 +1237,11 @@ contains
 
     subroutine print_ans()
       use misc, only: is_not_set,is_set,mess
-      if(is_set(rpnc%flg%sta,RCS_ANS_SET) &
+      use memio, only: itoa
+      if(rpnc%rc==0.and.is_set(rpnc%flg%sta,RCS_ANS_SET) &
            .and.is_not_set(rpnc%flg%mode,RCPM_NO_STDOUT) &
            .and.(p2==0.or.is_set(rpnc%flg%sta,RCS_PRINT_ANS_REQ))) &
-           call mess(trim(rpn_sans(rpnc)))
+           call mess("["//trim(itoa(k))//"] "//trim(rpn_sans(rpnc)))
     end subroutine print_ans
 
     subroutine write_hist()
