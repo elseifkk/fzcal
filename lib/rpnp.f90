@@ -103,6 +103,12 @@ module rpnp
        char(3)//"psy"//&
        char(3)//"mod"//&
        char(4)//"gami"//&
+       char(2)//"jn"//&
+       char(2)//"yn"//&
+       char(2)//"hn"//&
+       char(3)//"djn"//&
+       char(3)//"dyn"//&
+       char(3)//"dhn"//&
        char(2)//"Fl"//&
        char(2)//"Gl"//&
        char(2)//"Hl"//&
@@ -151,24 +157,30 @@ module rpnp
   integer,parameter::FID_ARG1_END   = 30 !<<<<<<<<
   integer,parameter::FID_MOD        = 31
   integer,parameter::FID_GAMI       = 32
-  integer,parameter::FID_ARG2_END   = 32 !<<<<<<<<
-  integer,parameter::FID_FL         = 33
-  integer,parameter::FID_GL         = 34
-  integer,parameter::FID_HL         = 35
-  integer,parameter::FID_DFL        = 36
-  integer,parameter::FID_DGL        = 37
-  integer,parameter::FID_DHL        = 38
-  integer,parameter::FID_ARG3_END   = 38 !<<<<<<<<
-  integer,parameter::FID_MIN        = 39
-  integer,parameter::FID_MAX        = 40
-  integer,parameter::FID_SUM        = 41
-  integer,parameter::FID_AVE        = 42
-  integer,parameter::FID_VAR        = 43
-  integer,parameter::FID_UVAR       = 44
-  integer,parameter::FID_SUM2       = 45
-  integer,parameter::FID_END        = 45 !<<<<<<<<
-  integer,parameter::FFID_ARG1_END  = 45 !<<<<<<<<
-  integer,parameter::FFID_ARG2_END  = 45 !<<<<<<<<
+  integer,parameter::FID_JN         = 33 
+  integer,parameter::FID_YN         = 34
+  integer,parameter::FID_HN         = 35
+  integer,parameter::FID_DJN        = 36
+  integer,parameter::FID_DYN        = 37
+  integer,parameter::FID_DHN        = 38
+  integer,parameter::FID_ARG2_END   = 38 !<<<<<<<<
+  integer,parameter::FID_FL         = 39
+  integer,parameter::FID_GL         = 40
+  integer,parameter::FID_HL         = 41
+  integer,parameter::FID_DFL        = 42
+  integer,parameter::FID_DGL        = 43
+  integer,parameter::FID_DHL        = 44
+  integer,parameter::FID_ARG3_END   = 44 !<<<<<<<<
+  integer,parameter::FID_MIN        = 45
+  integer,parameter::FID_MAX        = 46
+  integer,parameter::FID_SUM        = 47
+  integer,parameter::FID_AVE        = 48
+  integer,parameter::FID_VAR        = 49
+  integer,parameter::FID_UVAR       = 50
+  integer,parameter::FID_SUM2       = 51
+  integer,parameter::FID_END        = 51 !<<<<<<<<
+  integer,parameter::FFID_ARG1_END  = 51 !<<<<<<<<
+  integer,parameter::FFID_ARG2_END  = 51 !<<<<<<<<
   integer,parameter::FFID_DEINT     = 1 +FID_END
   integer,parameter::FFID_REINT     = 2 +FID_END
   integer,parameter::FFID_SIINT     = 3 +FID_END
@@ -505,7 +517,7 @@ contains
        if(t==TID_BOP1U) then
           select case(rpnb%old_tid)
           case(TID_BRA,TID_BOP3,TID_ASN,TID_AOP,TID_BLK, &
-               TID_COMA,TID_TOP1,TID_COL,TID_SCL,TID_UNDEF) ! plus in (+, ^+ and e+ are unary
+               TID_COMA,TID_TOP1,TID_COL,TID_SCL,TID_UNDEF,TID_DQ1) ! plus in (+, ^+ and e+ are unary
              t=TID_UOP1
           case(TID_UOP1,TID_BOP2,TID_BOP1)
              t=TID_INV
@@ -1588,6 +1600,18 @@ contains
          get_fid=loc(zm_gami)
       case(FID_PSY)
          get_fid=loc(zm_psy)
+      case(FID_JN)
+         get_fid=loc(zm_jn)
+      case(FID_YN)
+         get_fid=loc(zm_yn)
+      case(FID_HN)
+         get_fid=loc(zm_hn)
+      case(FID_DJN)
+         get_fid=loc(zm_djn)
+      case(FID_DYN)
+         get_fid=loc(zm_dyn)
+      case(FID_DHN)
+         get_fid=loc(zm_dhn)
       case(FID_FL)
          get_fid=loc(zm_Fl)
       case(FID_GL)

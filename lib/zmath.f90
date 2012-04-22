@@ -133,6 +133,12 @@ module zmath
   public zm_dGl
   public zm_Hl
   public zm_dHl
+  public zm_jn
+  public zm_yn
+  public zm_hn
+  public zm_djn
+  public zm_dyn
+  public zm_dhn
 
   logical::random_seed_init=.false.
 
@@ -787,7 +793,7 @@ contains
     complex(cp),intent(in)::vs(n,2)
     real(rp),intent(in)::ws(n)
     complex(cp) s
-    real wn
+    real(rp) wn
     wn=sum(ws)
     s=sum(vs(:,1)*ws)
     zms_var_x=sqrt(s**2.0_rp/wn-(s/wn)**2.0_rp)
@@ -797,7 +803,7 @@ contains
     integer,intent(in)::n
     complex(cp),intent(in)::vs(n,2)
     real(rp),intent(in)::ws(n)
-    real wn
+    real(rp) wn
     wn=sum(ws)
     zms_uvar_x=zms_var_x(n,vs,ws)*sqrt(wn/(wn-1.0_rp))
   end function zms_uvar_x
@@ -888,11 +894,11 @@ contains
     zms_b = (-sum(x*ws)*sum(y*ws)+sum(ws)*sum(x*y*ws))/d
   end function zms_b
 
-!!!!!!---------------------------------------------------------------------!!!!!!
-  ! GAMMA FUNCTION AND RELATED FUNCTIONS OF COMPLEX
-!!!---------------------------------------------------------------------------!!!
 
 !!!---------------------------------------------------------------------------!!!
+!!! GAMMA AND RELATED FUNCTIONS
+!!!---------------------------------------------------------------------------!!!
+
   complex(cp) function zm_psy(z)
     complex(cp),intent(in)::z
     integer,parameter::num_poly=3
@@ -944,7 +950,6 @@ contains
     if(neg) zm_psy=zm_psy-pi/tan(pi*zz)
   end function zm_psy
 
-!!!---------------------------------------------------------------------------!!!
   complex(cp) function zm_gami(a,z)
     ! Computes complex incomplete gamma function by series developments; HMF(6.5.29)262
     ! i dont know domein of definition for this
@@ -1058,8 +1063,8 @@ contains
     else
        n=0
     end if
-    d=a(7)/z
-    do i=9,1,-1
+    d=a(num_frac)/z
+    do i=num_frac-1,1,-1
        d=a(i)/(d+z)
     end do
     r=z-(z-0.5_rp)*log(z)-log_pi2_2
@@ -1096,7 +1101,52 @@ contains
     zm_deint=ans
   end function zm_deint
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!---------------------------------------------------------------------------!!!
+!!! COULOMB AND RELATED FUNCTIONS
+!!!---------------------------------------------------------------------------!!!
+
+  complex(cp) function zm_jn(el,z)
+    complex(cp),intent(in)::el,z
+    real(rp) x
+    call coulomb_wave_func(realpart(el),rzero,realpart(z),F=x)
+    zm_jn=complex(x/realpart(z),rzero)
+  end function zm_jn
+
+  complex(cp) function zm_yn(el,z)
+    complex(cp),intent(in)::el,z
+    real(rp) x
+    call coulomb_wave_func(realpart(el),rzero,realpart(z),G=x)
+    zm_yn=complex(-x/realpart(z),rzero)
+  end function zm_yn
+
+  complex(cp) function zm_hn(el,z)
+    complex(cp),intent(in)::el,z
+    real(rp) x,y
+    call coulomb_wave_func(realpart(el),rzero,realpart(z),F=x,G=y)
+    zm_hn=complex(-y/realpart(z),x/realpart(z))
+  end function zm_hn
+
+  complex(cp) function zm_djn(el,z)
+    complex(cp),intent(in)::el,z
+    real(rp) x
+    call coulomb_wave_func(realpart(el),rzero,realpart(z),dF=x)
+    zm_djn=complex(x/realpart(z),rzero)
+  end function zm_djn
+
+  complex(cp) function zm_dyn(el,z)
+    complex(cp),intent(in)::el,z
+    real(rp) x
+    call coulomb_wave_func(realpart(el),rzero,realpart(z),dG=x)
+    zm_dyn=complex(-x/realpart(z),rzero)
+  end function zm_dyn
+
+  complex(cp) function zm_dhn(el,z)
+    complex(cp),intent(in)::el,z
+    real(rp) x,y
+    call coulomb_wave_func(realpart(el),rzero,realpart(z),dF=x,dG=y)
+    zm_dhn=complex(-y/realpart(z),x/realpart(z))
+  end function zm_dhn
 
   complex(cp) function zm_Fl(el,eta,rho)
     complex(cp),intent(in)::el,eta,rho
@@ -1141,7 +1191,7 @@ contains
   end function zm_dHl
 
   subroutine coulomb_wave_func(el,eta,rho,F,dF,G,dG)
-    real(rp),intent(in)::el  ! non-negative integers
+    real(rp),intent(in)::el  ! non-negative real
     real(rp),intent(in)::eta ! real
     real(rp),intent(in)::rho ! non-negative real
     real(rp),intent(out),optional::F,dF,G,dG
@@ -1153,20 +1203,20 @@ contains
 
     u=wF(sgn)    
     z=wH()
+
     p=realpart(z)
     q=imagpart(z)
     r=(u-p)/q
-    
+
     if(abs(r)<=1.0_rp) then
-       F_=1.0_rp/(sqrt(q)*sqrt(1.0_rp+r**2.0_rp))
+       F_=1.0_rp/(sqrt(q*(1.0_rp+r**2.0_rp)))
     else
-       F_=1.0_rp/(sqrt(q)*sqrt(1.0_rp+1.0_rp/r**2.0_rp)*r)
+       F_=1.0_rp/(sqrt(q*(1.0_rp+1.0_rp/r**2.0_rp))*abs(r))
     end if
+    if(.not.sgn) F_=-F_
     dF_=F_*u
-    G_ =F_*(u-p)/q
-    dG_=F_*(u*p-p**2.0_rp-q**2.0_rp)/q
-    if(.not.sgn) dF_=-dF_
-    if(.not.sgn) G_ =-G_
+    G_ =F_*r
+    dG_=G_*(p-q/r)
 
     if(present(F))  F = F_
     if(present(G))  G = G_
@@ -1231,7 +1281,7 @@ contains
          C  = Cn
       end do
       wF=An/Bn
-      sgn=(B/B_>rzero)
+      sgn=(B>rzero)
     end function wF
 
     real(rp) function R_el(el)

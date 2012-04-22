@@ -58,10 +58,10 @@ module rpng
   integer,parameter::TID_BOP1U   =  -9  !
   integer,parameter::TID_BOP2    =  10  !L *,/,&P,&C
   integer,parameter::TID_BOP2U   = -10  !
-  integer,parameter::TID_UOP1    =  11  !R +a,-a,++a
-  integer,parameter::TID_BOP4    =  12  !L implicit * <<<<<<<<<<<
-  integer,parameter::TID_BOP3    =  13  !R ^,**,e
-  integer,parameter::TID_BOP3U   = -13  !
+  integer,parameter::TID_BOP4    =  11  !L implicit * <<<<<<<<<<<
+  integer,parameter::TID_BOP3    =  12  !R ^,**,e
+  integer,parameter::TID_BOP3U   = -12  !
+  integer,parameter::TID_UOP1    =  13  !R +a,-a,++a
   integer,parameter::TID_UOP2    =  14  !L !,!!
   integer,parameter::TID_UOP3    =  15  !L a++
   integer,parameter::TID_UOP2U   = -15  !

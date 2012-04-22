@@ -132,11 +132,12 @@ contains
        allocate(cp_rpnc%p_vbuf)
        allocate(cp_rpnc%ip)
        allocate(cp_rpnc%rc)
+       allocate(cp_rpnc%flg)
+       cp_rpnc%flg=rpnc_in%flg ! <<<<<<<<<<<<<<<<<<<<<<
        cp_rpnc%rl     => rpnc_in%rl
        cp_rpnc%tmpans => rpnc_in%tmpans
        cp_rpnc%answer => rpnc_in%answer
        cp_rpnc%pars   => rpnc_in%pars
-       cp_rpnc%flg    => rpnc_in%flg
        cp_rpnc%sd     => rpnc_in%sd
        cp_rpnc%pfs    => rpnc_in%pfs
        cp_rpnc%ifnc   => rpnc_in%ifnc
@@ -184,6 +185,7 @@ contains
     if(associated(rpnc%ip)) deallocate(rpnc%ip)
     if(associated(rpnc%expr)) deallocate(rpnc%expr)
     if(associated(rpnc%len_expr)) deallocate(rpnc%len_expr)
+    if(associated(rpnc%flg)) deallocate(rpnc%flg)
     if(dcp) then
        if(associated(rpnc%tmpans)) deallocate(rpnc%tmpans)
        if(associated(rpnc%answer)) deallocate(rpnc%answer)
@@ -322,7 +324,8 @@ contains
   contains
 
     subroutine next
-      if(rpnc%sd%p_vs==size(rpnc%sd%vs,1)) call inc_sd(rpnc%sd,8) ! <<<
+      if(rpnc%sd%p_vs==size(rpnc%sd%vs,1)) &
+           call inc_sd(rpnc%sd,NUM_VS_MIN)
       rpnc%sd%p_vs=rpnc%sd%p_vs+1
       j=0
       col=.false.
@@ -349,11 +352,14 @@ contains
     integer,intent(in)::n
     complex(cp),allocatable::tmp_vs(:,:)
     real(rp),allocatable::tmp_ws(:)
-    allocate(tmp_vs(size(sd%vs,1)+n,2),tmp_ws(size(sd%ws)+n))
-    tmp_vs=sd%vs
-    tmp_ws=sd%ws
+    integer sz,newsz
+    sz=size(sd%vs,1)
+    newsz=sz+n
+    allocate(tmp_vs(newsz,2),tmp_ws(newsz))
+    tmp_vs(1:sz,:)=sd%vs(1:sz,:)
+    tmp_ws(1:sz)=sd%ws(1:sz)
     deallocate(sd%vs,sd%ws)
-    allocate(sd%vs(size(tmp_vs,1),2),sd%ws(size(tmp_ws)))
+    allocate(sd%vs(newsz,2),sd%ws(newsz))
     sd%vs=tmp_vs
     sd%ws=tmp_ws
     deallocate(tmp_vs,tmp_ws)
