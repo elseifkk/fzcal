@@ -44,7 +44,7 @@ module fpio
 #endif
   real(rp),parameter::rzero=0.0_rp
   real(rp),parameter::runit=1.0_rp
-  integer,parameter::min_digit=3
+  integer,parameter::min_digit=2
   integer,parameter::max_digit=precision(rzero)
   real(rp),parameter::eps=epsilon(rzero)
   complex(cp),parameter::cunit=complex(rzero,runit)
@@ -188,6 +188,7 @@ contains
   end function trim_zero
 
   character(LEN_STR_ANS_MAX) function rtoa(x,fmt)
+    use misc, only: is_set
     real(rp),intent(in)::x
     integer,intent(in),optional::fmt
     integer istat,f
@@ -206,7 +207,7 @@ contains
           rtoa="0"
        end if
        return
-    else if(is_integer(x,n)) then
+    else if(is_integer(x,n).and.is_set(f,X2A_ALLOW_ORDINARY)) then
        rtoa=itoa(n,get_base(f))
        return
     end if
@@ -292,31 +293,6 @@ contains
     end if
   end subroutine rmzero
 
-!!$  character(LEN_STR_ANS_MAX) function rtoha(r)
-!!$    real(rp),intent(in)::r
-!!$    real(rp) f
-!!$    integer i,n,m,k
-!!$    n=r
-!!$    rtoha=trim(itoa(n,fmt=DISP_FMT_HEX))//"."
-!!$    k=len_trim(rtoha)
-!!$    f=r-n
-!!$    do i=1,10
-!!$       if(f==rzero) exit
-!!$       f=f*16
-!!$       m=f
-!!$       k=k+1
-!!$       if(m<=9) then
-!!$          rtoha(k:k)=achar(m+z"30")
-!!$       else
-!!$          rtoha(k:k)=achar(m+z"41"-10)
-!!$       end if
-!!$       f=f-m
-!!$    end do
-!!$  end function rtoha
-
-#define is_set(x) (iand(opt,(x))/=0)
-#define is_uset(x) (iand(opt,(x))==0)
-
   character(LEN_STR_ANS_MAX) function xtos(x,e,dot,neg)
     real(rp),intent(in)::x
     integer,intent(out),optional::e
@@ -379,8 +355,10 @@ contains
   end function xtos
 
   character(LEN_STR_ANS_MAX) function xtoa(x,opt)
+    use misc, only: is_set,is_not_set
     real(rp),intent(in)::x
     integer,intent(in)::opt
+    logical fix
     integer sd
     character(LEN_STR_ANS_MAX) ns
     integer p1,p2
@@ -390,7 +368,8 @@ contains
     integer e,ee,r
     integer len,len0
     pointer(pc,c)
-    if(x==rzero.and.is_set(X2A_ALLOW_ORDINARY)) then
+
+    if(x==rzero.and.is_set(opt,X2A_ALLOW_ORDINARY)) then
        xtoa="0"
        return
     end if
@@ -410,7 +389,7 @@ contains
 ! x.xxxx...xE+xxxx
     len=len_trim(ns)
     len0=len_trim0(ns)
-    if(is_set(X2A_ALLOW_ORDINARY).and.e>=0.and.e<max_digit) then
+    if(is_set(opt,X2A_ALLOW_ORDINARY).and.e>=0.and.e<max_digit) then
        if(e>=len0-1) then
           ! integer
           xtoa(p1:)=ns(1:1+e)
@@ -418,19 +397,29 @@ contains
        end if
     end if
 
+    fix=is_set(opt,X2A_FIX)
+    if(e>max_digit) fix=.false.
+
     sd=iand(opt,int(Z"FF"))
-    if(sd<=0) sd=max_digit
-    if(is_uset(X2A_FIX)) then
+    if(.not.fix) then
+       if(sd==0) sd=max_digit
        sd=min(max(sd,min_digit),len)
        d=sd
     else
+       if(sd>max_digit) sd=max_digit
        d=e+1+sd
        if(d<1) then
           if(d==0.and.ichar(ns(1:1))>=z"35") then
              ! 0.09 => 0.1
-             xtoa(p1:)="0."//repeat("0",sd-1)//"1"
-          else
+             if(sd>0) then
+                xtoa(p1:)="0."//repeat("0",sd-1)//"1"
+             else
+                xtoa(p1:)="1"
+             end if
+          else if(sd>0) then
              xtoa(p1:)="0."//repeat("0",sd)
+          else
+             xtoa(p1:)="0"
           end if
           return
        end if
@@ -456,28 +445,28 @@ contains
           ! 9.99... => 10.0...
           ns="1"//ns(1:d-1)
           e=e+1
-          if(is_set(X2A_FIX)) then
+          if(fix) then
              d=d+1
              ns(d:d)="0"
           end if
        end if
     end if
-    if(abs(e)<d.and.is_set(X2A_ALLOW_ORDINARY).or.is_set(X2A_FIX)) then
+    if(abs(e)<d.and.is_set(opt,X2A_ALLOW_ORDINARY).or.fix) then
        if(e>=0) then
           if(e+2<=d) then
              xtoa(p1:)=ns(1:1+e)//"."//ns(1+e+1:d)
-             if(is_uset(X2A_FIX)) call trimz
+             if(.not.fix) call trimz
           else
              xtoa(p1:)=ns(1:d)
           end if
        else
           xtoa(p1:)="0."//repeat("0",-e-1)//ns(1:d)
-          if(is_uset(X2A_FIX)) call trimz
+          if(.not.fix) call trimz
        end if
        return
     end if
 
-    if(is_set(X2A_TRIM_ZERO)) then
+    if(is_set(opt,X2A_TRIM_ZERO)) then
        dd=0
        pc=loc(ns)+d
        do k=sd,1,-1
@@ -496,7 +485,7 @@ contains
        dd=d
     end if
 
-    if(is_set(X2A_ENG).and.abs(e)<si_prefix_max+2) then
+    if(is_set(opt,X2A_ENG).and.abs(e)<si_prefix_max+2) then
        r=mod(e,3)
        ee=e/3
        if(e<0) then
@@ -514,7 +503,7 @@ contains
           p2=p2+(dd-(r+2)+1)+1
        end if
        if(ee/=0) xtoa(p2:)="_"//si_prefix(k:k)
-    else if(e==0.and.is_uset(X2A_SHOW_E0)) then
+    else if(e==0.and.is_not_set(opt,X2A_SHOW_E0)) then
        xtoa(p1:)=ns(1:1)//"."//ns(2:dd)
     else
        xtoa(p1:)=ns(1:1)//"."//ns(2:dd)//"e"//trim(itoa(e))
