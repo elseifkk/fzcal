@@ -302,7 +302,6 @@ contains
     case(CID_DMS)
        call set_disp_opt(X2A_DMS)
        call cle_disp_opt(X2A_ENG)
-       call put_disp_digit(n)
     case(CID_NOENG)
        call cle_disp_opt(X2A_ENG)
     case(CID_ENG)

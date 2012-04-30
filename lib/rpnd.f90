@@ -132,12 +132,11 @@ contains
        allocate(cp_rpnc%p_vbuf)
        allocate(cp_rpnc%ip)
        allocate(cp_rpnc%rc)
-       allocate(cp_rpnc%flg)
-       cp_rpnc%flg=rpnc_in%flg ! <<<<<<<<<<<<<<<<<<<<<<
        cp_rpnc%rl     => rpnc_in%rl
        cp_rpnc%tmpans => rpnc_in%tmpans
        cp_rpnc%answer => rpnc_in%answer
        cp_rpnc%pars   => rpnc_in%pars
+       cp_rpnc%flg    => rpnc_in%flg
        cp_rpnc%sd     => rpnc_in%sd
        cp_rpnc%pfs    => rpnc_in%pfs
        cp_rpnc%ifnc   => rpnc_in%ifnc
@@ -185,7 +184,6 @@ contains
     if(associated(rpnc%ip)) deallocate(rpnc%ip)
     if(associated(rpnc%expr)) deallocate(rpnc%expr)
     if(associated(rpnc%len_expr)) deallocate(rpnc%len_expr)
-    if(associated(rpnc%flg)) deallocate(rpnc%flg)
     if(dcp) then
        if(associated(rpnc%tmpans)) deallocate(rpnc%tmpans)
        if(associated(rpnc%answer)) deallocate(rpnc%answer)
