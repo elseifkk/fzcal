@@ -620,7 +620,7 @@ contains
              cid=CID_DMS
              call set_disp_arg()
           case("noeng")
-             cid=CID_NODBG
+             cid=CID_NOENG
           case("eng")
              cid=CID_ENG
              call set_disp_arg()
