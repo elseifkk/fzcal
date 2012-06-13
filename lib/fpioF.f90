@@ -152,41 +152,6 @@ contains
     end if
   end function is_integer_x
 
-  character(LEN_STR_ANS_MAX) function trim_zero(a)
-    character*(*),intent(in)::a
-    integer i,k,ka,ke
-    k=index(a,"e")
-    if(k==0) k=index(a,"E")
-    if(k/=0) then
-       ke=k
-       k=k-1
-    else
-       ke=0
-       k=len_trim(a)
-    end if
-    ka=0
-    do i=k,1,-1
-       select case(a(i:i))
-       case("0")
-          cycle
-       case(".")
-          ka=i+1
-          exit
-       case default
-          ka=i
-          exit
-       end select
-    end do
-    if(ka==0) then
-       trim_zero="0"
-       return
-    end if
-    trim_zero=a(1:ka)
-    if(ke/=0) then
-       trim_zero(ka+1:)=trim(a(ke:))
-    end if
-  end function trim_zero
-
   character(LEN_STR_ANS_MAX) function rtoa(x,fmt)
     use misc, only: is_set
     real(rp),intent(in)::x
@@ -364,10 +329,8 @@ contains
     integer p1,p2
     integer k,d,dd
     logical cr,neg
-    integer*1 c
     integer e,ee,r
     integer len,len0
-    pointer(pc,c)
 
     if(x==rzero.and.is_set(opt,X2A_ALLOW_ORDINARY)) then
        xtoa="0"
@@ -388,6 +351,7 @@ contains
     p2=len_trim(ns)
 ! x.xxxx...xE+xxxx
     len=len_trim(ns)
+    call rm9s(ns,len)
     len0=len_trim0(ns)
     if(is_set(opt,X2A_ALLOW_ORDINARY).and.e>=0.and.e<max_digit) then
        if(e>=len0-1) then
@@ -426,21 +390,7 @@ contains
    end if
 
     if(d<len) then
-       pc=loc(ns)+d
-       cr=.false.
-       if(c>=z"35") then
-          do k=1,d
-             pc=pc-1
-             if(c/=z"39") then
-                c=c+1
-                cr=.false.
-             else
-                c=z"30"
-                cr=.true.
-             end if
-             if(.not.cr) exit
-          end do
-       end if
+       cr=adc(ns,d+1)
        if(cr) then
           ! 9.99... => 10.0...
           ns="1"//ns(1:d-1)
@@ -468,10 +418,8 @@ contains
 
     if(is_set(opt,X2A_TRIM_ZERO)) then
        dd=0
-       pc=loc(ns)+d
        do k=sd,1,-1
-          pc=pc-1
-          if(c/=z"30") then
+          if(ns(d+k-sd:d+k-sd)/="0") then
              dd=k
              exit
           end if
@@ -511,7 +459,48 @@ contains
 
     contains
 
+      subroutine rm9s(s,l)
+        character*(*),intent(inout)::s
+        integer,intent(in)::l
+        integer ii,nc
+        logical retlog
+        nc=0
+        do ii=l,2,-1
+           if(s(ii:ii)=="9") then
+              nc=nc+1
+           else
+              if(nc>=2) then
+                 s(ii+1:l)=repeat("0",nc)
+                 retlog=adc(s,ii)
+              end if
+              exit
+           end if
+        end do
+      end subroutine rm9s
+
+      recursive function adc(s,i) result(crf)
+        character*(*),intent(inout)::s
+        integer,intent(in)::i
+        integer*1 c
+        logical crf
+        pointer(pc,c)
+        if(i==0) then
+           crf=.true.
+           return
+        end if
+        pc=loc(s(i:i))
+        if(c==z"39") then
+           c=z"30"
+           crf=adc(s,i-1)
+        else
+           c=c+1
+           crf=.false.
+        end if
+      end function adc
+
       subroutine trimz
+        ! 1.00000 => 1
+        ! 1.20000 => 1.2
         integer ii
         do ii=len_trim(xtoa),1,-1
            select case(xtoa(ii:ii))
