@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2012 by Kazuaki Kumagai                                 *
+! *   Copyright (C) 2012-2013 by Kazuaki Kumagai                                 *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -554,6 +554,30 @@ contains
         str="sets prompt string:\n\t.prompt sting"
      case(-CID_WRITE,CID_WRITE)
         str="writes string:\n\t.write string"
+     case(CID_HEX_O)
+        str="set output base to hexadecimal for .fig mode"
+     case(CID_DEC_O)
+        str="set output base to decimal for .fig mode"
+     case(CID_OCT_O)
+        str="set output base to octal for .fig mode"
+     case(CID_BIN_O)
+        str="set output base to binary for .fig mode"
+     case(CID_HEX_I)
+        str="set input base to hexadecimal"
+     case(CID_DEC_I)
+        str="set input base to decimal"
+     case(CID_OCT_I)
+        str="set input base to octal"
+     case(CID_BIN_I)
+        str="set input base to binary"
+     case(CID_HEX_IO)
+        str="set input and output base to hexadecimal"
+     case(CID_DEC_IO)
+        str="set input and output base to decimal"
+     case(CID_OCT_IO)
+        str="set input and output base to octal"
+     case(CID_BIN_IO)
+        str="set input and output base to binary"
      case default
         str="???"
      end select
