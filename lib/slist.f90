@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2013 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -72,7 +72,7 @@ contains
     prev => sn
     sn_in => sl%sn
     do i=1,sl%n
-       if(allocated(sn%s)) then
+       if(allocated(sn_in%s)) then
           allocate(sn%s(size(sn_in%s)))
           call mcp(loc(sn%s),loc(sn_in%s),size(sn_in%s))
        end if

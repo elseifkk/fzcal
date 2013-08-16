@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2013 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -55,7 +55,7 @@ contains
     pointer(prpnc,rpnc)
     prpnc=malloc(sizeof(rpnc))
     prpnc_in=ptr_rpnc
-    rpnc=cp_rpnc(rpnc_in)
+    rpnc=cp_rpnc(rpnc_in,deep=.true.)
     fzc_cp=prpnc
   end function fzc_cp
 
@@ -70,12 +70,38 @@ contains
     fzc_set_formula=int(set_formula(rpnc,f),kind=C_INT)
   end function fzc_set_formula
 
+  retint function fzc_setparse_formula(ptr_rpnc,ptr_formula)
+    size_t,intent(in),value::ptr_rpnc,ptr_formula
+    character(LEN_FORMULA_MAX) f
+    pointer(pf,f)
+    type(t_rpnc) rpnc
+    pointer(prpnc,rpnc)
+    integer k
+    pf=ptr_formula
+    prpnc=ptr_rpnc
+    fzc_setparse_formula=int(set_formula(rpnc,f),kind=C_INT)
+    if(fzc_setparse_formula/=0) return
+    k=0
+    fzc_setparse_formula=int(parse_formula(rpnc,k),kind=C_INT)
+  end function fzc_setparse_formula
+
+  retint function fzc_parse_formula(ptr_rpnc,pnext)
+    size_t,intent(in),value::ptr_rpnc,pnext
+    integer k
+    pointer(pk,k)
+    type(t_rpnc) rpnc
+    pointer(prpnc,rpnc)
+    pk=pnext
+    prpnc=ptr_rpnc
+    fzc_parse_formula=int(parse_formula(rpnc,k),kind=C_INT)
+  end function fzc_parse_formula
+
   retint function fzc_eval(ptr_rpnc)
     size_t,intent(in),value::ptr_rpnc
     type(t_rpnc) rpnc
     pointer(prpnc,rpnc)
     prpnc=ptr_rpnc
-    fzc_eval=int(rpn_run(rpnc),kind=C_INT)
+    fzc_eval=int(eval(rpnc),kind=C_INT)
   end function fzc_eval
 
   real(dp) function fzc_get_ans(ptr_rpnc)
