@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2013 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -121,11 +121,11 @@ contains
     end if
     if(dcp) then
        cp_rpnc=init_rpnc(cp=.true.)
-       cp_rpnc%rl=cp_rpnlist(rpnc_in%rl)
-       cp_rpnc%pars=cp_plist(rpnc_in%pars)
-       cp_rpnc%flg=rpnc_in%flg
        istat=add_par_by_reference(cp_rpnc%pars,"tmp",loc(cp_rpnc%tmpans),.true.)
        istat=add_par_by_reference(cp_rpnc%pars,"ans",loc(cp_rpnc%answer),.true.)
+       cp_rpnc%pars=cp_plist(rpnc_in%pars)
+       cp_rpnc%rl=cp_rpnlist(rpnc_in%rl)
+       cp_rpnc%flg=rpnc_in%flg
     else
        nullify(cp_rpnc%que)
        nullify(cp_rpnc%vbuf)

@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2013 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -872,10 +872,10 @@ contains
       cid=fnc%que(j)%cid
       if(cid<0) cid=-cid
       istat=get_str_ptr(rpnm%pnames,ent=cid,ptr=ptr,len=len)
-      if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
+      if(istat/=0) stop "*** eval_uf_set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
       istat=find_par(fnc%pars,cpstr(ptr,len),ent=ent)
       if(istat/=0) then
-         call mess("*** No such parameter: "//cpstr(ptr,len))
+         call mess("*** eval_uf_set_par_ptr: No such parameter: "//cpstr(ptr,len))
       end if
       if(fnc%que(j)%cid<0) then
          pz=get_par_loc(fnc%pars,ent)
@@ -883,7 +883,7 @@ contains
             istat=get_str_ptr(rpnm%pnames,ent=1,ptr=ptr0,len=len0)
             istat=input(rpnc,cpstr(ptr0,len0),cpstr(ptr,len),z)
          else
-            stop "*** set_par_ptr: UNEXPETED ERROR: get_par_loc failed"
+            stop "*** eval_uf_set_par_ptr: UNEXPETED ERROR: get_par_loc failed"
          end if
       end if
     end subroutine set_par_ptr
@@ -969,10 +969,10 @@ contains
       cid=mac%que(j)%cid
       if(cid<0) cid=-cid
       istat=get_str_ptr(rpnm%pnames,ent=cid,ptr=ptr,len=len)
-      if(istat/=0) stop "*** set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
+      if(istat/=0) stop "*** eval_m_set_par_ptr: UNEXPECTED ERROR: get_str_ptr failed"
       istat=find_par(mac%pars,cpstr(ptr,len),ent=ent)
       if(istat/=0) then
-         call mess("*** No such parameter: "//cpstr(ptr,len))
+         call mess("*** eval_m_set_par_ptr: No such parameter: "//cpstr(ptr,len))
          istat=FZCERR_NOPAR
          return
       end if
@@ -982,7 +982,7 @@ contains
             istat=get_str_ptr(rpnm%pnames,ent=1,ptr=ptr0,len=len0)
             istat=input(rpnc,cpstr(ptr0,len0),cpstr(ptr,len),z)
          else
-            stop "*** set_par_ptr: UNEXPETED ERROR: get_par_loc failed"
+            stop "*** eval_m_set_par_ptr: UNEXPETED ERROR: get_par_loc failed"
          end if
       end if
     end subroutine set_par_ptr
@@ -1092,6 +1092,8 @@ contains
                 case default
                    istat=FZCERR_INVCOM
                 end select
+             else
+                istat=RPNSTA_COMOK
              end if
              if(rpnc%rc/=1) then
                 ! q%cid will not be freeed

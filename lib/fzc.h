@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
+ *   Copyright (C) 2011-2013 by Kazuaki Kumagai                            *
  *   elseifkk@users.sf.net                                                 *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -32,6 +32,9 @@
 #define FZCOPT_NOWARN        0x20
 #define FZCOPT_DAT           0x40
 #define FZCOPT_STA           0x80
+#define FZCOPT_NOSTDOUT      0x4000
+
+#define FZCSTA_MACSET -2
 
 #define FZCCID_NOP     0
 #define FZCCID_INV  -999
@@ -47,6 +50,8 @@ extern "C"
   void    __fzc_MOD_fzc_set_mode ( const size_t, const int );
   void    __fzc_MOD_fzc_cle_mode ( const size_t, const int );
   int     __fzc_MOD_fzc_set_formula ( const size_t, const size_t );
+  int     __fzc_MOD_fzc_parse_formula ( const size_t, const size_t );
+  int     __fzc_MOD_fzc_setparse_formula ( const size_t, const size_t );
   int     __fzc_MOD_fzc_eval ( const size_t );
   void    __fzc_MOD_fzc_get_str_ans ( const size_t, const size_t );
   int     __fzc_MOD_fzc_regist_parameter ( const size_t, const size_t, const size_t, const size_t );
@@ -56,20 +61,18 @@ extern "C"
 }
 #endif
 
-#define fzc_init        __fzc_MOD_fzc_init
-#define fzc_uinit       __fzc_MOD_fzc_uinit
-#define fzc_cp          __fzc_MOD_fzc_cp
-#define fzc_set_mode     __fzc_MOD_fzc_set_mode
-#define fzc_cle_mode     __fzc_MOD_fzc_cle_mode
-#define fzc_set_formula __fzc_MOD_fzc_set_formula
-#define fzc_eval        __fzc_MOD_fzc_eval
-#define fzc_regpar      __fzc_MOD_fzc_regist_parameter
-#define fzc_get_strans  __fzc_MOD_fzc_get_str_ans
-#define fzc_get_ans     __fzc_MOD_fzc_get_ans
-#define fzc_cle_dat     __fzc_MOD_fzc_cle_dat
-
-// obsolete 
-#define fzc_set_opt     __fzc_MOD_fzc_set_mode
-#define fzc_cle_opt     __fzc_MOD_fzc_cle_mode
+#define fzc_init             __fzc_MOD_fzc_init
+#define fzc_uinit            __fzc_MOD_fzc_uinit
+#define fzc_cp               __fzc_MOD_fzc_cp
+#define fzc_set_mode         __fzc_MOD_fzc_set_mode
+#define fzc_cle_mode         __fzc_MOD_fzc_cle_mode
+#define fzc_set_formula      __fzc_MOD_fzc_set_formula
+#define fzc_parse_formula    __fzc_MOD_fzc_parse_formula
+#define fzc_setparse_formula __fzc_MOD_fzc_setparse_formula
+#define fzc_eval             __fzc_MOD_fzc_eval
+#define fzc_regpar           __fzc_MOD_fzc_regist_parameter
+#define fzc_get_strans       __fzc_MOD_fzc_get_str_ans
+#define fzc_get_ans          __fzc_MOD_fzc_get_ans
+#define fzc_cle_dat          __fzc_MOD_fzc_cle_dat
 
 #endif 
