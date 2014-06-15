@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2012-2013 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2012-2014 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -26,6 +26,7 @@ module com
   public parse_command
   public exe_com
   public exe_mode_com
+  public print_version
 
   ! operation modes
   integer,parameter::CID_BIN_I       =  1
@@ -124,6 +125,13 @@ module com
 
 contains
 
+  subroutine print_version()
+    use rpng, only: bname,cname
+    use misc, only: mess
+    call mess(bname)
+    call mess(cname)
+  end subroutine print_version
+  
   logical function is_mode_com(tid,cid,help)
     use rpng, only: TID_LAST
     integer,intent(in)::tid
@@ -420,11 +428,6 @@ contains
       end do
       lenarg=jj
     end subroutine stripq
-
-    subroutine print_version()
-      call mess(bname)
-      call mess(cname)
-    end subroutine print_version
 
     subroutine cle_disp_opt(x)
       integer,intent(in)::x

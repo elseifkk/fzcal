@@ -1,8 +1,9 @@
-VERSION   = 0.0.4
-SOVERSION = 4
+VERSION   = 0.0.5
+SOVERSION = 5
 
 #
-BINTARG   = fzcalc
+EXETARG   = fzcalc
+BINTARG   = fzcalc.bin
 ALIBTARG  = libfzcal.a
 SOLIBTARG = libfzcal.so.$(SOVERSION)
 SONAME    = libfzcal.so.$(SOVERSION)
@@ -106,7 +107,7 @@ install-lib: $(ALIBTARG) $(SOLIBTARG)
 	ln -sf $(SOLIBTARG) $(SOFILE)
 	cp -pRf $(SOFILE) $(LIBDIR)
 
-install-bin: $(BINTARG)
+install-bin: $(BINTARG) $(EXETARG)
 	cp -pRf $(.ALLSRC) $(BINDIR)
 
 clean:

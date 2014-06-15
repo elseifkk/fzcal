@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2013 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2014 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -447,7 +447,7 @@ contains
     type(t_rpnc),intent(in)::rpnc
     character*(*),intent(in)::f
     integer i,ou
-    ou=open_file(f,.true.,.true.)
+    ou=open_file(f,print_error=.true.,ask_overwrite=.true.)
     if(ou==0) return
     do i=1,plist_count(rpnc%pars)
        call dump_plist(rpnc%pars,ent=i,out_unit=ou)
@@ -461,7 +461,7 @@ contains
     type(t_rpnc),intent(in)::rpnc
     character*(*),intent(in)::f
     integer i,ou
-    ou=open_file(f,.true.,.true.)
+    ou=open_file(f,print_error=.true.,ask_overwrite=.true.)
     if(ou==0) return
     do i=1,rpnlist_count(rpnc%rl)
        call dump_rpnm(rpnc,ent=i,type=SC_FNC,out_unit=ou)
@@ -475,7 +475,7 @@ contains
     type(t_rpnc),intent(in)::rpnc
     character*(*),intent(in)::f
     integer i,ou
-    ou=open_file(f,.true.,.true.)
+    ou=open_file(f,print_error=.true.,ask_overwrite=.true.)
     if(ou==0) return
     do i=1,rpnlist_count(rpnc%rl)
        call dump_rpnm(rpnc,ent=i,type=SC_MAC,out_unit=ou)

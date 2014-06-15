@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2012 by Kazuaki Kumagai                                 *
+! *   Copyright (C) 2012,2014 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -263,14 +263,14 @@ contains
     end do
   end function get_open_unit
 
-  integer function open_file(f,print_error,ask_overwrite,stat,acce)
+  integer function open_file(f,print_error,ask_overwrite,read_only,stat,acce)
     character*(*),intent(in)::f
-    logical,intent(in)::print_error,ask_overwrite
+    logical,intent(in),optional::print_error,ask_overwrite,read_only
     character*(*),intent(in),optional::stat,acce
     integer istat,unit
     logical exist
     character ans
-    character(len=16) s,a
+    character(len=16) s,a,c
     character(len=256) iomsg
 
     if(present(stat)) then
@@ -283,9 +283,14 @@ contains
     else
        a="sequential"
     end if
+    if(present(read_only).and.read_only) then
+       c="read"
+    else
+       c="readwrite"
+    end if
 
     open_file=0
-    if(ask_overwrite) then
+    if(present(ask_overwrite).and.ask_overwrite) then
        inquire(file=f,exist=exist)
        if(exist) then
           call messp("overwrite: "//trim(f)//" ? => ")
@@ -295,10 +300,11 @@ contains
     end if
 
     unit=get_open_unit()
-    open(unit=unit,file=f,iostat=istat,status=s,iomsg=iomsg,access=a)
+    open(unit=unit,file=f,iostat=istat,status=s,iomsg=iomsg,access=a,action=c)
     if(istat/=0) then
-       if(print_error) write(*,*) "*** open_file: Error: opening file: "//trim(f)//"\n" &
-            //"*** "//trim(iomsg)
+       if(present(print_error).and.print_error)&
+            call mess("*** open_file: Error: opening file: "//trim(f)//"\n" &
+            //"*** "//trim(iomsg))
        open_file=0
        return
     else
