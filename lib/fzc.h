@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Copyright (C) 2011-2013 by Kazuaki Kumagai                            *
+ *   Copyright (C) 2011-2014 by Kazuaki Kumagai                            *
  *   elseifkk@users.sf.net                                                 *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -28,11 +28,12 @@
 #define FZCPK_DBLE  3
 #define FZCPK_INT   4
 
-#define FZCOPT_NOAUTO_ADDPAR 0x08
-#define FZCOPT_NOWARN        0x20
-#define FZCOPT_DAT           0x40
-#define FZCOPT_STA           0x80
-#define FZCOPT_NOSTDOUT      0x4000
+#define FZCOPT_DAT             0x0020
+#define FZCOPT_STA             0x0040
+#define FZCOPT_NO_AUTO_ADD_PAR 0x0800
+#define FZCOPT_NO_WARN         0x1000
+#define FZCOPT_NO_STDIN        0x2000
+#define FZCOPT_NO_STDOUT       0x4000
 
 #define FZCSTA_MACSET -2
 

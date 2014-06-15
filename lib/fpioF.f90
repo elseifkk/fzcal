@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2014 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -44,7 +44,7 @@ module fpio
 #endif
   real(rp),parameter::rzero=0.0_rp
   real(rp),parameter::runit=1.0_rp
-  integer,parameter::min_digit=2
+  integer,parameter::min_digit=1
   integer,parameter::max_digit=precision(rzero)
   real(rp),parameter::eps=epsilon(rzero)
   complex(cp),parameter::cunit=complex(rzero,runit)
@@ -387,9 +387,9 @@ contains
           end if
           return
        end if
-   end if
-
+    end if
     if(d<len) then
+       if(ichar(ns(d+1:d+1))>=z"35") ns(d+1:d+1)="9"
        cr=adc(ns,d+1)
        if(cr) then
           ! 9.99... => 10.0...
@@ -401,6 +401,7 @@ contains
           end if
        end if
     end if
+
     if(abs(e)<d.and.is_set(opt,X2A_ALLOW_ORDINARY).or.fix) then
        if(e>=0) then
           if(e+2<=d) then
@@ -451,10 +452,16 @@ contains
           p2=p2+(dd-(r+2)+1)+1
        end if
        if(ee/=0) xtoa(p2:)="_"//si_prefix(k:k)
-    else if(e==0.and.is_not_set(opt,X2A_SHOW_E0)) then
-       xtoa(p1:)=ns(1:1)//"."//ns(2:dd)
     else
-       xtoa(p1:)=ns(1:1)//"."//ns(2:dd)//"e"//trim(itoa(e))
+       xtoa(p1:)=ns(1:1)
+       p1=p1+1
+       if(dd>1) then
+          xtoa(p1:)="."//ns(2:dd)
+          p1=p1+dd
+       end if
+       if(e>0.or..not.is_not_set(opt,X2A_SHOW_E0)) then
+          xtoa(p1:)="e"//trim(itoa(e))
+       end if
     end if
 
     contains
@@ -462,14 +469,21 @@ contains
       subroutine rm9s(s,l)
         character*(*),intent(inout)::s
         integer,intent(in)::l
-        integer ii,nc
+        integer ii,nc,ll
         logical retlog
+        ! 1.49999999999993 => 1.5
         nc=0
-        do ii=l,2,-1
+        if(s(l:l)/="9") then
+           ll=l-1
+        else
+           ll=l
+        end if
+        do ii=ll,2,-1
            if(s(ii:ii)=="9") then
               nc=nc+1
            else
               if(nc>=2) then
+                 if(ll/=l) nc=nc+1
                  s(ii+1:l)=repeat("0",nc)
                  retlog=adc(s,ii)
               end if

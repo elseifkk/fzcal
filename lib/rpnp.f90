@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2014 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -641,7 +641,9 @@ contains
           t=TID_IGNORE
        else
           call skip_tid(t)
-          if(p2==rpnb%len_expr) t=TID_FIN
+! 1; -> 1 FIN prints 1
+! 1; -> 1 SCL FIN does not print 1
+!          if(p2==rpnb%len_expr) t=TID_FIN
        end if
     case(TID_COM)
        if(p1==rpnb%len_expr) then
@@ -2666,12 +2668,13 @@ contains
   end function parse_formula
 
   integer function set_formula(rpnc,f)
-    use misc, only: cle_flg
+    use misc, only: cle_flg, set_flg
     type(t_rpnc),intent(inout)::rpnc
     character*(*),intent(in)::f
     integer i,k
     logical wc,dq,sq,dup,esc
     rpnc%rc=0
+    call cle_flg(rpnc%flg%sta,RCS_SRC_SET)
     call cle_flg(rpnc%flg%sta,RCS_READY)
     if(.not.associated(rpnc%expr)) allocate(rpnc%expr)
     if(.not.associated(rpnc%len_expr)) allocate(rpnc%len_expr)
@@ -2749,7 +2752,11 @@ contains
        if(.not.putc(STID_DQ2)) return
     end if
     rpnc%len_expr=k
-    if(k==0) set_formula=FZCERR_EMPTY_INPUT
+    if(k==0) then
+       set_formula=FZCERR_EMPTY_INPUT
+    else
+       call set_flg(rpnc%flg%sta,RCS_SRC_SET)
+    end if
 
   contains
 

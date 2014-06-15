@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2012-2013 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2012-2014 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -141,12 +141,13 @@ module rpng
   ! RPNFs
   integer,parameter::RCF_NOP              =  0
   ! stat
-  integer,parameter::RCS_READY            =  Z"00000001"
-  integer,parameter::RCS_NEW_PAR          =  Z"00000002"
-  integer,parameter::RCS_ANS_SET          =  Z"00000004"
-  integer,parameter::RCS_FNC_SET          =  Z"00000008"
-  integer,parameter::RCS_MAC_SET          =  Z"00000010"
-  integer,parameter::RCS_PRINT_ANS_REQ    =  Z"00000020"
+  integer,parameter::RCS_SRC_SET          =  Z"00000001"
+  integer,parameter::RCS_READY            =  Z"00000002"
+  integer,parameter::RCS_NEW_PAR          =  Z"00000004"
+  integer,parameter::RCS_ANS_SET          =  Z"00000008"
+  integer,parameter::RCS_FNC_SET          =  Z"00000010"
+  integer,parameter::RCS_MAC_SET          =  Z"00000020"
+  integer,parameter::RCS_PRINT_ANS_REQ    =  Z"00000040"
   ! public mode
   integer,parameter::RCM_ECHO            =  Z"00000001"
   integer,parameter::RCM_HIST            =  Z"00000002"

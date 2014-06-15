@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2013 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2014 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -54,23 +54,24 @@ contains
        else
           f=histfile
        end if
-       hist_unit=open_file(f,.true.,.false.,acce="append")
+       hist_unit=open_file(f,print_error=.true.,acce="append")
     else if(hist_unit/=0) then
        close(hist_unit)
     end if
   end subroutine open_hist
 
-  integer function get_formula(rpnc)
+  integer function get_formula(rpnc,unit)
     use memio, only: cpstr
     use misc, only: messp,ins
     use rpnp, only: set_formula
     use slist, only: get_str_ptr
     type(t_rpnc),intent(inout)::rpnc
+    integer,intent(in),optional::unit
     character(len=LEN_FORMULA_MAX) s
     integer istat,ptr,len
     istat=get_str_ptr(rpnc%spars,code=SC_PROMPT,ptr=ptr,len=len)
     if(istat==0) call messp(cpstr(ptr,len))
-    call ins(s,i=istat)
+    call ins(s,u=unit,i=istat)
     if(istat/=0) then
        get_formula=FZCERR_READ
        return
@@ -1144,7 +1145,7 @@ contains
       integer u,is
       character(LEN_FORMULA_MAX) s
       load=RPNSTA_OK
-      u=open_file(cpstr(q%cid,get_up32(q%tid)),.true.,.false.,"old")
+      u=open_file(cpstr(q%cid,get_up32(q%tid)),print_error=.true.,read_only=.true.,stat="old")
       if(u==0) then
          load=FZCERR_NOFILE
          return
