@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2012,2014 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -55,8 +55,10 @@ module zmath
   public zm_dec_f
   public zm_neg_f
   public zm_neg
+  public zm_mfac
   public zm_fac
   public zm_dfac
+  public zm_pfac
   public zm_inc
   public zm_dec
   public zm_sum
@@ -414,33 +416,62 @@ contains
     end if
   end function zm_neg
 
+  complex(cp) function zm_mfac(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    integer(ip) n,k,m
+    n=z1
+    k=z2
+    if(n<0.or.k<=0) then
+       zm_mfac=nan()
+       return
+    else
+       zm_mfac=1
+       if(n<=k) return
+    end if
+    m=n
+    do 
+       zm_mfac=zm_mfac*m
+       m=m-k
+       if(isnan(realpart(zm_mfac))) exit
+       if(m<=0) exit
+    end do
+  end function zm_mfac
+
   complex(cp) function zm_fac(z1)
     complex(cp),intent(in)::z1
-    integer i,n
-    n=int(z1)
-    if(n<=0) then
-       zm_fac=czero
-       return
+    if(is_integer(z1)) then
+       zm_fac=zm_mfac(z1,complex(1_rp,rzero))
+    else
+       zm_fac=zm_gamma(z1+1_rp)
     end if
-    zm_fac=real(n,kind=rp)
-    do i=2,n-1
-       zm_fac=zm_fac*real(i,kind=rp)
-    end do
   end function zm_fac
 
   complex(cp) function zm_dfac(z1)
     complex(cp),intent(in)::z1
-    integer i,n
-    n=int(z1)
-    if(n<=0) then
-       zm_dfac=czero
+    if(is_integer(z1)) then 
+       zm_dfac=zm_mfac(z1,complex(2_rp,rzero))
+    else if(realpart(z1)>=-2) then
+       zm_dfac=(2_rp/pi)**((1-cos(pi*z1))/4_rp)*2_rp**(z1/2)*zm_gamma(z1/2_rp+1_rp)
+    else
+       write(*,*) "zm_dfac: z<-2 not implemented yet."
+       zm_dfac=nan()
+    end if
+  end function zm_dfac
+
+  complex(cp) function zm_pfac(z1,z2)
+    complex(cp),intent(in)::z1,z2
+    integer i,n1,n2
+    n1=int(z1)
+    n2=int(z2)
+    if(n1<=0.or.n2<=0) then
+       zm_pfac=czero
        return
     end if
-    zm_dfac=real(n,kind=rp)
-    do i=n-2,2,-2
-       zm_dfac=zm_dfac*real(i,kind=rp)
+    zm_pfac=real(n1,kind=rp)
+    do i=n1+1,n2
+       zm_pfac=zm_pfac*real(i,kind=rp)
     end do
-  end function zm_dfac
+  end function zm_pfac
 
   complex(cp) function zm_perm(z1,z2)
     complex(cp),intent(in)::z1,z2
@@ -641,7 +672,14 @@ contains
 
   complex(cp) function zm_mod(z,z2)
     complex(cp),intent(in)::z,z2
-    zm_mod=mod(int(z),int(z2))
+    integer(ip) n,m
+    m=z2
+    if(m==0) then
+       zm_mod=nan()
+    else
+       n=z
+       zm_mod=mod(n,m)
+    end if
   end function zm_mod
 
   complex(cp) function zm_inc_f(z)
@@ -1087,18 +1125,18 @@ contains
     zm_gamma=exp(zm_lgamma(z))
   end function zm_gamma
 
-  complex(cp) function zm_deint(ptr_rpnc,ptr_integrand,a,b)
+  recursive function zm_deint(ptr_rpnc,ptr_integrand,a,b,nv) result(z)
     use integral, only: deSdx
     use misc, only: mess
     use memio, only: itoa
+    complex(cp) z
     integer,intent(in)::ptr_rpnc
     integer,intent(in)::ptr_integrand
     complex(cp),intent(in)::a,b
-    complex(cp) ans
+    integer,intent(in)::nv
     integer istat
-    istat=deSdx(ptr_rpnc,ptr_integrand,realpart(a),realpart(b),epsilon(rzero),ans)
+    istat=deSdx(ptr_rpnc,ptr_integrand,realpart(a),realpart(b),nv,epsilon(rzero),z)
     if(istat/=0) call mess("*** zm_deint: deSdx failed: code = "//trim(itoa(istat)))
-    zm_deint=ans
   end function zm_deint
 
 

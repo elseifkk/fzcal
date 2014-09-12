@@ -132,7 +132,7 @@ contains
        call ins(e,u,istat)
        if(istat/=0) exit
        istat=set_and_run(e)
-       if(istat==-1) exit
+       if(istat==RPNSTA_EXIT) exit
     end do
     close(u)
   end function load_and_run
@@ -146,33 +146,22 @@ contains
        select case(istat)
        case(FZCERR_EMPTY_INPUT)
        case(FZCERR_READ)
-          istat=-1
        case default
           call mess("*** set_formula failed: "//trim(error_str(istat)))
        end select
        return
+    else
+       istat=rpn_run(rpnc)
     end if
-    istat=run()
   end function set_and_run
 
   integer function read_and_run() result(istat)
     do
        istat=get_formula(rpnc)
        if(istat/=0) exit
-       istat=run()
-       if(istat==-1) exit
+       istat=rpn_run(rpnc)
+       if(istat==RPNSTA_EXIT) exit
     end do
   end function read_and_run
-
-  integer function run() result(istat)
-    use misc, only: mess
-    istat=rpn_run(rpnc)
-    if(istat>0) then
-       call mess("*** rpn_run failed: "//trim(error_str(istat)))
-       return
-    else if(istat==RPNSTA_EXIT) then
-       istat=-1
-    end if
-  end function run
-  
+   
 end program fzcalc

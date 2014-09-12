@@ -57,18 +57,21 @@ module rpng
   ! unary, binary and functions
   integer,parameter::TID_BOP1    =   9  !L +,-
   integer,parameter::TID_BOP1U   =  -9  !
-  integer,parameter::TID_BOP2    =  10  !L *,/,&P,&C
+  integer,parameter::TID_BOP2    =  10  !L *,/,&P,&C,!_
   integer,parameter::TID_BOP2U   = -10  !
   integer,parameter::TID_BOP4    =  11  !L implicit * <<<<<<<<<<<
-  integer,parameter::TID_BOP3    =  12  !R ^,**,e
-  integer,parameter::TID_BOP3U   = -12  !
-  integer,parameter::TID_UOP1    =  13  !R +a,-a,++a
-  integer,parameter::TID_UOP2    =  14  !L !,!!
-  integer,parameter::TID_UOP3    =  15  !L a++
-  integer,parameter::TID_UOP2U   = -15  !
-  integer,parameter::TID_IFNC    =  16  !L sin, cos,...
-  integer,parameter::TID_UFNC    =  17  !L
-  integer,parameter::TID_PRI_MAX =  18  !
+  integer,parameter::TID_UOP1    =  12  !R +a,-a
+  integer,parameter::TID_UOP2    =  13  !L !,!!
+  integer,parameter::TID_UOP2U   = -13  !
+  integer,parameter::TID_UOP3    =  14  !L a++
+  integer,parameter::TID_UOP4    =  15  !R ++a
+  integer,parameter::TID_BOP3    =  16  !R ^,**
+  integer,parameter::TID_BOP3U   = -16  !
+  integer,parameter::TID_BOP5    =  17  !R e
+  integer,parameter::TID_UOP5    =  18  !R - for e and **     
+  integer,parameter::TID_IFNC    =  19  !L sin, cos,...
+  integer,parameter::TID_UFNC    =  20  !L
+  integer,parameter::TID_PRI_MAX =  21  !
   !! priority tabel end
 
   integer,parameter::TID_PAR   =  32   ! a,b,c,...
@@ -148,6 +151,7 @@ module rpng
   integer,parameter::RCS_FNC_SET          =  Z"00000010"
   integer,parameter::RCS_MAC_SET          =  Z"00000020"
   integer,parameter::RCS_PRINT_ANS_REQ    =  Z"00000040"
+  integer,parameter::RCS_NO_PRINT_ANS     =  Z"00000080"
   ! public mode
   integer,parameter::RCM_ECHO            =  Z"00000001"
   integer,parameter::RCM_HIST            =  Z"00000002"

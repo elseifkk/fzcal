@@ -1,4 +1,4 @@
-VERSION   = 0.0.5
+VERSION   = 0.0.5_1
 SOVERSION = 5
 
 #
@@ -23,7 +23,7 @@ AR  = ar
 
 #
 CFLAGS = -c -Wall
-FFLAGS = -c -Wall -cpp -fbounds-check \
+FFLAGS = -c -Wall -cpp -fbounds-check -fno-range-check \
  -fcray-pointer -fbackslash -Wno-conversion \
  -g -fPIC -D_VERSION_=\"$(VERSION)\"
 AFLAGS  = -g stabs

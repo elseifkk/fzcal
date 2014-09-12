@@ -162,6 +162,7 @@ contains
        kz=ke
     end if
     kz=trim_end(kz)
+
     if(ok) then
        ! true case
        rpnc%que(kd:kz)%tid=TID_NOP
@@ -504,7 +505,7 @@ contains
     case(LOID_NEQ)
        v=ods(1).neqv.ods(2)
     case default
-       stop "internal error"
+       stop "*** eval_l: internal error"
     end select
 
     do j=1,na
@@ -669,11 +670,13 @@ contains
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     interface
-       complex(cp) function f1(ptr_rpnc,ptr_integrand,a,b)
+       recursive function f1(ptr_rpnc,ptr_integrand,a,b,n) result(z)
          use fpio, only: cp, rp
+         complex(cp) z
          integer,intent(in)::ptr_rpnc
          integer,intent(in)::ptr_integrand
-         real(rp),intent(in)::a,b
+         complex(cp),intent(in)::a,b
+         integer,intent(in)::n
        end function f1
     end interface
     pointer(pf1,f1)
@@ -682,9 +685,10 @@ contains
     integer ods(2)
     type(t_rpnc),pointer::ifnc
     integer i1,i2,nc
-    complex(cp) a,b,ans
+    complex(cp) a,b,ans,ans_save
     pointer(pa,a)
     pointer(pb,b)
+    integer nv
 
     istat=get_operands(rpnc,i,2,ks=ods,ps=pvs(1:2))
     if(istat/=0) return
@@ -695,47 +699,55 @@ contains
        return
     end if
 
+    ans_save=rpnc%answer
+
     nc=i2-i1+1
+
     allocate(rpnc%ifnc)
     ifnc => rpnc%ifnc
     ifnc=cp_rpnc(rpnc,deep=.false.)
-
+    
     allocate(ifnc%que(nc),rpnc%ique(nc))
     ifnc%ip     = 1
     ifnc%rc     = rpnc%rc
     ifnc%que    = rpnc%que(i1:i2)
     ifnc%p_vbuf = 0
-
+    
     call alloc_vbuf
     call set_var
     call set_idmy
     rpnc%ique=ifnc%que
-
+    
     pf1=rpnc%que(i)%cid
     pa=pvs(1)
-    pb=pvs(2)
+    pb=pvs(2)    
 
-    ans=f1(loc(rpnc),loc(integrand1),realpart(a),realpart(b))
-
+    ans=f1(loc(rpnc),loc(integrand1),a,b,nv)
+    
     call set_result(rpnc,i,ans,2,ods)
+    istat=0
+    
     rpnc%que(i1:i2)%tid=TID_NOP
 
     call uinit_rpncq(rpnc%ique)
     call uinit_rpnc(ifnc,deep=.false.)
     deallocate(rpnc%ique)
+    deallocate(rpnc%ifnc)
 
-    istat=0
+    rpnc%answer=ans_save
 
   contains
 
     subroutine alloc_vbuf()
-      integer oc,vc
+      integer oc,vc,dc
       oc=count_op(ifnc%que)
+      dc=count_tid(ifnc%que,TID_IVAR1L) & ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+           +count_tid(ifnc%que,TID_IVAR1U)
       vc=count_tid(ifnc%que,TID_IVAR1) &
-           +count_tid(ifnc%que,TID_IVAR1L) &
-           +count_tid(ifnc%que,TID_IVAR1U) &
+           +dc &
            +count_tid(ifnc%que,TID_VAR)
       if(vc+oc>0) allocate(ifnc%vbuf(vc+oc))
+      nv=dc
     end subroutine alloc_vbuf
 
     subroutine set_idmy()
@@ -785,6 +797,7 @@ contains
     use rpnlist, only: kth_rpnm, t_rpnm
     use fpio, only: cp
     use plist, only: get_par_loc
+    use misc, only: cle_flg,is_not_set,set_flg
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     integer istat,j,kp
@@ -792,13 +805,14 @@ contains
     type(t_rpnm),pointer::rpnm
     type(t_rpnc) fnc
     integer ods(narg_max)
-    complex(cp) v
+    complex(cp) v,ans_save
     pointer(pv,v)
     logical dup
     type(t_rpnq),pointer::q
 
     mode_save=rpnc%flg%mode
     dmode_save=rpnc%flg%dmode
+    ans_save=rpnc%answer
 
     rpnm => kth_rpnm(rpnc%rl,rpnc%que(i)%cid)
 
@@ -840,16 +854,24 @@ contains
        end select
     end do
 
-    if(istat==0) istat=eval(fnc)
-
-    if(istat==0)&
-       call set_result(rpnc,i,fnc%answer,rpnm%na,ods)
-
+    if(istat==0) then
+       do ! loop for semi-colon (TID_END)
+          istat=eval(fnc)
+          if(fnc%ip==0) exit
+          if(istat==0) then
+             if(rpnc%rc<=1) call print_ans(fnc)
+          else if(istat>0) then
+             exit
+          end if
+       end do
+    end if
+    if(istat==0) call set_result(rpnc,i,fnc%answer,rpnm%na,ods)
     call uinit_rpnc(fnc,deep=.false.)
 
     rpnc%flg%mode=mode_save
     rpnc%flg%dmode=dmode_save
-
+    rpnc%answer=ans_save
+    
   contains
 
     subroutine alloc_vbuf()
@@ -894,6 +916,7 @@ contains
   recursive function eval_m(rpnc,i) result(istat)
     use rpnlist, only: kth_rpnm, t_rpnm
     use plist, only: get_par_loc
+    use misc, only: cle_flg,is_not_set,set_flg
     type(t_rpnc),intent(inout),target::rpnc
     integer,intent(in)::i
     integer istat,j,kp
@@ -902,9 +925,11 @@ contains
     type(t_rpnc) mac
     logical dup
     type(t_rpnq),pointer::q
-
+    complex(cp) ans_save
+    
     mode_save=rpnc%flg%mode
     dmode_save=rpnc%flg%dmode
+    ans_save=rpnc%answer
 
     rpnm => kth_rpnm(rpnc%rl,rpnc%que(i)%cid)
 
@@ -936,17 +961,25 @@ contains
     end do
 
     if(istat==0) then
-       istat=eval(mac)
+       do ! loop for semi-colon (TID_END)
+          istat=eval(mac)
+          if(mac%ip==0) exit
+          if(istat==0) then
+             if(rpnc%rc<=1) call print_ans(mac)
+          else if(istat>0) then
+             exit
+          end if
+       end do
        if(istat==0) then
           rpnc%tmpans=mac%answer
           call put_vbuf(rpnc,i,mac%answer)
        end if
     end if
-
     call uinit_rpnc(mac,deep=.false.)
 
     rpnc%flg%mode=mode_save
     rpnc%flg%dmode=dmode_save
+    rpnc%answer=ans_save
 
   contains
 
@@ -993,7 +1026,7 @@ contains
   recursive function input(rpnc,p,s,z) result(istat)
     use fpio, only: cp
     use rpnp, only: set_formula
-    use misc, only: mess,messp,ins,is_set,is_not_set
+    use misc, only: mess,messp,ins,is_set,is_not_set,set_flg
     type(t_rpnc),intent(in),target::rpnc
     character*(*),intent(in)::p
     character*(*),intent(in)::s
@@ -1001,19 +1034,33 @@ contains
     character(LEN_FORMULA_MAX) expr
     integer istat
     type(t_rpnc) tmpc
+    integer mode_save
     tmpc=cp_rpnc(rpnc,deep=.false.)
     call messp("Input pending for: "//trim(p)//"\n"//s//"? = ")
     call ins(expr)
     istat=set_formula(tmpc,expr)
-    tmpc%rc=rpnc%rc+1 ! <<<
     if(istat==0) then
+       tmpc%rc=rpnc%rc+1 ! <<<
+       mode_save=tmpc%flg%mode
+       call set_flg(tmpc%flg%mode,RCPM_NO_STDOUT)
        istat=rpn_run(tmpc)
+       tmpc%flg%mode=mode_save
        if(istat==0) then
           z=tmpc%answer
+          call mess(trim(p(2:))//" = "//trim(rpn_sans(tmpc)))
        end if
     end if
     call uinit_rpnc(tmpc,deep=.false.)
   end function input
+
+  recursive subroutine print_ans(rpnc)
+    use misc, only: is_not_set,is_set,mess
+    type(t_rpnc) rpnc
+    if(is_set(rpnc%flg%sta,RCS_ANS_SET) &
+         .and.is_not_set(rpnc%flg%mode,RCPM_NO_STDOUT) &
+         .and.is_not_set(rpnc%flg%sta,RCS_NO_PRINT_ANS)) &
+         call mess(trim(rpn_sans(rpnc)))
+  end subroutine print_ans
 
   recursive function eval(rpnc) result(istat)
     use fpio, only: cp
@@ -1032,7 +1079,7 @@ contains
        return
     end if
 
-    if(rpnc%rc==0) call cle_flg(rpnc%flg%sta,RCS_ANS_SET)
+    call cle_flg(rpnc%flg%sta,ior(RCS_ANS_SET,RCS_NO_PRINT_ANS))
 
     rpnc%rc=rpnc%rc+1
     istat=0
@@ -1073,13 +1120,11 @@ contains
           i=i+q%cid+1
           ec=ec-1
        case(TID_END)
-!!$          if(rpnc%rc==1.and.q%cid/=0) then
-!!$             ! multiple ";"  will exit the loop
-!!$             ec=ec-1
-!!$             exit
-!!$          else
-             ec=0
-!!$          end if
+          if(q%cid==0.and.rpnc%rc<=2) &
+               call set_flg(rpnc%flg%sta,RCS_NO_PRINT_ANS)
+          ec=ec-1
+          ecc=ecc-1
+          exit
        case default
           if(is_command(t)) then
              cc=cc+1
@@ -1116,9 +1161,14 @@ contains
 
     rpnc%rc=rpnc%rc-1
 
+    if(rpnc%rc==0) then
+       if(associated(rpnc%vbuf).and.size(rpnc%vbuf)>0) deallocate(rpnc%vbuf)
+       rpnc%p_vbuf=0
+    end if
+
     if(istat/=0) return
 
-    if(rpnc%rc==0.and.ecc>cc &
+    if(ecc>cc &
          .and.is_set(rpnc%flg%mode,RCM_DAT)) &
          call set_sd(ip1,i,rpnc)
 
@@ -1196,7 +1246,7 @@ contains
       else
          rpnc%answer=rpnc%tmpans
       end if
-      if(rpnc%rc==0) call set_flg(rpnc%flg%sta,RCS_ANS_SET)
+      call set_flg(rpnc%flg%sta,RCS_ANS_SET)
    end subroutine set_ans
 
   end function eval
@@ -1212,7 +1262,7 @@ contains
        if(istat==0) then
           istat=eval(rpnc)
           if(istat==0) then
-             call print_ans
+             call print_ans(rpnc)
              call write_hist
           else if(istat>0) then
              exit
@@ -1234,14 +1284,6 @@ contains
     end do
 
   contains
-
-    subroutine print_ans()
-      use misc, only: is_not_set,is_set,mess
-      if(is_set(rpnc%flg%sta,RCS_ANS_SET) &
-           .and.is_not_set(rpnc%flg%mode,RCPM_NO_STDOUT) &
-           .and.(p2==0.or.is_set(rpnc%flg%sta,RCS_PRINT_ANS_REQ))) &
-           call mess(trim(rpn_sans(rpnc)))
-    end subroutine print_ans
 
     subroutine write_hist()
       use misc, only: mess,is_not_set

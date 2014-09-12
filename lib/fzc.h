@@ -55,6 +55,7 @@ extern "C"
   int     __fzc_MOD_fzc_setparse_formula ( const size_t, const size_t );
   int     __fzc_MOD_fzc_eval ( const size_t );
   void    __fzc_MOD_fzc_get_str_ans ( const size_t, const size_t );
+  void    __fzc_MOD_fzc_get_str_err ( const int, const size_t );
   int     __fzc_MOD_fzc_regist_parameter ( const size_t, const size_t, const size_t, const size_t );
   double  __fzc_MOD_fzc_get_ans(const size_t );
   void    __fzc_MOD_fzc_cle_dat ( const size_t );
@@ -73,6 +74,7 @@ extern "C"
 #define fzc_eval             __fzc_MOD_fzc_eval
 #define fzc_regpar           __fzc_MOD_fzc_regist_parameter
 #define fzc_get_strans       __fzc_MOD_fzc_get_str_ans
+#define fzc_get_strerr       __fzc_MOD_fzc_get_str_err
 #define fzc_get_ans          __fzc_MOD_fzc_get_ans
 #define fzc_cle_dat          __fzc_MOD_fzc_cle_dat
 

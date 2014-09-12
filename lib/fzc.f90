@@ -125,6 +125,16 @@ contains
     str=trim(rpn_sans(rpnc))//char(0)
   end subroutine fzc_get_str_ans
 
+  subroutine fzc_get_str_err(err,ptr_str)
+    use fzcerr, only: LEN_STR_ERR_MAX,error_str
+    int_t,intent(in),value::err
+    size_t,intent(in),value::ptr_str
+    character(LEN_STR_ERR_MAX) str
+    pointer(ps,str)
+    ps=ptr_str
+    str=trim(error_str(err))//char(0)
+  end subroutine fzc_get_str_err
+
   subroutine fzc_set_mode(ptr_rpnc,mode)
     size_t,intent(in),value::ptr_rpnc
     int_t,intent(in),value::mode

@@ -41,7 +41,6 @@ module rpnd
      type(t_rpnf),pointer::flg
      integer,pointer::rc            ! recursion count
      integer,pointer::ip
-     integer*8,pointer::opt
      type(t_slist),pointer::spars
      character(LEN_FORMULA_MAX),pointer::expr
      integer,pointer::len_expr
@@ -132,12 +131,12 @@ contains
        allocate(cp_rpnc%p_vbuf)
        allocate(cp_rpnc%ip)
        allocate(cp_rpnc%rc)
+       allocate(cp_rpnc%sd)
        cp_rpnc%rl     => rpnc_in%rl
        cp_rpnc%tmpans => rpnc_in%tmpans
        cp_rpnc%answer => rpnc_in%answer
        cp_rpnc%pars   => rpnc_in%pars
        cp_rpnc%flg    => rpnc_in%flg
-       cp_rpnc%sd     => rpnc_in%sd
        cp_rpnc%pfs    => rpnc_in%pfs
        cp_rpnc%ifnc   => rpnc_in%ifnc
        cp_rpnc%ique   => rpnc_in%ique
@@ -184,6 +183,10 @@ contains
     if(associated(rpnc%ip)) deallocate(rpnc%ip)
     if(associated(rpnc%expr)) deallocate(rpnc%expr)
     if(associated(rpnc%len_expr)) deallocate(rpnc%len_expr)
+    if(associated(rpnc%sd)) then
+       call uinit_sd(rpnc%sd)
+       deallocate(rpnc%sd)
+    end if
     if(dcp) then
        if(associated(rpnc%tmpans)) deallocate(rpnc%tmpans)
        if(associated(rpnc%answer)) deallocate(rpnc%answer)
@@ -196,10 +199,6 @@ contains
           deallocate(rpnc%rl)
        end if
        if(associated(rpnc%pfs)) deallocate(rpnc%pfs)
-       if(associated(rpnc%sd)) then
-          call uinit_sd(rpnc%sd)
-          deallocate(rpnc%sd)
-       end if
        if(associated(rpnc%spars)) then
           call uinit_slist(rpnc%spars)
           deallocate(rpnc%spars)
@@ -227,7 +226,7 @@ contains
     istat=add_par_by_value(init_par,"huge",huge(0.0_rp),.true.)
     istat=add_par_by_value(init_par,"i",complex(0.0_rp,1.0_rp),.true.)
     istat=add_par_by_value(init_par,"pi",atan(1.0_rp)*4.0_rp,.true.)
-    istat=add_par_by_value(init_par,"c",2.99792458e8_rp,.true.)
+    istat=add_par_by_value(init_par,"c",2.99792458e8_rp,.false.)
   end function init_par
 
   subroutine uinit_par(rpnc)
@@ -288,7 +287,6 @@ contains
     logical col
     pointer(pz,z)
     type(t_rpnq),pointer::q
-
     if(.not.allocated(rpnc%sd%vs)) call init_sd(rpnc%sd)
     call next
     i2=min(size(rpnc%que),ip2)
@@ -611,7 +609,6 @@ contains
     end if
     if(.not.present(mid).and.iand(rpnc%flg%sta,RCS_READY)==0) then
        call mess("(not set)")
-       return
     end if
     call mess("#\tTID\tCID\tValue")
     if(present(mid)) rpnm => kth_rpnm(rpnc%rl,mid)
