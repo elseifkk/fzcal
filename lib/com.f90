@@ -177,6 +177,7 @@ contains
   end function dec_cid
 
   subroutine exe_mode_com(cid,flg,dec)
+    use memio, only: IBASE_BIN,IBASE_OCT,IBASE_DEC,IBASE_HEX,IBASE_RAW
     use rpng
     use rpnt, only: t_rpnf
     use misc, only: set_flg,cle_flg
@@ -195,16 +196,16 @@ contains
     select case(c)
 !!$ display and opeeration modes mixed!
     case(CID_DEC_IO)
-       call set_base(flg%dmode,10)
+       call set_base(flg%dmode,IBASE_DEC)
        call cle_flg(flg%mode,RCM_INM)
     case(CID_HEX_IO)
-       call set_base(flg%dmode,16)
+       call set_base(flg%dmode,IBASE_HEX)
        call set_flg(flg%mode,RCM_IHEX)
     case(CID_OCT_IO)
-       call set_base(flg%dmode,8)
+       call set_base(flg%dmode,IBASE_OCT)
        call set_flg(flg%mode,RCM_IOCT)
     case(CID_BIN_IO)
-       call set_base(flg%dmode,2)
+       call set_base(flg%dmode,IBASE_BIN)
        call set_flg(flg%mode,RCM_IBIN)
 !!$ modes
     case(CID_DEC_I)
@@ -229,15 +230,17 @@ contains
     case(CID_DAT)
        call set_flg(flg%mode,RCM_DAT)
     case(CID_NORM)
-       call cle_flg(flg%mode,ior(RCM_DAT,RCM_STA))
+       call cle_flg(flg%mode,ior(RCM_DAT,ior(RCM_STA,RCM_RATIO)))
     case(CID_DBG)
        call set_flg(flg%mode,RCM_DEBUG)
     case(CID_NODBG)
        call cle_flg(flg%mode,RCM_DEBUG)
     case(CID_RATIO)
        call set_flg(flg%mode,RCM_RATIO)
+       call set_base(flg%dmode,IBASE_RAW)
     case(CID_FRAC)
        call cle_flg(flg%mode,RCM_RATIO)
+       call set_base(flg%dmode,IBASE_RAW)
     case(CID_ECHO_OFF)
        call cle_flg(flg%mode,RCM_ECHO)
     case(CID_ECHO_ON)
@@ -252,6 +255,7 @@ contains
   end subroutine exe_mode_com
 
   integer function exe_com(rpnc,i)
+    use memio, only: IBASE_BIN,IBASE_OCT,IBASE_DEC,IBASE_HEX
     use fpio
     use rpnd
     use memio, only: atoi
@@ -308,21 +312,25 @@ contains
     case(CID_NODMS)
        call cle_disp_opt(X2A_DMS)
     case(CID_DMS)
-       call set_disp_opt(X2A_DMS)
+       call set_disp_opt(ior(X2A_DMS,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO)))
        call cle_disp_opt(X2A_ENG)
+       call put_disp_digit(n)
     case(CID_NOENG)
        call cle_disp_opt(X2A_ENG)
     case(CID_ENG)
        call set_disp_opt(X2A_ENG)
        call cle_disp_opt(ior(X2A_DMS,X2A_ALLOW_ORDINARY)) ! <<<<<<<<<<<<<<<
        call put_disp_digit(n)
+       call set_base(rpnc%flg%dmode,IBASE_RAW)
     case(CID_FIX)
        call set_disp_opt(X2A_FIX)
        call cle_disp_opt(X2A_SHOW_E0)
        call put_disp_digit(n)
+       call set_base(rpnc%flg%dmode,IBASE_RAW)
     case(CID_EXP)
-       call cle_disp_opt(ior(X2A_FIX,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO)))
+       call cle_disp_opt(ior(X2A_ENG,ior(X2A_FIX,ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))))
        call put_disp_digit(n)
+       call set_base(rpnc%flg%dmode,IBASE_RAW)
     case(CID_FIG)
        call set_disp_opt(ior(X2A_ALLOW_ORDINARY,X2A_TRIM_ZERO))
        call cle_disp_opt(ior(X2A_FIX,X2A_SHOW_E0))
@@ -330,13 +338,13 @@ contains
     case(CID_BASE)
        call set_base(rpnc%flg%dmode,n)
     case(CID_DEC_O)
-       call set_base(rpnc%flg%dmode,10)
+       call set_base(rpnc%flg%dmode,IBASE_DEC)
     case(CID_HEX_O)
-       call set_base(rpnc%flg%dmode,16)
+       call set_base(rpnc%flg%dmode,IBASE_HEX)
     case(CID_OCT_O)
-       call set_base(rpnc%flg%dmode,8)
+       call set_base(rpnc%flg%dmode,IBASE_OCT)
     case(CID_BIN_O)
-       call set_base(rpnc%flg%dmode,2)
+       call set_base(rpnc%flg%dmode,IBASE_BIN)
 
 !!$ outside
     case(CID_EXIT)
@@ -379,17 +387,17 @@ contains
     case(-CID_PRI_PAR)
        call dump_par(rpnc)
     case(CID_PRI_PAR)
-       call dump_par(rpnc,n,str)
+       call dump_par(rpnc,n,trim(str))
     case(-CID_PRI_FNC)
        call dump_rpnm(rpnc,type=SC_FNC)
     case(CID_PRI_FNC)
-       call dump_rpnm(rpnc,n,str,type=SC_FNC)
+       call dump_rpnm(rpnc,n,trim(str),type=SC_FNC)
     case(-CID_PRI_MAC)
        call dump_rpnm(rpnc,type=SC_MAC)
     case(CID_PRI_MAC)
-       call dump_rpnm(rpnc,n,str,type=SC_MAC)
+       call dump_rpnm(rpnc,n,trim(str),type=SC_MAC)
     case(CID_DEL_PAR)
-       call delete_par(rpnc,str)
+       call delete_par(rpnc,trim(str))
     case(CID_DEL_PAR_ALL)
        call delete_par_all(rpnc)
     case(CID_PRI_DAT)
@@ -399,14 +407,15 @@ contains
     case(CID_DEL_FNC_ALL)
        call delete_rpnm(rpnc,0,"",type=SC_FNC)
     case(CID_DEL_MAC)
-       call delete_rpnm(rpnc,n,str,type=SC_MAC)
+       call delete_rpnm(rpnc,n,trim(str),type=SC_MAC)
     case(CID_DEL_FNC)
-       call delete_rpnm(rpnc,n,str,type=SC_FNC)
+       call delete_rpnm(rpnc,n,trim(str),type=SC_FNC)
     case(-CID_SET_PROMPT)
     case(CID_SET_PROMPT)
        call stripq
        call set_prompt(rpnc,str(1:lenarg))
-
+    case(CID_INI)
+       call mess("not implemented yet.")
     case default
        STOP "exe_com: UNEXPECTED ERROR: invalid cid"
     end select
@@ -492,7 +501,7 @@ contains
            "data     ",&
            "clear    ",&
            "norm     ",&
-           "         ",&
+           "delete   ",&
            "         ",&
            "         ",&
            "         ",&

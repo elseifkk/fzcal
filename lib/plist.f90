@@ -1,5 +1,5 @@
 !/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-! *   Copyright (C) 2011-2012 by Kazuaki Kumagai                            *
+! *   Copyright (C) 2011-2012,2014 by Kazuaki Kumagai                            *
 ! *   elseifkk@users.sf.net                                                 *
 ! *                                                                         *
 ! *   This program is free software; you can redistribute it and/or modify  *
@@ -50,6 +50,8 @@ module plist
   public cp_plist
   public sort_par
   public plist_count
+!#!  public get_par_sta
+!#!  public is_writable
 
   type,public::t_plist
      integer::n = 0
@@ -209,6 +211,27 @@ contains
     sta=ior(iand(sta,Z"FFFF0000"),pk)
   end subroutine set_pkind
 
+!#!   integer function get_par_sta(pl,par,sta)
+!#!     type(t_plist),intent(in)::pl
+!#!     character*(*),intent(in)::par
+!#!     integer,intent(out)::sta
+!#!     integer istat,k
+!#!     type(t_pn),pointer::pn
+!#!     istat=find_par(pl,par,ent=k)
+!#!     if(istat==0) then
+!#!        pn => kth_node(pl,k)
+!#!        if(.not.associated(pn)) then
+!#!           get_par_sta=FZCERR_NOENT
+!#!           return
+!#!        else
+!#!           sta=pn%v%sta
+!#!           get_par_sta=0
+!#!        end if
+!#!     else
+!#!        get_par_sta=istat
+!#!     end if
+!#!   end function get_par_sta
+
   pure logical function is_reference(sta)
     integer,intent(in)::sta
     is_reference=(iand(get_pflg(sta),PS_REF)/=0)
@@ -306,14 +329,14 @@ contains
 
   integer function palloc(pk,sz)
     use memio, only: mcle
-    use fpio, only: dp,rp,cp
+    use fpio, only: dp,rp,cp,ip
     integer,intent(in)::pk
     integer,intent(out),optional::sz
     integer sz_
     complex(cp) z
     real(rp) x
     real(dp) r
-    integer n
+    integer(ip) n
     select case(pk)
     case(PK_COMP)
        sz_=sizeof(z)
@@ -336,14 +359,14 @@ contains
   end function palloc
 
   subroutine change_pkind(v,pk) ! never called and not checked
-    use fpio, only: dp,rp,cp,czero,rzero
+    use fpio, only: dp,rp,cp,ip,czero,rzero
     type(t_vbuf),intent(inout)::v
     integer,intent(in)::pk
     integer pk_now
     real(rp) x
     real(dp) r
     complex(cp) z
-    integer n
+    integer(ip) n
     complex(cp) val
     pointer(px,x)
     pointer(pr,r)
@@ -380,7 +403,7 @@ contains
        x=real(realpart(val),kind=dp)
     case(PK_INT)
        pn=v%p
-       n=int(realpart(val))
+       n=int(realpart(val),kind=ip)
     case(PK_UNDEF)
     end select
   end subroutine change_pkind
@@ -499,7 +522,7 @@ contains
   end function cp_plist
 
   subroutine dump_plist(pl,ent,name,out_unit)
-    use fpio, only: dp,rp,cp,ztoa,rtoa,DISP_FMT_RAW
+    use fpio, only: dp,rp,cp,ip,ztoa,rtoa,DISP_FMT_RAW
     use misc, only: mess,messp,stdout
     use memio, only: cpstr,itoa,IBASE_HEX
     type(t_plist),intent(in),target::pl
@@ -512,12 +535,13 @@ contains
     real(dp) r
     real(rp) x
     complex(cp) z
-    integer m
+    integer(ip) m
     pointer(pr,r)
     pointer(pz,z)
     pointer(px,x)
     pointer(pm,m)
     integer ou
+
     if(present(out_unit)) then
        ou=out_unit
     else
@@ -572,7 +596,7 @@ contains
           call mess(trim(rtoa(real(r,kind=rp),fmt=DISP_FMT_RAW)),ou)
        case(PK_INT)
           pm=v%p
-          call mess(trim(rtoa(real(m,kind=rp),fmt=DISP_FMT_RAW)),ou)
+          call mess(trim(itoa(m)),ou)
        end select
        call next
     end do
@@ -586,7 +610,7 @@ contains
   end subroutine dump_plist
 
   integer function find_par(pl,s,zout,ent)
-    use fpio, only: dp,rp,cp,czero,rzero
+    use fpio, only: dp,rp,cp,ip,czero,rzero
     type(t_plist),intent(in),target::pl
     character*(*),intent(in)::s
     complex(cp),intent(out),optional::zout
@@ -597,7 +621,7 @@ contains
     complex(cp) z
     real(rp) x
     real(dp) r
-    integer m
+    integer(ip) m
     pointer(pz,z)
     pointer(pr,r)
     pointer(px,x)
@@ -657,13 +681,14 @@ contains
 
   subroutine put_par_n(v,n)
     use memio, only: mcp
+    use fpio, only: ip
     type(t_vbuf),intent(inout)::v
-    integer,intent(in)::n
+    integer(ip),intent(in)::n
     call mcp(v%p,loc(n),sizeof(n))
   end subroutine put_par_n
 
   integer function put_par_at(pl,k,z) ! for existing entry
-    use fpio, only: dp,cp
+    use fpio, only: dp,cp,ip
     type(t_plist),intent(inout),target::pl
     integer,intent(in)::k
     complex(cp),intent(in)::z
@@ -687,7 +712,7 @@ contains
     case(PK_DBLE)
        call put_par_r(v,real(realpart(z),kind=dp))
     case(PK_INT)
-       call put_par(v,int(realpart(z)))
+       call put_par(v,int(realpart(z),kind=ip))
     case(PK_UNDEF)
        put_par_at=FZCERR_NOENT
        return
@@ -754,11 +779,8 @@ contains
     end if
     ent=k
     v => pn%v
-    if(present(ro).and.ro) then
-       flg=PS_RO
-    else
-       flg=PS_NOP
-    end if
+    flg=PS_NOP
+    if(present(ro).and.ro) flg=ior(flg,PS_RO)
     if(new) then
        if(present(pk)) then
           pk_set=pk
@@ -791,11 +813,8 @@ contains
        return
     end if
     if(present(ent)) ent=k
-    if(present(ro).and.ro) then
-       flg=ior(PS_REF,PS_RO)
-    else
-       flg=PS_REF
-    end if
+    flg=PS_REF
+    if(present(ro).and.ro) flg=ior(flg,PS_RO)
     if(present(pk)) then
        pk_set=pk
     else
@@ -868,9 +887,10 @@ contains
   end function add_par_by_value_r
 
   integer function add_par_by_value_n(pl,s,n,ro,ent)
+    use fpio, only: ip
     type(t_plist),intent(inout),target::pl
     character*(*),intent(in)::s
-    integer,intent(in)::n
+    integer(ip),intent(in)::n
     logical,intent(in),optional::ro
     integer,intent(out),optional::ent
     type(t_vbuf),pointer::v
@@ -925,7 +945,7 @@ contains
   end function add_par_by_value_z
 
   integer function get_par_loc(pl,k,dup)
-    use fpio, only: dp,rp,cp,rzero
+    use fpio, only: dp,rp,cp,ip,rzero
     type(t_plist),intent(inout),target::pl
     integer,intent(in)::k
     logical,intent(out),optional::dup
@@ -935,7 +955,7 @@ contains
     real(rp) x
     real(dp) r
     complex(cp) z
-    integer m
+    integer(ip) m
     pointer(px,x)
     pointer(pr,r)
     pointer(pz,z)
@@ -978,7 +998,7 @@ contains
   end function get_par_loc
 
   integer function get_par(pl,k,zout)
-    use fpio, only: dp,rp,cp,rzero
+    use fpio, only: dp,rp,cp,ip,rzero
     type(t_plist),intent(in),target::pl
     integer,intent(in)::k
     complex(cp),intent(out)::zout
@@ -987,7 +1007,7 @@ contains
     real(dp) r
     real(rp) x
     complex(cp) z
-    integer m
+    integer(ip) m
     pointer(pr,r)
     pointer(pz,z)
     pointer(px,x)
@@ -1019,19 +1039,21 @@ contains
   end function get_par
 
   subroutine remove_dup(pl)
-    use fpio, only: dp,rp,cp
+    use fpio, only: dp,rp,cp,ip,rzero,is_integer
     type(t_plist),intent(inout),target::pl
     type(t_vbuf),pointer::v
     type(t_pn),pointer::pn
     integer i
     real(rp) x
     real(dp) r
-    complex(cp) z
-    integer m
+    complex(cp) z,zz
+    integer(ip) m
     pointer(px,x)
     pointer(pr,r)
     pointer(pz,z)
     pointer(pm,m)
+    pointer(pzz,zz)
+
     if(pl%n==0) return
     pn => pl%pn
     ! move value from pz to p
@@ -1039,19 +1061,31 @@ contains
        v => pn%v
        if(is_duplicated(v%sta)) then
           pz=v%pz
-          select case(get_pkind(v%sta))
-          case(PK_REAL)
-             px=v%p
-             x=realpart(z)
-          case(PK_DBLE)
-             pr=v%p
-             r=real(realpart(z),kind=dp)
-          case(PK_INT)
-             pm=v%p
-             m=int(realpart(z))
-          case(PK_COMP)
-          case(PK_UNDEF)
-          end select
+          if(imagpart(z)/=rzero) then
+             call change_pkind(v,PK_COMP)
+             pzz=v%p
+             zz=z
+          else
+             select case(get_pkind(v%sta))
+             case(PK_REAL)
+                px=v%p
+                x=realpart(z)
+             case(PK_DBLE)
+                pr=v%p
+                r=real(realpart(z),kind=dp)
+             case(PK_INT)
+                if(.not.is_integer(z)) then
+                   call change_pkind(v,PK_REAL)
+                   px=v%p
+                   x=realpart(z)
+                else
+                   pm=v%p
+                   m=int(realpart(z),kind=ip)
+                end if
+             case(PK_COMP)
+             case(PK_UNDEF)
+             end select
+          end if
           call free(v%pz)
           v%pz=0
           call uset_pflg(v%sta,PS_DUP)
@@ -1059,18 +1093,21 @@ contains
        pn => pn%next
        if(.not.associated(pn)) exit
     end do
+
   end subroutine remove_dup
 
   subroutine sort_par(pl,pz_in)
-    use fpio, only: rp,cp,rzero
+    use fpio, only: rp,cp,ip,rzero,is_integer
     type(t_plist),intent(inout),target::pl
     integer,intent(in)::pz_in
     type(t_vbuf),pointer::v
     type(t_pn),pointer::pn
     real(rp) x
     complex(cp) z
+    integer(ip) m
     pointer(pz,z)
     pointer(px,x)
+    pointer(pm,m)
     integer i
     real(rp) x_in
     if(pl%n==0) return
@@ -1081,13 +1118,21 @@ contains
        if(v%p==pz_in) then
           pz=pz_in
           if(imagpart(z)/=rzero) return
-          if(get_pkind(v%sta)/=PK_COMP) return
           x_in=realpart(z)
           call free(v%p)
-          v%p=palloc(PK_REAL)
-          px=v%p
-          x=x_in
-          call set_pkind(v%sta,PK_REAL)
+          if(is_integer(x_in)) then
+             if(get_pkind(v%sta)==PK_INT) return
+             v%p=palloc(PK_INT)
+             pm=v%p
+             m=x_in
+             call set_pkind(v%sta,PK_INT)
+          else
+             if(get_pkind(v%sta)==PK_REAL) return
+             v%p=palloc(PK_REAL)
+             px=v%p
+             x=x_in
+             call set_pkind(v%sta,PK_REAL)
+          end if
        end if
        pn => pn%next
        if(.not.associated(pn)) exit

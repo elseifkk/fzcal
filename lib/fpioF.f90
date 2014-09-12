@@ -25,21 +25,20 @@ module fpio
   integer,parameter::dp=selected_real_kind(15,307)
   integer,parameter::ep=selected_real_kind(18)
   integer,parameter::qp=selected_real_kind(33,4931)
+  integer,parameter::ip=8 ! integer kind; 8-byte
+  integer(ip),parameter::int_max=huge(int(0,kind=ip))
 #if !defined _NO_REAL16_
   integer,parameter::rp=qp
   integer,parameter::cp=qp
   character*(*),parameter::cfmt="(ES41.33e4)"
-  real(rp),parameter::int_max=2.0_rp**63.0_rp-1.0_rp
 #elif !defined _NO_REAL10_
   integer,parameter::rp=ep
   integer,parameter::cp=ep
   character*(*),parameter::cfmt="(ES26.18e4)"
-  real(rp),parameter::int_max=2.0_rp**63.0_rp-1.0_rp
 #else
 #define _RP_IS_DP_
   integer,parameter::rp=dp
   integer,parameter::cp=dp
-  real(rp),parameter::int_max=2.0_rp**31_rp-1.0_rp
   character*(*),parameter::cfmt="(ES25.16e4)"
 #endif
   real(rp),parameter::rzero=0.0_rp
@@ -72,9 +71,10 @@ module fpio
   integer,parameter:: X2A_ENG            = Z"00010000"
   integer,parameter:: X2A_DMS            = Z"00020000"
   integer,parameter:: X2A_RAW            = Z"00040000"
-  integer,parameter:: X2A_DEFAULT        = ior(max_digit,ishft(IBASE_DEC,8))
+  integer,parameter:: X2A_DEFAULT        = ior(max_digit,ishft(IBASE_RAW,8))
 
   character*(*),parameter,private::NAN_STR="NaN"
+  character*(*),parameter,private::INF_STR="Inf"
 
   interface is_integer
      module procedure is_integer_z
@@ -90,6 +90,10 @@ contains
     b=rzero
     nan=a/b
   end function nan
+  ! workaround
+  real(rp) function inf()
+    inf=exp(huge(rzero))
+  end function inf
 
   real(rp) function atox(a,stat)
     character*(*),intent(in)::a
@@ -118,15 +122,7 @@ contains
   subroutine set_base(flg,n)
     integer,intent(inout)::flg
     integer,intent(in)::n
-    integer m
-    if(n==16) then
-       m=IBASE_HEX
-    else if(n>1.and.n<16) then
-       m=n
-    else
-       return
-    end if
-    flg=ior(iand(base_mask,flg),ishft(m,8))
+    flg=ior(iand(flg,base_mask),ishft(n,8))
   end subroutine set_base
 
   logical function is_integer_z(z,n)
@@ -156,7 +152,7 @@ contains
     use misc, only: is_set
     real(rp),intent(in)::x
     integer,intent(in),optional::fmt
-    integer istat,f
+    integer istat,f,b
     integer*8 n
     if(present(fmt)) then
        f=fmt
@@ -172,9 +168,12 @@ contains
           rtoa="0"
        end if
        return
-    else if(is_integer(x,n).and.is_set(f,X2A_ALLOW_ORDINARY)) then
-       rtoa=itoa(n,get_base(f))
-       return
+    else 
+       b=get_base(f)
+       if(is_integer(x,n).and.(is_set(f,X2A_ALLOW_ORDINARY).or.b>0)) then
+          rtoa=itoa(n,b)
+          return
+       end if
     end if
     rtoa=xtoa(x,f)
   end function rtoa
@@ -183,6 +182,15 @@ contains
     use misc, only: is_set
     complex(cp),intent(in)::z
     integer,intent(in),optional::fmt
+
+    if(isnan(realpart(z))) then
+       ztoa=NAN_STR
+       return
+    else if(abs(realpart(z))>huge(rzero)) then
+       ztoa=INF_STR
+       return
+    end if
+
     if(present(fmt)) then
        if(fmt==DISP_FMT_RAW) then
           ztoa="( "//trim(rtoa(realpart(z),fmt))//", "&
@@ -216,12 +224,16 @@ contains
       subroutine todms
         integer d,m
         real(rp) x,s
-        character*(*),parameter::ifmt="(i2.2)"
+        character*32 dd,ss
         x=realpart(z)
         d=x/(60.0_rp*60.0_rp)
         m=(x-(d*60.0_rp*60._rp))/60.0_rp
         s=x-60.0_rp*(m+d*60.0_rp)
-        ztoa=trim(itoa(d))//":"//trim(itoa(m))//":"//trim(rtoa(s,fmt))
+        dd=trim(itoa(d))
+        if(len_trim(dd)==1) dd="0"//trim(dd)
+        ss=trim(rtoa(s,fmt))
+        if(ss(2:2)==".".or.len_trim(ss)==1) ss="0"//trim(ss)
+        ztoa=trim(dd)//":"//trim(itoa(m,fmt="(i2.2)"))//":"//trim(ss)
       end subroutine todms
 
   end function ztoa
@@ -269,10 +281,6 @@ contains
     integer p1
     ! 12345..
     ! +x.xx..E+xxxx
-    if(isnan(x)) then
-       xtos=NAN_STR
-       return
-    end if
     xtos=""
     p1=2
     if(x>=rzero) then
@@ -288,7 +296,6 @@ contains
     else
        p1=2
     end if
-
     write(xtos(p1:),cfmt,iostat=istat) xx
     if(istat/=0) return
     if(xtos(p1:p1)=="*") then
@@ -338,10 +345,6 @@ contains
     end if
     xtoa=""
     ns=xtos(x,e,.false.,neg)
-    if(ns==NAN_STR) then
-       xtoa=NAN_STR
-       return
-    end if
     if(neg) then
        p1=2
        xtoa(1:1)="-"
@@ -459,7 +462,7 @@ contains
           xtoa(p1:)="."//ns(2:dd)
           p1=p1+dd
        end if
-       if(e>0.or..not.is_not_set(opt,X2A_SHOW_E0)) then
+       if(e/=0.or..not.is_not_set(opt,X2A_SHOW_E0)) then
           xtoa(p1:)="e"//trim(itoa(e))
        end if
     end if

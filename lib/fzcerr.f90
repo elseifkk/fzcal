@@ -48,12 +48,13 @@ module fzcerr
   integer,parameter::FZCERR_INVCOM       = 24
   integer,parameter::FZCERR_NOFILE       = 25
   integer,parameter::FZCERR_EMPTY_INPUT  = 26
+  integer,parameter::FZCERR_INTERNAL     = 27
 
-  integer,private,parameter::LEN_ERR_STR=64
+  integer,parameter::LEN_STR_ERR_MAX=64
 
 contains
 
-  character(len=LEN_ERR_STR) function error_str(ec)
+  character(len=LEN_STR_ERR_MAX) function error_str(ec)
     integer,intent(in)::ec
     select case(ec)
     case(FZCERR_NOENT)
@@ -108,6 +109,8 @@ contains
        error_str="No such file"
     case(FZCERR_EMPTY_INPUT)
        error_str="Empty input"
+    case(FZCERR_INTERNAL)
+       error_str="Internal Error"
     case default
        error_str="Unknown error code"
     end select

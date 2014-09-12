@@ -21,11 +21,11 @@ module memio
   implicit none
   public
 
-  integer,parameter::IBASE_HEX  =  0
-  integer,parameter::IBASE_RAW  =  1
-  integer,parameter::IBASE_BIN  =  2
-  integer,parameter::IBASE_OCT  =  8
-  integer,parameter::IBASE_DEC  = 10
+  integer,parameter::IBASE_RAW  =  0
+  integer,parameter::IBASE_BIN  =  1
+  integer,parameter::IBASE_OCT  =  2
+  integer,parameter::IBASE_DEC  =  3
+  integer,parameter::IBASE_HEX  =  4
 
 #ifndef _USE32_
   integer,parameter::ptrsz=selected_int_kind(20)
@@ -84,7 +84,7 @@ contains
     if(present(base)) then
        b=base
     else
-       b=IBASE_DEC
+       b=IBASE_RAW
     end if
     select case(b)
     case(10,IBASE_RAW)
