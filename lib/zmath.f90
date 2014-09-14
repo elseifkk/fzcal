@@ -429,7 +429,7 @@ contains
        if(n<=k) return
     end if
     m=n
-    do 
+    do
        zm_mfac=zm_mfac*m
        m=m-k
        if(isnan(realpart(zm_mfac))) exit
@@ -440,18 +440,19 @@ contains
   complex(cp) function zm_fac(z1)
     complex(cp),intent(in)::z1
     if(is_integer(z1)) then
-       zm_fac=zm_mfac(z1,complex(1_rp,rzero))
+       zm_fac=zm_mfac(z1,complex(1.0_rp,rzero))
     else
-       zm_fac=zm_gamma(z1+1_rp)
+       zm_fac=zm_gamma(z1+1.0_rp)
     end if
   end function zm_fac
 
   complex(cp) function zm_dfac(z1)
     complex(cp),intent(in)::z1
-    if(is_integer(z1)) then 
-       zm_dfac=zm_mfac(z1,complex(2_rp,rzero))
-    else if(realpart(z1)>=-2) then
-       zm_dfac=(2_rp/pi)**((1-cos(pi*z1))/4_rp)*2_rp**(z1/2)*zm_gamma(z1/2_rp+1_rp)
+    if(is_integer(z1)) then
+       zm_dfac=zm_mfac(z1,complex(2.0_rp,rzero))
+    else if(realpart(z1)>=-2.0_rp) then
+       zm_dfac=(2.0_rp/pi)**((1.0_rp-cos(pi*z1))/4.0_rp)*2.0_rp**(z1/2.0_rp)&
+            *zm_gamma(z1/2.0_rp+1.0_rp)
     else
        write(*,*) "zm_dfac: z<-2 not implemented yet."
        zm_dfac=nan()
@@ -1188,28 +1189,28 @@ contains
 
   complex(cp) function zm_Fl(el,eta,rho)
     complex(cp),intent(in)::el,eta,rho
-    real(rp) x    
+    real(rp) x
     call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),F=x)
     zm_Fl=complex(x,rzero)
   end function zm_Fl
- 
+
  complex(cp) function zm_Gl(el,eta,rho)
     complex(cp),intent(in)::el,eta,rho
-    real(rp) x    
+    real(rp) x
     call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),G=x)
     zm_Gl=complex(x,rzero)
   end function zm_Gl
 
   complex(cp) function zm_dFl(el,eta,rho)
     complex(cp),intent(in)::el,eta,rho
-    real(rp) x    
+    real(rp) x
     call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),dF=x)
     zm_dFl=complex(x,rzero)
   end function zm_dFl
 
   complex(cp) function zm_dGl(el,eta,rho)
     complex(cp),intent(in)::el,eta,rho
-    real(rp) x    
+    real(rp) x
     call coulomb_wave_func(realpart(el),realpart(eta),realpart(rho),dG=x)
     zm_dGl=complex(x,rzero)
   end function zm_dGl
@@ -1239,7 +1240,7 @@ contains
     logical sgn
     integer,parameter::NUM_ITERATION_MAX=100000 ! <<<<<
 
-    u=wF(sgn)    
+    u=wF(sgn)
     z=wH()
 
     p=realpart(z)
@@ -1262,7 +1263,7 @@ contains
     if(present(dG)) dG=dG_
 
   contains
-    
+
     complex(cp) function wH()
       complex(cp) An,Bn,A,B,A_,B_
       complex(cp) bb,aa
@@ -1342,7 +1343,7 @@ contains
       ! (1 + el + i eta + j)(-el + i eta + j)
       F_j=(1.0_rp+el+cunit*eta+j)*(-el+cunit*eta+j)
     end function F_j
-    
+
     complex(cp) function D_j(j)
       integer,intent(in)::j
       ! 2(rho - eta + j i )

@@ -168,7 +168,7 @@ contains
           rtoa="0"
        end if
        return
-    else 
+    else
        b=get_base(f)
        if(is_integer(x,n).and.(is_set(f,X2A_ALLOW_ORDINARY).or.b>0)) then
           rtoa=itoa(n,b)

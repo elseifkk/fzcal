@@ -37,7 +37,7 @@ contains
   ! one dimensional integration by double exponential formula.
   function deSdx(ptr_c,ptr_f,a,b,nv,eps,ans) result(istat)
     ! declaration as recursive cause segmentation fault with gfortran 4.7.2
-    ! build for arm-linux-gnueabi. 
+    ! build for arm-linux-gnueabi.
     use misc, only: mess
     integer istat
     integer,intent(in)::ptr_c
@@ -80,18 +80,18 @@ contains
 
     rc=rc+1
     ans=czero
-    
+
     if(rc>RCMAX) then
        call mess("*** deSdx: too deep recursion")
        istat=2
        goto 999
     end if
-    
+
     i => ibuf(rc)
     k => kbuf(rc)
     buf => zbuf(:,:,rc)
     istat=0
-    if(b>a) then 
+    if(b>a) then
        aa=a
        bb=b
     else if(a>b) then
@@ -100,7 +100,7 @@ contains
     else
        goto 999
     end if
-    
+
     h=(bb-aa)/2.0_rp
 
     if(h>XMAX) then
@@ -108,7 +108,7 @@ contains
     else if(h<HMIN) then
        h=HMIN
     end if
- 
+
     sqrteps=sqrt(eps)
     alpha=(bb-aa)/2.0_rp
     beta=(aa+bb)/2.0_rp
@@ -128,7 +128,7 @@ contains
     call sum_buf
     Ih=(s1+s2+f(ptr_c,3,[beta,alpha,alpha])*pi_2)*h*alpha
     k=0
-    
+
     istat=1
     do k=1,KMAX
        h=h/2.0_rp
@@ -150,16 +150,16 @@ contains
        end if
        Ih=Ih2
     end do
-    
+
     ans=Ih2
     if(a>b) ans=-ans
-    
+
 999 continue
-    
+
     rc=rc-1
-    
+
   contains
-    
+
      logical function is_converged()
        is_converged=&
             (abs(realpart(Ih2))<eps &
@@ -169,7 +169,7 @@ contains
             .and.abs(imagpart(Ih))<eps &
             .or.abs(imagpart(Ih2-Ih))<sqrteps*abs(imagpart(Ih2)))
      end function is_converged
-     
+
      logical function do_sum(x)
        real(rp),intent(in)::x
        real(rp) az12
@@ -201,7 +201,7 @@ contains
        buf(i,2)=z2*phi
        buf(i,1)=z1*phi
      end function do_sum
- 
+
      subroutine sum_buf()
        s1=czero
        s2=czero
@@ -210,12 +210,12 @@ contains
           s2=s2+buf(i,2)
        end do
      end subroutine sum_buf
- 
+
      real(rp) function de(x)
        real(rp),intent(in)::x
        de=pi*cosh(x)/(cosh(pi*sinh(x))+1.0_rp)
      end function de
- 
+
      subroutine get_xi(x,xi)
        real(rp),intent(in)::x
        real(rp),intent(out)::xi(3)
@@ -229,7 +229,7 @@ contains
        end if
        xi=xi*alpha
      end subroutine get_xi
- 
+
    end function deSdx
- 
+
 end module integral

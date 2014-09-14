@@ -159,7 +159,7 @@ module rpnp
   integer,parameter::FID_MOD        = 31
   integer,parameter::FID_PFAC       = 32
   integer,parameter::FID_GAMI       = 33
-  integer,parameter::FID_JN         = 34 
+  integer,parameter::FID_JN         = 34
   integer,parameter::FID_YN         = 35
   integer,parameter::FID_HN         = 36
   integer,parameter::FID_DJN        = 37
@@ -543,11 +543,11 @@ contains
        if(t==TID_BOP1U) then
           select case(rpnb%old_tid)
              ! plus in (+, ^+ and e+ are unary
-          case(TID_BRA,TID_ASN,TID_AOP, & 
+          case(TID_BRA,TID_ASN,TID_AOP, &
                TID_COMA,TID_TOP1,TID_COL,TID_SCL,TID_UNDEF,TID_DQ1, &
                TID_ROP,&
                TID_BOP2) ! 4/-2 = 4/(-2)
-             
+
              t=TID_UOP1
           case(TID_BOP3,TID_BOP5)
              t=TID_UOP5
