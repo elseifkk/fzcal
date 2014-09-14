@@ -44,7 +44,7 @@ program fzcalc
   end if
 
 contains
-  
+
   subroutine print_the_version
     use com, only: print_version
     call print_version
@@ -86,7 +86,7 @@ contains
           call cle_flg(imode,IM_CMDLINE)
        else if(is_set(imode,IM_FILE)) then
           istat=load_and_run(a)
-          call cle_flg(imode,IM_FILE)          
+          call cle_flg(imode,IM_FILE)
        else
           if(a(1:1)=="-") then
              if(len>1) then
@@ -119,7 +119,7 @@ contains
     end do
     if(imode==0) imode=IM_INTERACTIVE
   end subroutine init
-  
+
   integer function load_and_run(f) result(istat)
     use misc, only: open_file,ins
     character*(*),intent(in)::f
@@ -136,7 +136,7 @@ contains
     end do
     close(u)
   end function load_and_run
-  
+
   integer function set_and_run(e) result(istat)
     use misc, only: mess
     use rpnp, only: set_formula
@@ -163,5 +163,5 @@ contains
        if(istat==RPNSTA_EXIT) exit
     end do
   end function read_and_run
-   
+
 end program fzcalc

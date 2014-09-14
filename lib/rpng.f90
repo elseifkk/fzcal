@@ -68,7 +68,7 @@ module rpng
   integer,parameter::TID_BOP3    =  16  !R ^,**
   integer,parameter::TID_BOP3U   = -16  !
   integer,parameter::TID_BOP5    =  17  !R e
-  integer,parameter::TID_UOP5    =  18  !R - for e and **     
+  integer,parameter::TID_UOP5    =  18  !R - for e and **
   integer,parameter::TID_IFNC    =  19  !L sin, cos,...
   integer,parameter::TID_UFNC    =  20  !L
   integer,parameter::TID_PRI_MAX =  21  !

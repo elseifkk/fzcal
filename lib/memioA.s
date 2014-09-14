@@ -33,7 +33,7 @@
 section .bss align=16
 str_buf resq 0
 
-;;; 
+;;;
 section .text align=16
 global mcp_
 global mcle_
@@ -42,7 +42,7 @@ global dw2str_
 %else
 global qw2str_
 %endif
-	
+
 %macro start_proc 0
 %ifdef _USE32_
 %assign arg1 08
@@ -58,7 +58,7 @@ global qw2str_
 	mov rbp, rsp
 %endif
 %endm
-	
+
 %macro end_proc 0
 %ifdef _USE32_
 	pop ebx
@@ -102,9 +102,9 @@ mcp_:
  	rep movsq
  	mov rcx, rdx
  	rep movsb
-	;; 
+	;;
  	mov rax, rdi
-%endif	
+%endif
 	end_proc
 
 mcle_:
@@ -138,9 +138,9 @@ mcle_:
  	rep stosq
  	mov rcx, rdx
  	rep stosb
-	;; 
+	;;
  	mov rax, rdi
-%endif	
+%endif
 	end_proc
 
 ;;;
@@ -185,7 +185,7 @@ mcle_:
 %%.exit:          		;
 	mov eax, ecx		;
 %endm
-	
+
 %ifdef _USE32_
 dw2str_:
 ;;      integer function dw2str(dw,pstr)
@@ -196,21 +196,21 @@ dw2str_:
 	mov esi, edi                          ; esi = ptr str_buf
 	mov eax, [ebp+arg1]
 	and eax, 0x7FFFFFFF		      ; eax = positive i
-	;; 
+	;;
 	add edi, D2STR_BUFFER_SIZE-1
 	mov [edi], byte 30h
-	or eax, eax         
+	or eax, eax
 	jz .cpbuf
-	inc edi             
-	;; 
+	inc edi
+	;;
 .L10:
        	div10m
-	add edx, 0x30       
-	dec edi             
-	mov [edi], BYTE dl  
-.L20:               
-	or eax, eax         
-	jnz .L10          
+	add edx, 0x30
+	dec edi
+	mov [edi], BYTE dl
+.L20:
+	or eax, eax
+	jnz .L10
 .cpbuf:
 	mov ecx, esi                    ;
 	sub ecx, edi                    ; get length of digits
@@ -221,12 +221,12 @@ dw2str_:
 	mov eax, ecx			; return code = len str
 	cmp edx, 0
 	jl .putminus
-.cont:	
+.cont:
 	rep movsb
-	;; 
+	;;
 .exit
  	end_proc
-	;; 
+	;;
 .putminus:
 	mov byte [edi], "-"
 	inc edi
@@ -236,31 +236,31 @@ dw2str_:
 qw2str_:
 %assign D2STR_BUFFER_SIZE 21
 	start_proc
-	;; 
+	;;
  	mov rax, rdi			; rax  = a
 	and rax, 0x7FFFFFFFFFFFFFFF	; eax = positive i
 	push rax			; save dw
 	push rsi			; save pstr
-	;; 
+	;;
 	lea rdi, [ADDR(str_buf)] 	; rdi = ptr str_buf
 	mov rsi, rdi                    ; esi = ptr str_buf
-	;; 
+	;;
 	add rdi, D2STR_BUFFER_SIZE-1
 	mov [rdi], byte 30h
-	or rax, rax         
+	or rax, rax
 	jz .cpbuf
 	inc rdi
         mov r9, 10
-	;; 
+	;;
 .L10:
 	xor rdx, rdx
        	div r9
-	add rdx, 0x30       
-	dec rdi             
-	mov [rdi], BYTE dl  
-.L20:               
-	or rax, rax         
-	jnz .L10          
+	add rdx, 0x30
+	dec rdi
+	mov [rdi], BYTE dl
+.L20:
+	or rax, rax
+	jnz .L10
 .cpbuf:
 	mov rcx, rsi                    ;
 	sub rcx, rdi                    ; get length of digits
@@ -271,12 +271,12 @@ qw2str_:
 	mov rax, rcx			; return code = len str
 	cmp rdx, 0
 	jl .putminus
-.cont:	
+.cont:
 	rep movsb
-	;; 
+	;;
 .exit
 	end_proc
-	;; 
+	;;
 .putminus:
 	mov byte [rdi], "-"
 	inc rdi

@@ -706,27 +706,27 @@ contains
     allocate(rpnc%ifnc)
     ifnc => rpnc%ifnc
     ifnc=cp_rpnc(rpnc,deep=.false.)
-    
+
     allocate(ifnc%que(nc),rpnc%ique(nc))
     ifnc%ip     = 1
     ifnc%rc     = rpnc%rc
     ifnc%que    = rpnc%que(i1:i2)
     ifnc%p_vbuf = 0
-    
+
     call alloc_vbuf
     call set_var
     call set_idmy
     rpnc%ique=ifnc%que
-    
+
     pf1=rpnc%que(i)%cid
     pa=pvs(1)
-    pb=pvs(2)    
+    pb=pvs(2)
 
     ans=f1(loc(rpnc),loc(integrand1),a,b,nv)
-    
+
     call set_result(rpnc,i,ans,2,ods)
     istat=0
-    
+
     rpnc%que(i1:i2)%tid=TID_NOP
 
     call uinit_rpncq(rpnc%ique)
@@ -871,7 +871,7 @@ contains
     rpnc%flg%mode=mode_save
     rpnc%flg%dmode=dmode_save
     rpnc%answer=ans_save
-    
+
   contains
 
     subroutine alloc_vbuf()
@@ -926,7 +926,7 @@ contains
     logical dup
     type(t_rpnq),pointer::q
     complex(cp) ans_save
-    
+
     mode_save=rpnc%flg%mode
     dmode_save=rpnc%flg%dmode
     ans_save=rpnc%answer

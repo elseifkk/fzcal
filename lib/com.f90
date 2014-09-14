@@ -131,7 +131,7 @@ contains
     call mess(bname)
     call mess(cname)
   end subroutine print_version
-  
+
   logical function is_mode_com(tid,cid,help)
     use rpng, only: TID_LAST
     integer,intent(in)::tid
